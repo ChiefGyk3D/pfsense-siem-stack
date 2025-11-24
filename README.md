@@ -48,8 +48,28 @@ The uptime panel (ID: 45) now uses:
 
 ## Running on
 
-    Grafana 12.3.0+ (tested, older versions may have formatting issues)
-    InfluxDB 1.8.3
+  Grafana 12.3.0+ (tested, older versions may have formatting issues)
+  InfluxDB 1.8.3
+
+---
+
+## License
+
+This project (the pfSense Grafana Dashboard fork and associated scripts) is
+licensed under the Mozilla Public License Version 2.0 (MPL-2.0).
+
+You can find the license text in the included `LICENSE` file or at:
+http://mozilla.org/MPL/2.0/
+
+Short notice to include in source files:
+
+```
+SPDX-FileCopyrightText: 2025 ChiefGyk3D
+SPDX-License-Identifier: MPL-2.0
+```
+
+If you redistribute or modify the Covered Software in Executable Form, you
+must make the Source Code Form available under the terms of MPL-2.0.
     
 ## Known Issues
     pfSense 2.6 - No Stats from pfBlocker - https://github.com/VictorRobellini/pfSense-Dashboard/issues/58 

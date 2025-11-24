@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: 2025 ChiefGyk3D
+# SPDX-License-Identifier: MPL-2.0
 
 # pfSense Telegraf Plugins Installer
 # This script helps install Telegraf plugins to pfSense via SSH

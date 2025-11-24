@@ -1,5 +1,7 @@
 #!/usr/local/bin/php-cgi -f
 <?php
+// SPDX-FileCopyrightText: 2025 ChiefGyk3D
+// SPDX-License-Identifier: MPL-2.0
 require_once("config.inc");
 require_once("gwlb.inc");
 require_once("interfaces.inc");

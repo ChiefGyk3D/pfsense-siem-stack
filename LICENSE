@@ -1,0 +1,131 @@
+Mozilla Public License
+Version 2.0
+
+1. Definitions
+
+1.1. "Contributor"
+    means each individual or legal entity that creates, contributes to the creation
+    of, or owns Covered Software.
+
+1.2. "Covered Software"
+    means Source Code Form to which the initial Contributor has attached the
+    notice in Exhibit A, the Executable Form of such Source Code Form, and
+    Modifications of such Source Code Form, in each case including portions
+    thereof.
+
+1.3. "Executable Form"
+    means any form of the work other than Source Code Form.
+
+1.4. "Larger Work"
+    means a work that combines Covered Software with other material, in a
+    separate file or files, that is not governed by the terms of this License.
+
+1.5. "License"
+    means this document.
+
+1.6. "Licensor"
+    means the individual or legal entity that offers the Covered Software
+    under the terms of this License.
+
+1.7. "Modifications"
+    means any of the following:
+    a) any file in Source Code Form that results from an addition to, deletion
+       from, or modification of the contents of Covered Software; or
+    b) any new file in Source Code Form that contains any Covered Software.
+
+1.8. "Source Code Form"
+    means the form of the work preferred for making modifications.
+
+1.9. "You" (or "Your")
+    means an individual or a legal entity exercising rights under this License
+    who has not previously violated the terms of this License with respect to
+    the Covered Software, or who has received permission from the Licensing
+    Steward to exercise rights under this License despite a previous
+    violation.
+
+2. License Grants and Conditions
+
+2.1. Grants
+
+Each Contributor hereby grants You a world-wide, royalty-free, non-exclusive
+license to use, reproduce, modify, display, perform, sublicense, and
+distribute the Covered Software, subject to the terms of this License.
+
+2.2. Availability of Source Code
+
+Any Covered Software that you distribute or otherwise make available in
+Executable Form must also be made available in Source Code Form, under
+the terms of this License, and you must inform recipients how to obtain
+the Source Code Form.
+
+2.3. Modifications
+
+If you create Modifications of Covered Software, you may distribute those
+Modifications under the terms of this License provided you keep the
+copyright notices and provide recipients with a copy of this License and
+the information required by Exhibit A.
+
+3. Responsibilities
+
+3.1. Contributor Notices
+
+Each Contributor must make known the existence of this License by attaching
+it to the Covered Software in the manner described in Exhibit A.
+
+3.2. Disclaimer of Warranty
+
+The Covered Software is provided "as is", without warranty of any kind,
+express or implied. The entire risk as to satisfactory quality, performance,
+accuracy and effort is with You.
+
+3.3. Limitation of Liability
+
+In no event will any Contributor be liable for any damages arising out of or
+related to this License or the use of the Covered Software.
+
+4. Termination
+
+This License and the rights granted hereunder will terminate automatically if
+You fail to comply with terms and conditions described herein. The termination
+does not terminate rights and obligations already granted prior to the
+termination, except where the termination is the result of a material breach
+that justifies revocation of rights.
+
+5. Miscellaneous
+
+5.1. Governing Law
+
+This License will be governed by the laws of the jurisdiction in which the
+Licensor resides, except where prohibited by applicable law.
+
+5.2. Severability
+
+If any provision of this License is found to be unenforceable, it shall be
+severed and the remaining provisions shall be enforced.
+
+6. Exhibit A - Source Code Form License Notice
+
+This Source Code Form is subject to the terms of the Mozilla Public License,
+version 2.0. If a copy of the MPL was not distributed with this file, You can
+obtain one at http://mozilla.org/MPL/2.0/.
+
+----- BEGIN LICENSE TEXT -----
+Mozilla Public License Version 2.0
+
+1. Definitions
+
+1.1. Contributor
+    means each individual or legal entity that creates, contributes to the
+    creation of, or owns Covered Software.
+
+1.2. Covered Software
+    means Source Code Form to which the initial Contributor has attached the
+    notice in Exhibit A, the Executable Form of such Source Code Form, and
+    Modifications of such Source Code Form, in each case including portions
+    thereof.
+
+... (Full MPL 2.0 text available at: http://mozilla.org/MPL/2.0/) ...
+
+----- END LICENSE TEXT -----
+
+This file is licensed under the Mozilla Public License 2.0.
