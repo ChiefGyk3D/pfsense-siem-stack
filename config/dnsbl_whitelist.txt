@@ -1,0 +1,547 @@
+device-metrics-us-2.amazon.com # Amazon device metrics
+device-metrics-us.amazon.com # Amazon device metrics
+events.gfe.nvidia.com # NVIDIA events
+gfwsl.geforce.com # NVIDIA GeForce
+prod.telemetry.ros.rockstargames.com # Rockstar Games telemetry
+hosts-file.net # Hosts file service
+raw.githubusercontent.com # GitHub raw files
+v.firebog.net # Firebog DNS
+hostsfile.org # Hosts file service
+someonewhocares.org # Hosts file service
+hostsfile.mine.nu # Hosts file service
+winhelp2002.mvps.org # Hosts file service
+sysctl.org # Hosts file service
+pgl.yoyo.org # Hosts file service
+zeustracker.abuse.ch # Zeus Tracker
+ae01.alicdn.com # Alibaba CDN
+api-global.netflix.com # Netflix API
+ichnaea.netflix.com # Netflix API
+appboot.netflix.com # Netflix app boot
+secure.netflix.com # Netflix secure
+ota-downloads.nvidia.com # NVIDIA OTA downloads
+dcs-vod.apis.anvato.net # Video on Demand API
+z.cdn.turner.com # Turner CDN
+manifest.auditude.com # Auditude ad platform
+cwtv-mrss-akamai.cwtv.com # CW TV streaming
+cwtv-prod-elb.digitalsmiths.net # CW TV streaming
+redirector.googlevideo.com # Google Video redirector
+mobile-ap.spotify.com # Spotify mobile API
+apresolve.spotify.com # Spotify API
+upgrade.scdn.com # Spotify CDN
+market.spotify.com # Spotify market
+spclient.wg.spotify.com # Spotify client
+audio-ake.spotify.com.edgesuite.net # Spotify audio CDN
+adf.ly # URL shortener
+www.adf.ly # URL shortener
+bit.ly # URL shortener
+www.bit.ly # URL shortener
+goo.gl # URL shortener
+ow.ly # URL shortener
+www.ow.ly # URL shortener
+amzn.to # Amazon short URL
+amzn.com # Amazon
+d2c8v52ll5s99u.cloudfront.net # Cloudfront CDN
+attestation.xboxlive.comcert.mgt.xboxlive.com # Xbox Live attestation
+ctldl.windowsupdate.comdef-vef.xboxlive.com # Windows update
+device.auth.xboxlive.comeds.xboxlive.com # Xbox Live device auth
+help.ui.xboxlive.comlicensing.xboxlive.commicrosoft.com # Xbox Live help
+notify.xboxlive.comsettings-win.data.microsoft.com # Xbox Live notifications
+title.auth.xboxlive.comtitle.mgt.xboxlive.com # Xbox Live title management
+v10.vortex-win.data.microsoft.com # Windows telemetry
+www.msftncsi.com # Microsoft network connectivity
+xbox.ipv6.microsoft.com # Xbox IPv6
+xboxexperiencesprod.experimentation.xboxlive.com # Xbox Live experiments
+xflight.xboxlive.comxkms.xbolive.com # Xbox Live flighting
+xsts.auth.xboxlive.com # Xbox Live secure token service
+v20.events.data.microsoft.com # Windows telemetry
+watson.telemetry.microsoft.com # Microsoft telemetry
+web.vortex.data.microsoft.com # Windows telemetry
+v10.events.data.microsoft.com # Windows telemetry
+stats.streamelements.com # StreamElements stats
+66.media.tumblr.com # Tumblr media
+.accounts.google.com # Google accounts
+.alibaba.com # Alibaba
+.alicdn.com # Alibaba CDN
+.aliexpress.com # AliExpress
+.amazonaws.com # Amazon AWS
+.amazon.com # Amazon
+.apple.com # Apple
+.autotask.com # Autotask
+.autotask.net # Autotask
+.bit.ly # URL shortener
+.bitly.com # URL shortener
+.brave.com # Brave browser
+.buff.ly # URL shortener
+cs9.wac.phicdn.net # CDN
+.digicert.com # Digicert
+.docs.google.com # Google Docs
+.drive.google.com # Google Drive
+edge-live.outlook.office.com # Microsoft Outlook
+evintl-ocsp.verisign.com # Verisign OCSP
+evsecure-ocsp.verisign.com # Verisign OCSP
+.facebook.com # Facebook
+.github.com # GitHub
+.google.com # Google
+.googlemail.l.google.com # Google Mail
+.googleusercontent.com # Google user content
+.graph.instagram.com # Instagram API
+.hulu.com # Hulu
+.icloud.com # Apple iCloud
+.instagram.c10r.facebook.com # Instagram API
+.ipv4.login.msa.akadns6.net # Microsoft login
+.itunes.com # Apple iTunes
+.logging.apache.org # Apache logging
+.login.live.com # Microsoft login
+.login.msa.akadns6.net # Microsoft login
+.mail.google.com # Google Mail
+.media.tumblr.com # Tumblr media
+media.tumblr.com # Tumblr media
+.microsoft.com # Microsoft
+.mobile.free.fr # Free Mobile
+.netflix.com # Netflix
+.nexus.officeapps.live.com # Microsoft Office
+.nexusrules.officeapps.live.com # Microsoft Office rules
+.oneclient.sfx.ms # Microsoft Office
+.osint.bambenekconsulting.com # OSINT service
+.outlook.ha-live.office365.com # Microsoft Outlook
+.outlook.ha.office365.com # Microsoft Outlook
+.outlook.live.com # Microsoft Outlook
+.outlook.ms-acdc.office.com # Microsoft Outlook
+.pbs.twimg.com # Twitter images
+.play.google.com # Google Play
+.plus.google.com # Google Plus
+.pornhub.com # Pornhub
+.prod.nexusrules.live.com.akadns.net # Microsoft Office rules
+.prod-w.nexus.live.com.akadns.net # Microsoft Office
+.samsungcloudsolution.net # Samsung cloud
+.samsungelectronics.com # Samsung
+.sites.google.com # Google Sites
+.skype.com # Skype
+.sonyentertainmentnetwork.com # Sony Entertainment
+.soundcloud.com # SoundCloud
+.spotify.com # Spotify
+.symcb.com # Symantec
+.symcd.com # Symantec
+.taobao.com # Taobao
+.t.co # Twitter URL shortener
+.thefreethoughtproject.com # News site
+.thingiverse.com # Thingiverse
+.tumblr.com # Tumblr
+.twitter.com # Twitter
+.wildcard.twimg.com # Twitter images
+.windows.com # Microsoft Windows
+.www3.l.google.com # Google Sites
+.www.eu-west-1.prodaa.netflix.com # Netflix
+.www.geo.netflix.com # Netflix
+.www.google.com # Google
+.www.instagram.com # Instagram
+.www.netflix.com # Netflix
+.youtube.com # YouTube
+youtube.com # YouTube
+.z-p15-instagram.c10r.facebook.com # Instagram API
+0.client-channel.google.com # Google client channel
+1drv.com # Microsoft OneDrive
+2.android.pool.ntp.org # Android NTP
+akamaihd.net #ParamountPlus
+akamaitechnologies.com # Akamai Technologies
+akamaized.net #ParamountPlus
+alluremedia.com.au # Allure Media
+amazonaws.com # Amazon AWS
+android.clients.google.com # Google Android clients
+api.ipify.org # IP address service
+api.rlje.net # RLJE Films API
+app-api.ted.com # TED app API
+app.plex.tv # Plex app
+appleid.apple.com # Apple ID
+apps.skype.com # Skype apps
+appsbackup-pa.clients6.google.com # Google Apps backup
+appsbackup-pa.googleapis.com # Google Apps backup
+apt.sonarr.tv # Sonarr app
+aspnetcdn.com # ASP.NET CDN
+attestation.xboxlive.com # Xbox Live attestation
+ax.phobos.apple.com.edgesuite.net # Apple edgesuite
+brightcove.net # Brightcove video platform
+bufferapp.com # Buffer app
+c.s-microsoft.com # Microsoft
+cdn.cloudflare.net # Cloudflare CDN
+cdn.embedly.com # Embedly CDN
+cdn.optimizely.com # Optimizely CDN
+cdn.vidible.tv # Vidible CDN
+cdn2.optimizely.com # Optimizely CDN
+cdn3.optimizely.com # Optimizely CDN
+cdnjs.cloudflare.com # Cloudflare CDN
+cert.mgt.xboxlive.com # Xbox Live certification
+clientconfig.passport.net # Microsoft Passport
+clients1.google.com # Google clients
+clients2.google.com # Google clients
+clients3.google.com # Google clients
+clients4.google.com # Google clients
+clients5.google.com # Google clients
+clients6.google.com # Google clients
+cpms.spop10.ams.plex.bz # Plex media server
+cpms35.spop10.ams.plex.bz # Plex media server
+cse.google.com # Google Custom Search
+ctldl.windowsupdate.com # Windows update
+d2gatte9o95jao.cloudfront.net # Cloudfront CDN
+dashboard.plex.tv # Plex dashboard
+dataplicity.com # Dataplicity
+def-vef.xboxlive.com # Xbox Live
+delivery.vidible.tv # Vidible video delivery
+dev.virtualearth.net # Microsoft Virtual Earth
+device.auth.xboxlive.com # Xbox Live device auth
+display.ugc.bazaarvoice.com # Bazaarvoice UGC
+displaycatalog.mp.microsoft.com # Microsoft catalog
+dl.delivery.mp.microsoft.com # Microsoft download
+dl.dropbox.com # Dropbox download
+dl.dropboxusercontent.com # Dropbox content
+dns.msftncsi.com # Microsoft DNS
+download.sonarr.tv # Sonarr download
+drift.com # Drift
+driftt.com # Drift
+dynupdate.no-ip.com # No-IP dynamic update
+ec-ns.sascdn.com # SAS CDN
+ecn.dev.virtualearth.net # Microsoft Virtual Earth
+edge.api.brightcove.com # Brightcove API
+eds.xboxlive.com # Xbox Live
+fonts.gstatic.com # Google Fonts
+forums.sonarr.tv # Sonarr forums
+g.live.com # Microsoft Live
+geo-prod.do.dsp.mp.microsoft.com # Microsoft geo services
+geo3.ggpht.com # Google photos
+giphy.com # Giphy
+github.com # GitHub
+github.io # GitHub Pages
+googleapis.com # Google APIs
+gravatar.com # Gravatar
+gstatic.com # Google static content
+help.ui.xboxlive.com # Xbox Live help
+hls.ted.com # TED HLS
+i.s-microsoft.com # Microsoft
+i.ytimg.com # YouTube images
+i1.ytimg.com # YouTube images
+imagesak.secureserver.net # GoDaddy images
+img.vidible.tv # Vidible images
+imgix.net # Imgix
+imgs.xkcd.com # XKCD images
+instantmessaging-pa.googleapis.com # Google instant messaging
+intercom.io # Intercom
+j.mp # URL shortener
+jquery.com # jQuery
+jsdelivr.net # jsDelivr CDN
+keystone.mwbsys.com # Malwarebytes Keystone
+lastfm-img2.akamaized.net # Last.fm images
+licensing.xboxlive.com # Xbox Live licensing
+live.com # Microsoft Live
+login.aliexpress.com # AliExpress login
+login.live.com # Microsoft login
+login.microsoftonline.com # Microsoft online login
+manifest.googlevideo.com # Google Video manifest
+meta-db-worker02.pop.ric.plex.bz # Plex metadata
+meta.plex.bz # Plex metadata
+meta.plex.tv # Plex metadata
+microsoftonline.com # Microsoft online
+msftncsi.com # Microsoft network connectivity
+my.plexapp.com # Plex app
+nexusrules.officeapps.live.com # Microsoft Office rules
+npr-news.streaming.adswizz.com # NPR News streaming
+nine.plugins.plexapp.com # Plex plugins
+no-ip.com # No-IP
+node.plexapp.com # Plex app
+notify.xboxlive.com # Xbox Live notifications
+ns1.dropbox.com # Dropbox DNS
+ns2.dropbox.com # Dropbox DNS
+o1.email.plex.tv # Plex email
+o2.sg0.plex.tv # Plex
+ocsp.apple.com # Apple OCSP
+office.com # Microsoft Office
+office.net # Microsoft Office
+office365.com # Microsoft Office 365
+officeclient.microsoft.com # Microsoft Office client
+om.cbsi.com # CBS Interactive
+onedrive.live.com # Microsoft OneDrive
+outlook.live.com # Microsoft Outlook
+outlook.office365.com # Microsoft Outlook
+pinterest.com # Pinterest
+placehold.it # Placeholder images
+placeholdit.imgix.net # Placeholder images
+players.brightcove.net # Brightcove players
+pricelist.skype.com # Skype pricelist
+products.office.com # Microsoft Office products
+proxy.plex.bz # Plex proxy
+proxy.plex.tv # Plex proxy
+proxy02.pop.ord.plex.bz # Plex proxy
+pubsub.plex.bz # Plex pubsub
+pubsub.plex.tv # Plex pubsub
+res.cloudinary.com # Cloudinary
+s.gateway.messenger.live.com # Microsoft Messenger
+s.marketwatch.com # MarketWatch
+s.shopify.com # Shopify
+s.youtube.com # YouTube
+s.ytimg.com # YouTube images
+s1.wp.com # WordPress
+s2.youtube.com # YouTube
+s3.amazonaws.com # Amazon S3
+sa.symcb.com # Symantec
+secure.avangate.com # Avangate
+secure.brightcove.com # Brightcove secure
+secure.surveymonkey.com # SurveyMonkey
+services.sonarr.tv # Sonarr services
+sharepoint.com # Microsoft SharePoint
+skyhook.sonarr.tv # Sonarr skyhook
+ssl.p.jwpcdn.com # JW Player CDN
+staging.plex.tv # Plex staging
+status.plex.tv # Plex status
+t.co # Twitter URL shortener
+t0.ssl.ak.dynamic.tiles.virtualearth.net # Microsoft Virtual Earth
+t0.ssl.ak.tiles.virtualearth.net # Microsoft Virtual Earth
+tawk.to # Tawk chat
+tedcdn.com # TED CDN
+themoviedb.com # The Movie Database
+thetvdb.com # The TV Database
+tinyurl.com # URL shortener
+title.auth.xboxlive.com # Xbox Live title auth
+title.mgt.xboxlive.com # Xbox Live title management
+traffic.libsyn.com # Libsyn traffic
+tvdb2.plex.tv # Plex TV database
+tvthemes.plexapp.com # Plex TV themes
+twimg.com # Twitter images
+twitter.com # Twitter
+ui.skype.com # Skype UI
+v.shopify.com # Shopify
+video-stats.l.google.com # Google video stats
+videos.vidible.tv # Vidible videos
+widget-cdn.rpxnow.com # RPXNow widget CDN
+wikipedia.org # Wikipedia
+win10.ipv6.microsoft.com # Windows IPv6
+wordpress.com # WordPress
+wp.com # WordPress
+ws.audioscrobbler.com # AudioScrobbler
+www.dataplicity.com # Dataplicity
+www.googleapis.com # Google APIs
+www.no-ip.com # No-IP
+www.youtube-nocookie.com # YouTube (no cookie)
+xflight.xboxlive.com # Xbox Live
+xkms.xboxlive.com # Xbox Live
+youtu.be # YouTube short URL
+youtube-nocookie.com # YouTube (no cookie)
+yt3.ggpht.com # YouTube images
+idmsa.apple.com # Apple ID
+.gleam.io # Gleam giveaways
+.getmonero.org # Monero (XMR)
+.mozilla.cloudflare-dns.com # Cloudflare DNS
+.www.monero.how # Monero documentation
+.linktr.ee # Linktree
+.mon.tiktokv.com # TikTok
+.mon.tiktokv.com.edgesuite.net # TikTok
+.a2047.r.akamai.net # TikTok
+.discord.com # Discord
+.tiktok.com # TikTok
+.tiktokv.com # TikTok
+.shopify.com # Shopify
+.cloudfront.net # Cloudfront CDN
+.chimpstatic.com # Mailchimp static content
+stats.grafana.org # Grafana stats
+www.stats.grafana.org # Grafana stats
+cws-hulu.conviva.com # Hulu
+www.cws-hulu.conviva.com # Hulu
+cws.conviva.com # Hulu
+cws-us-east.conviva.com # Hulu
+cws-sjc2.conviva.com # Hulu
+cdn.mxpnl.com # Mixpanel CDN
+www.cdn.mxpnl.com # Mixpanel CDN
+etahub.com # ETA Hub
+www.etahub.com # ETA Hub
+.api-js.mixpanel.com # Mixpanel API
+.media.trafficjunky.com # TrafficJunky media
+.trafficjunky.com # TrafficJunky
+.media.trafficjunky.net # TrafficJunky media
+.vip0x055.ssl.rncdn5.com # TrafficJunky media
+.ht-cdn.trafficjunky.net # TrafficJunky CDN
+.ht-cdn.trafficjunky.net.sds.rncdn7.com # TrafficJunky CDN
+sendgrid.net # SendGrid
+www.sendgrid.net # SendGrid
+app-measurement.com # Google app measurement
+www.app-measurement.com # Google app measurement
+api.coinbase.com # Coinbase
+www.api.coinbase.com # Coinbase
+api.telegram.org # Telegram
+www.api.telegram.org # Telegram
+login.windows.net # Microsoft login
+www.login.windows.net # Microsoft login
+a.privatelink.msidentity.com # Microsoft login
+prda.aadg.msidentity.com # Microsoft login
+www.tm.a.prd.aadg.trafficmanager.net # Microsoft login
+dms.current.a.prd.aadg.trafficmanager.net # Microsoft login
+outlook.office.com # Microsoft Outlook
+www.outlook.office.com # Microsoft Outlook
+substrate.office.com # Microsoft Outlook
+substrate.ha.office.com # Microsoft Outlook
+substrate.ms-acdc.office.com # Microsoft Outlook
+afd-k.office.com # Microsoft Outlook
+outlook-office-com.k-0002.k-msedge.net # Microsoft Outlook
+k-0002.k-msedge.net # Microsoft Outlook
+log16-normal-c-useast1a.tiktokv.com # TikTok
+www.log16-normal-c-useast1a.tiktokv.com # TikTok
+log16-normal-c-useast1a.tiktokv.com.edgekey.net # TikTok
+e28622.api5.akamaiedge.net # TikTok
+encrypted-tbn0.gstatic.com # Google images
+www.encrypted-tbn0.gstatic.com # Google images
+cdn.discordapp.com # Discord
+www.cdn.discordapp.com # Discord
+.discordapp.com # Discord
+.reddit.com # Reddit
+ads.trafficjunky.net # TrafficJunky ads
+www.ads.trafficjunky.net # TrafficJunky ads
+as.2020mustang.com # TrafficJunky ads
+www.as.2020mustang.com # TrafficJunky ads
+vz-cdn.trafficjunky.net # TrafficJunky CDN
+www.vz-cdn.trafficjunky.net # TrafficJunky CDN
+cs742.wpc.rncdn4.com # TrafficJunky CDN
+hw-cdn.trafficjunky.net # TrafficJunky CDN
+www.hw-cdn.trafficjunky.net # TrafficJunky CDN
+vip0x055.ssl.rncdn5.com # TrafficJunky CDN
+api.amplitude.com # Amplitude analytics
+www.api.amplitude.com # Amplitude analytics
+sso.secureserver.net # GoDaddy SSO
+www.sso.secureserver.net # GoDaddy SSO
+sso.secureserver.net-v1.edgekey.net # GoDaddy SSO
+e8843.x.akamaiedge.net # GoDaddy SSO
+forms.office.com # Microsoft Forms
+www.forms.office.com # Microsoft Forms
+forms.office.com.b-0039.b-msedge.net # Microsoft Forms
+b-0039.b-msedge.net # Microsoft Forms
+.okcupid.com # OkCupid
+rubicon.wellsfargo.com # Wells Fargo
+www.rubicon.wellsfargo.com # Wells Fargo
+rubicon.wellsfargo.com.akadns.net # Wells Fargo
+wellsfargobankna.demdex.net # Wells Fargo banking
+www.wellsfargobankna.demdex.net # Wells Fargo banking
+www.gateway.foresee.com # Wells Fargo
+www.dpm.demdex.net # Wells Fargo
+www.analytics.foresee.com # Wells Fargo
+.mailchimp.com # Mailchimp
+linkedin.com # LinkedIn
+www.linkedin.com # LinkedIn
+www-linkedin-com.l-0005.l-msedge.net # LinkedIn
+l-0005.l-msedge.net # LinkedIn
+mon-va.byteoversea.com # TikTok
+www.mon-va.byteoversea.com # TikTok
+mon-va.byteoversea.com.edgesuite.net # TikTok
+a2047.r.akamai.net # TikTok
+gitlab.com # GitLab
+www.gitlab.com # GitLab
+kriskintel.com # Kriski Intel
+www.kriskintel.com # Kriski Intel
+settings.crashlytics.com # Crashlytics
+www.settings.crashlytics.com # Crashlytics
+www.beacons5.gvt3.com # Google beacons
+.zoho.com # Zoho
+.gsite.zohocdn.com # Zoho CDN
+app.box.com # Box
+www.app.box.com # Box
+1drv.ms # Microsoft OneDrive
+www.1drv.ms # Microsoft OneDrive
+zoom.us # Zoom
+www.zoom.us # Zoom
+.zoom.us # Zoom
+connect.facebook.net # Facebook
+www.connect.facebook.net # Facebook
+scontent.xx.fbcdn.net # Facebook CDN
+storage.googleapis.com # Google storage
+www.storage.googleapis.com # Google storage
+beacons.ai # Beacons
+www.beacons.ai # Beacons
+.blizzard.com # Blizzard games
+.battle.net # Blizzard games
+spocs.getpocket.com # Pocket
+www.spocs.getpocket.com # Pocket
+proxyserverecs-1736642167.us-east-1.elb.amazonaws.com # Pocket CDN
+sb.scorecardresearch.com # Hulu analytics
+www.sb.scorecardresearch.com # Hulu analytics
+cdn-gl.imrworldwide.com # Hulu CDN
+www.cdn-gl.imrworldwide.com # Hulu CDN
+d2926jmvsihu4k.cloudfront.net # Hulu CDN
+tags.tiqcdn.com #ParamountPlus
+www.tags.tiqcdn.com # Hulu CDN
+tags.tiqcdn.com.edgekey.net # Hulu CDN
+e8091.a.akamaiedge.net # Hulu CDN
+hulu.hb.omtrdc.net # Hulu
+www.hulu.hb.omtrdc.net # Hulu
+va-edge.sc.omtrdc.net # Hulu
+.wikipedia.org # Wikipedia
+.adobe.io # Adobe
+.adobe.com # Adobe
+.p.typekit.net # Adobe Typekit
+.p.typekit.net-stls-v3.edgesuite.net # Adobe Typekit
+.a1874.dscg1.akamai.net # Adobe Typekit
+.s.amazon-adsystem.com # Amazon ad system
+telemetry-in.battle.net # Blizzard telemetry
+www.telemetry-in.battle.net # Blizzard telemetry
+.firebaselogging-pa.googleapis.com # Firebase logging
+cdn.masto.host # Mastodon CDN
+stackoverflow.com # Stack Overflow
+.stackoverflow.com # Stack Overflow
+fonts.googleapis.com # Google Fonts
+.fonts.googleapis.com # Google Fonts
+googletagmanager.com # Google Tag Manager
+.googletagmanager.com # Google Tag Manager
+.googlesyndication.com # Google ad services
+ytimg.com # YouTube images
+.ytimg.com # YouTube images
+googlevideo.com # Google Video
+.googlevideo.com # Google Video
+m.youtube.com # YouTube mobile
+www.youtube.com # YouTube
+youtubei.googleapis.com # YouTube API
+tiktok.com # TikTok
+tiktokv.com # TikTok
+tik-tokcdn.com # TikTok CDN
+.tik-tokcdn.com # TikTok CDN
+muscdn.com # TikTok CDN
+.muscdn.com # TikTok CDN
+byteoversea.com # TikTok
+.byteoversea.com # TikTok
+tiktokcdn.com # TikTok CDN
+.tiktokcdn.com # TikTok CDN
+twitch.com # Twitch
+.twitch.com # Twitch
+app.datadoghq.com #datadog
+.datadoghq.com #datadog
+datadoghq.com #datadog
+canva.com #Canva
+.canva.com #Canva
+ui.awin.com #HamRadioPrep Affiliate
+.ui.awin.com #HamRadioPrep Affiliate
+.awin.com #HamRadioPrep Affiliate
+awin.com #HamRadioPrep Affiliate
+.shareasale.com #HamRadioPrep Affiliate
+shareasale.com #HamRadioPrep Affiliate
+sdk.iad-03.braze.com #ParamountPlus
+bam.nr-data.net #ParamountPlus
+cdn.cookielaw.org #ParamountPlus
+paramountplus.com #ParamountPlus
+.paramountplus.com #ParamountPlus
+cbsi.com #ParamountPlus
+.cbsi.com #ParamountPlus
+cbs.com #ParamountPlus
+.cbs.com #ParamountPlus
+cbsinteractive.com #ParamountPlus
+.cbsinteractive.com #ParamountPlus
+pplusstatic.com #ParamountPlus
+.pplusstatic.com #ParamountPlus
+.akamaihd.net #ParamountPlus
+.akamaized.net #ParamountPlus
+.scribe.logs.roku.com # Roku
+.display.ravm.tv # Paramount Plus
+kvinit-prod.api.kochava.com # Paramount Plus
+www.kvinit-prod.api.kochava.com # Paramount Plus
+.pubads.g.doubleclick.net # Paramount Plus
+analytics-ipv6.tiktokw.us # Tiktok
+www.analytics-ipv6.tiktokw.us # Tiktok
+analytics-ipv6.tiktokw.us.edgesuite.net # CNAME for (analytics-ipv6.tiktokw.us)
+a1013.dsct.akamai.net # CNAME for (analytics-ipv6.tiktokw.us)
+.sundaysky.com #AI Player Needed for Work benefits
+urlscan.io #URL Scan
+.urlscan.io #URL Scan
+myip.ms #myip.ms blacklist
+.myip.ms #myip.ms blacklist
