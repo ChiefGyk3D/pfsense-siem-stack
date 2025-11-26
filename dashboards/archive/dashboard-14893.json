@@ -1,0 +1,2062 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_ELASTICSEARCH",
+      "label": "Elasticsearch",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "elasticsearch",
+      "pluginName": "Elasticsearch"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "elasticsearch",
+      "name": "Elasticsearch",
+      "version": "1.0.0"
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "8.1.1"
+    },
+    {
+      "type": "panel",
+      "id": "grafana-piechart-panel",
+      "name": "Pie Chart (old)",
+      "version": "1.6.2"
+    },
+    {
+      "type": "panel",
+      "id": "grafana-worldmap-panel",
+      "name": "Worldmap Panel",
+      "version": "0.3.3"
+    },
+    {
+      "type": "panel",
+      "id": "graph",
+      "name": "Graph (old)",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Surricata, IDS/IPS",
+  "editable": true,
+  "gnetId": 14893,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1629378204860,
+  "links": [],
+  "panels": [
+    {
+      "cacheTimeout": null,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 10,
+        "x": 0,
+        "y": 0
+      },
+      "id": 3,
+      "interval": null,
+      "links": [],
+      "maxDataPoints": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^suricata\\.eve.alert.signature$/",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value"
+      },
+      "pluginVersion": "8.1.1",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.signature",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Suricata Top Alter Signature",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 10,
+        "y": 0
+      },
+      "id": 4,
+      "interval": null,
+      "links": [],
+      "maxDataPoints": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^suricata\\.eve.alert.category$/",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value"
+      },
+      "pluginVersion": "8.1.1",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.category",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Suricata Top Alter Category",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "id": 16,
+      "interval": null,
+      "links": [],
+      "maxDataPoints": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^suricata\\.eve.src_ip$/",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value"
+      },
+      "pluginVersion": "8.1.1",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.src_ip",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Suricata Top Source IP",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 17,
+      "interval": null,
+      "links": [],
+      "maxDataPoints": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^source\\.geo.country_iso_code$/",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value"
+      },
+      "pluginVersion": "8.1.1",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "source.geo.country_iso_code",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Suricata Top Country Code",
+      "type": "stat"
+    },
+    {
+      "circleMaxSize": 30,
+      "circleMinSize": 2,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "${DS_ELASTICSEARCH}",
+      "decimals": 0,
+      "esGeoPoint": "source.geo.location",
+      "esLocationName": "suricata.eve.src_ip",
+      "esMetric": "Count",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "hideEmpty": false,
+      "hideZero": false,
+      "id": 2,
+      "initialZoom": 1,
+      "links": [],
+      "locationData": "geohash",
+      "mapCenter": "(0°, 0°)",
+      "mapCenterLatitude": 0,
+      "mapCenterLongitude": 0,
+      "maxDataPoints": 1,
+      "mouseWheelZoom": false,
+      "showLegend": true,
+      "stickyLabels": false,
+      "tableQueryOptions": {
+        "geohashField": "geohash",
+        "latitudeField": "latitude",
+        "longitudeField": "longitude",
+        "metricField": "metric",
+        "queryType": "geohash"
+      },
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.src_ip",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "0"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "source.geo.location",
+              "id": "4",
+              "settings": {
+                "precision": "3"
+              },
+              "type": "geohash_grid"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": "0,10",
+      "title": "Sources Ips",
+      "type": "grafana-worldmap-panel",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "total"
+    },
+    {
+      "circleMaxSize": 30,
+      "circleMinSize": 2,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "${DS_ELASTICSEARCH}",
+      "decimals": 0,
+      "esGeoPoint": "destination.geo.location",
+      "esLocationName": "suricata.eve.dest_ip",
+      "esMetric": "Count",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "hideEmpty": false,
+      "hideZero": false,
+      "id": 12,
+      "initialZoom": 1,
+      "links": [],
+      "locationData": "geohash",
+      "mapCenter": "(0°, 0°)",
+      "mapCenterLatitude": 0,
+      "mapCenterLongitude": 0,
+      "maxDataPoints": 1,
+      "mouseWheelZoom": false,
+      "showLegend": true,
+      "stickyLabels": false,
+      "tableQueryOptions": {
+        "geohashField": "geohash",
+        "latitudeField": "latitude",
+        "longitudeField": "longitude",
+        "metricField": "metric",
+        "queryType": "geohash"
+      },
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.dest_ip",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "0"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "destination.geo.location",
+              "id": "2",
+              "settings": {
+                "precision": 7
+              },
+              "type": "geohash_grid"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": "0,10",
+      "title": "Destinations Ips",
+      "type": "grafana-worldmap-panel",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "total"
+    },
+    {
+      "aliasColors": {},
+      "breakPoint": "50%",
+      "cacheTimeout": null,
+      "combine": {
+        "label": "Others",
+        "threshold": 0
+      },
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fontSize": "80%",
+      "format": "none",
+      "gridPos": {
+        "h": 13,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      },
+      "id": 15,
+      "interval": null,
+      "legend": {
+        "show": true,
+        "values": true
+      },
+      "legendType": "Right side",
+      "links": [],
+      "maxDataPoints": 3,
+      "nullPointMode": "connected",
+      "pieType": "pie",
+      "strokeWidth": 1,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.proto",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Protocol",
+      "type": "grafana-piechart-panel",
+      "valueName": "total"
+    },
+    {
+      "aliasColors": {},
+      "breakPoint": "50%",
+      "cacheTimeout": null,
+      "combine": {
+        "label": "Others",
+        "threshold": 0
+      },
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fontSize": "80%",
+      "format": "none",
+      "gridPos": {
+        "h": 13,
+        "w": 11,
+        "x": 6,
+        "y": 16
+      },
+      "id": 9,
+      "interval": null,
+      "legend": {
+        "show": true,
+        "values": true
+      },
+      "legendType": "Right side",
+      "links": [],
+      "maxDataPoints": 3,
+      "nullPointMode": "connected",
+      "pieType": "pie",
+      "strokeWidth": 1,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.signature",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Alert signatures",
+      "type": "grafana-piechart-panel",
+      "valueName": "total"
+    },
+    {
+      "aliasColors": {},
+      "breakPoint": "50%",
+      "cacheTimeout": null,
+      "combine": {
+        "label": "Others",
+        "threshold": 0
+      },
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fontSize": "80%",
+      "format": "none",
+      "gridPos": {
+        "h": 13,
+        "w": 7,
+        "x": 17,
+        "y": 16
+      },
+      "id": 11,
+      "interval": null,
+      "legend": {
+        "show": true,
+        "values": true
+      },
+      "legendType": "Right side",
+      "links": [],
+      "maxDataPoints": 3,
+      "nullPointMode": "connected",
+      "pieType": "pie",
+      "strokeWidth": 1,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.dest_port",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Port Destination",
+      "type": "grafana-piechart-panel",
+      "valueName": "total"
+    },
+    {
+      "aliasColors": {},
+      "breakPoint": "50%",
+      "cacheTimeout": null,
+      "combine": {
+        "label": "Others",
+        "threshold": 0
+      },
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fontSize": "80%",
+      "format": "none",
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "id": 10,
+      "interval": null,
+      "legend": {
+        "show": true,
+        "values": true
+      },
+      "legendType": "Right side",
+      "links": [],
+      "maxDataPoints": 3,
+      "nullPointMode": "connected",
+      "pieType": "pie",
+      "strokeWidth": 1,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.category",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Alert category",
+      "type": "grafana-piechart-panel",
+      "valueName": "total"
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "hiddenSeries": false,
+      "id": 5,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": true,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.1.1",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "source.geo.country_iso_code",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Countries Codes",
+      "tooltip": {
+        "shared": false,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "series",
+        "name": null,
+        "show": true,
+        "values": [
+          "total"
+        ]
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:540",
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:541",
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 0,
+        "y": 42
+      },
+      "hiddenSeries": false,
+      "id": 6,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.1.1",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.severity",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "hide": false,
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest where ID = 1",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Alert Severity type 1",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "1"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:147",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:148",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 8,
+        "y": 42
+      },
+      "hiddenSeries": false,
+      "id": 7,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "connected",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.1.1",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.severity",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Alert Severity type 2",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "2"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 16,
+        "y": 42
+      },
+      "hiddenSeries": false,
+      "id": 8,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.1.1",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "fake": true,
+              "field": "suricata.eve.alert.severity",
+              "id": "3",
+              "settings": {
+                "min_doc_count": 1,
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": 0,
+                "trimEdges": 0
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "dsType": "elasticsearch",
+          "metrics": [
+            {
+              "field": "select field",
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "target": "",
+          "timeField": "@timestamp"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Alert Severity type 3",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "3"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "datasource": "${DS_ELASTICSEARCH}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": null,
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "decimals": 2,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "suricata.eve.alert.signature_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sigature ID"
+              },
+              {
+                "id": "unit",
+                "value": "string"
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "suricata.eve.alert.signature"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alert Signature"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "source.ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Source IP"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "destination.ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Destination IP"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "network.protocol"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Protocol"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "destination.port"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Destination Port"
+              },
+              {
+                "id": "unit",
+                "value": "string"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "@timestamp"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "unit",
+                "value": "time: YYYY-MM-DD HH:mm:ss"
+              },
+              {
+                "id": "custom.align",
+                "value": null
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 18,
+      "links": [],
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "8.1.1",
+      "targets": [
+        {
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "50"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "suricata.eve.in_iface:$iface AND suricata.eve.alert.category:$category AND suricata.eve.proto:$protocol AND suricata.eve.dest_port:$port_dest",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Suricata Event Details",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "agent.ephemeral_id": true,
+              "agent.hostname": true,
+              "agent.id": true,
+              "agent.name": true,
+              "agent.type": true,
+              "agent.version": true,
+              "destination.address": true,
+              "destination.as.number": true,
+              "destination.as.organization.name": true,
+              "destination.bytes": true,
+              "destination.domain": true,
+              "destination.geo.city_name": true,
+              "destination.geo.continent_name": true,
+              "destination.geo.country_iso_code": true,
+              "destination.geo.country_name": true,
+              "destination.geo.location.lat": true,
+              "destination.geo.location.lon": true,
+              "destination.geo.region_iso_code": true,
+              "destination.geo.region_name": true,
+              "destination.ip": false,
+              "destination.packets": true,
+              "ecs.version": true,
+              "event.category": true,
+              "event.created": true,
+              "event.dataset": true,
+              "event.ingested": true,
+              "event.kind": true,
+              "event.module": true,
+              "event.original": true,
+              "event.severity": true,
+              "event.start": true,
+              "event.type": true,
+              "fileset.name": true,
+              "highlight": true,
+              "host.architecture": true,
+              "host.containerized": true,
+              "host.hostname": true,
+              "host.id": true,
+              "host.ip": true,
+              "host.mac": true,
+              "host.name": true,
+              "host.os.codename": true,
+              "host.os.family": true,
+              "host.os.kernel": true,
+              "host.os.name": true,
+              "host.os.platform": true,
+              "host.os.type": true,
+              "host.os.version": true,
+              "http.request.method": true,
+              "http.response.body.bytes": true,
+              "http.response.status_code": true,
+              "input.type": true,
+              "log.file.path": true,
+              "log.offset": true,
+              "message": true,
+              "network.bytes": true,
+              "network.community_id": true,
+              "network.packets": true,
+              "network.protocol": false,
+              "network.transport": true,
+              "related.hosts": true,
+              "related.ip": true,
+              "rule.category": true,
+              "rule.id": true,
+              "rule.name": true,
+              "service.type": true,
+              "sort": true,
+              "source.address": true,
+              "source.as.number": true,
+              "source.as.organization.name": true,
+              "source.bytes": true,
+              "source.geo.city_name": true,
+              "source.geo.continent_name": true,
+              "source.geo.country_iso_code": true,
+              "source.geo.country_name": true,
+              "source.geo.location.lat": true,
+              "source.geo.location.lon": true,
+              "source.geo.region_iso_code": true,
+              "source.geo.region_name": true,
+              "source.ip": false,
+              "source.packets": true,
+              "source.port": true,
+              "suricata.eve.alert.category": true,
+              "suricata.eve.alert.gid": true,
+              "suricata.eve.alert.metadata.affected_product": true,
+              "suricata.eve.alert.metadata.attack_target": true,
+              "suricata.eve.alert.metadata.created_at": true,
+              "suricata.eve.alert.metadata.deployment": true,
+              "suricata.eve.alert.metadata.former_category": true,
+              "suricata.eve.alert.metadata.malware_family": true,
+              "suricata.eve.alert.metadata.performance_impact": true,
+              "suricata.eve.alert.metadata.signature_severity": true,
+              "suricata.eve.alert.metadata.updated_at": true,
+              "suricata.eve.alert.rev": true,
+              "suricata.eve.alert.signature": false,
+              "suricata.eve.alert.signature_id": false,
+              "suricata.eve.app_proto_tc": true,
+              "suricata.eve.app_proto_ts": true,
+              "suricata.eve.event_type": true,
+              "suricata.eve.flow": true,
+              "suricata.eve.flow_id": true,
+              "suricata.eve.http.http_content_type": true,
+              "suricata.eve.http.protocol": true,
+              "suricata.eve.http.redirect": true,
+              "suricata.eve.in_iface": true,
+              "suricata.eve.metadata.flowints.http.anomaly.count": true,
+              "suricata.eve.metadata.flowints.smtp.anomaly.count": true,
+              "suricata.eve.smtp.helo": true,
+              "suricata.eve.smtp.mail_from": true,
+              "suricata.eve.tx_id": true,
+              "tags": true,
+              "url.domain": true,
+              "url.fragment": true,
+              "url.original": true,
+              "url.path": true,
+              "url.port": true,
+              "url.query": true,
+              "user_agent.device.name": true,
+              "user_agent.name": true,
+              "user_agent.original": true
+            },
+            "indexByName": {
+              "@timestamp": 0,
+              "_id": 7,
+              "_index": 8,
+              "_type": 9,
+              "agent.ephemeral_id": 10,
+              "agent.hostname": 11,
+              "agent.id": 12,
+              "agent.name": 13,
+              "agent.type": 14,
+              "agent.version": 15,
+              "destination.address": 16,
+              "destination.as.number": 17,
+              "destination.as.organization.name": 18,
+              "destination.bytes": 19,
+              "destination.domain": 20,
+              "destination.geo.city_name": 21,
+              "destination.geo.continent_name": 22,
+              "destination.geo.country_iso_code": 23,
+              "destination.geo.country_name": 24,
+              "destination.geo.location.lat": 25,
+              "destination.geo.location.lon": 26,
+              "destination.geo.region_iso_code": 27,
+              "destination.geo.region_name": 28,
+              "destination.ip": 5,
+              "destination.packets": 29,
+              "destination.port": 6,
+              "ecs.version": 30,
+              "event.category": 31,
+              "event.created": 32,
+              "event.dataset": 33,
+              "event.ingested": 34,
+              "event.kind": 35,
+              "event.module": 36,
+              "event.original": 37,
+              "event.severity": 38,
+              "event.start": 39,
+              "event.type": 40,
+              "fileset.name": 41,
+              "highlight": 42,
+              "host.architecture": 43,
+              "host.containerized": 44,
+              "host.hostname": 45,
+              "host.id": 46,
+              "host.ip": 47,
+              "host.mac": 48,
+              "host.name": 49,
+              "host.os.codename": 50,
+              "host.os.family": 51,
+              "host.os.kernel": 52,
+              "host.os.name": 53,
+              "host.os.platform": 54,
+              "host.os.type": 55,
+              "host.os.version": 57,
+              "http.request.method": 58,
+              "http.response.body.bytes": 56,
+              "http.response.status_code": 59,
+              "input.type": 60,
+              "log.file.path": 61,
+              "log.offset": 62,
+              "message": 63,
+              "network.bytes": 64,
+              "network.community_id": 65,
+              "network.packets": 66,
+              "network.protocol": 4,
+              "network.transport": 67,
+              "related.hosts": 68,
+              "related.ip": 69,
+              "rule.category": 70,
+              "rule.id": 71,
+              "rule.name": 72,
+              "service.type": 73,
+              "sort": 74,
+              "source.address": 75,
+              "source.as.number": 76,
+              "source.as.organization.name": 77,
+              "source.bytes": 78,
+              "source.geo.city_name": 79,
+              "source.geo.continent_name": 80,
+              "source.geo.country_iso_code": 81,
+              "source.geo.country_name": 82,
+              "source.geo.location.lat": 83,
+              "source.geo.location.lon": 84,
+              "source.geo.region_iso_code": 85,
+              "source.geo.region_name": 86,
+              "source.ip": 3,
+              "source.packets": 87,
+              "source.port": 88,
+              "suricata.eve.alert.category": 89,
+              "suricata.eve.alert.gid": 90,
+              "suricata.eve.alert.metadata.affected_product": 91,
+              "suricata.eve.alert.metadata.attack_target": 92,
+              "suricata.eve.alert.metadata.created_at": 93,
+              "suricata.eve.alert.metadata.deployment": 94,
+              "suricata.eve.alert.metadata.former_category": 95,
+              "suricata.eve.alert.metadata.malware_family": 96,
+              "suricata.eve.alert.metadata.performance_impact": 97,
+              "suricata.eve.alert.metadata.signature_severity": 98,
+              "suricata.eve.alert.metadata.updated_at": 99,
+              "suricata.eve.alert.rev": 100,
+              "suricata.eve.alert.signature": 2,
+              "suricata.eve.alert.signature_id": 1,
+              "suricata.eve.app_proto_tc": 101,
+              "suricata.eve.app_proto_ts": 102,
+              "suricata.eve.event_type": 103,
+              "suricata.eve.flow": 104,
+              "suricata.eve.flow_id": 105,
+              "suricata.eve.http.http_content_type": 106,
+              "suricata.eve.http.protocol": 107,
+              "suricata.eve.http.redirect": 108,
+              "suricata.eve.in_iface": 109,
+              "suricata.eve.metadata.flowints.http.anomaly.count": 110,
+              "suricata.eve.metadata.flowints.smtp.anomaly.count": 111,
+              "suricata.eve.smtp.helo": 112,
+              "suricata.eve.smtp.mail_from": 113,
+              "suricata.eve.tx_id": 114,
+              "tags": 115,
+              "url.domain": 116,
+              "url.fragment": 117,
+              "url.original": 118,
+              "url.path": 119,
+              "url.port": 120,
+              "url.query": 121,
+              "user_agent.device.name": 122,
+              "user_agent.name": 123,
+              "user_agent.original": 124
+            },
+            "renameByName": {
+              "agent.name": ""
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [
+    "IDS",
+    "IPS",
+    "Proxmox"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "${DS_ELASTICSEARCH}",
+        "definition": "",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Interface",
+        "multi": true,
+        "name": "iface",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\":\"suricata.eve.in_iface\",\"size\": \"1000000\" }",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "${DS_ELASTICSEARCH}",
+        "definition": "{\"find\": \"terms\", \"field\":\"suricata.eve.proto\",\"query\":\"suricata.eve.in_iface:$iface\",\"size\": \"1000000\" }",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "protocol",
+        "multi": true,
+        "name": "protocol",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\":\"suricata.eve.proto\",\"query\":\"suricata.eve.in_iface:$iface\",\"size\": \"1000000\" }",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "${DS_ELASTICSEARCH}",
+        "definition": "",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Alert Category",
+        "multi": true,
+        "name": "category",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\":\"suricata.eve.alert.category\",\"query\":\"suricata.eve.in_iface:$iface AND suricata.eve.proto:$protocol\",\"size\": \"1000000\" }",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "${DS_ELASTICSEARCH}",
+        "definition": "{\"find\": \"terms\", \"field\":\"suricata.eve.dest_port\",\"query\":\"suricata.eve.in_iface:$iface AND suricata.eve.proto:$protocol AND suricata.eve.alert.category:$category\",\"size\": \"1000000\" }",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Destination Service Name",
+        "multi": true,
+        "name": "port_dest",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\":\"suricata.eve.dest_port\",\"query\":\"suricata.eve.in_iface:$iface AND suricata.eve.proto:$protocol AND suricata.eve.alert.category:$category\",\"size\": \"1000000\" }",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now/d",
+    "to": "now/d"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "suricata - IDS & IPS",
+  "uid": "CILgABg7k",
+  "version": 46
+}

@@ -1,0 +1,270 @@
+{
+  "title": "Suricata IDS/IPS Dashboard",
+  "uid": "suricata-ids-simple",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Events",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "query": "*"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "green"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Alerts",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "query": "suricata.eve.event_type:alert"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "green"},
+              {"value": 1, "color": "yellow"},
+              {"value": 10, "color": "red"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Unique Source IPs",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "cardinality", "field": "suricata.eve.src_ip.keyword", "id": "1"}],
+          "query": "*"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "blue"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique Dest IPs",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "cardinality", "field": "suricata.eve.dest_ip.keyword", "id": "1"}],
+          "query": "*"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "purple"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Events Over Time",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {"interval": "auto", "min_doc_count": "0"}
+            }
+          ],
+          "query": "*"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Event Types",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "suricata.eve.event_type.keyword",
+              "id": "2",
+              "settings": {"size": "10", "order": "desc", "orderBy": "_count"}
+            }
+          ],
+          "query": "*"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Alert Signatures",
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 12},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "suricata.eve.alert.signature.keyword",
+              "id": "2",
+              "settings": {"size": "10", "order": "desc", "orderBy": "_count"}
+            }
+          ],
+          "query": "suricata.eve.event_type:alert"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Top Source IPs",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "suricata.eve.src_ip.keyword",
+              "id": "2",
+              "settings": {"size": "10", "order": "desc", "orderBy": "_count"}
+            }
+          ],
+          "query": "*"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top Destination IPs",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "count", "id": "1"}],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "suricata.eve.dest_ip.keyword",
+              "id": "2",
+              "settings": {"size": "10", "order": "desc", "orderBy": "_count"}
+            }
+          ],
+          "query": "*"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Recent Alerts",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+      "targets": [
+        {
+          "datasource": {"type": "elasticsearch", "uid": "ff53jdabqdu68a"},
+          "refId": "A",
+          "metrics": [{"type": "raw_document", "id": "1"}],
+          "query": "suricata.eve.event_type:alert"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "suricata.eve.timestamp": "Timestamp",
+              "suricata.eve.src_ip": "Source IP",
+              "suricata.eve.dest_ip": "Destination IP",
+              "suricata.eve.alert.signature": "Signature",
+              "suricata.eve.alert.category": "Category",
+              "suricata.eve.alert.severity": "Severity"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

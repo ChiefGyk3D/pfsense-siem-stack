@@ -1,0 +1,130 @@
+# Project Structure
+
+Complete file organization and usage guide for the pfSense Suricata Dashboard project.
+
+## Quick Reference
+
+**Want to set everything up?** → Start with [README.md](README.md)
+**In a hurry?** → Follow [QUICK_START.md](QUICK_START.md)
+**Something broken?** → Check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+## Essential Files
+
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
+| `deploy-pfsense-forwarder.sh` | Deploys forwarder | Run SECOND from your workstation |
+| `dashboards/Suricata IDS_IPS Dashboard.json` | Main dashboard | Import THIRD into Grafana |
+| `config/opensearch-index-template.json` | Index template | Auto-applied by install.sh |
+| `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by deploy script |
+
+## Directory Structure
+
+```
+pfsense_grafana/
+├── 📄 Core Documentation
+│   ├── README.md                           ← START HERE
+│   ├── QUICK_START.md                      ← Fast 15-min setup
+│   ├── ORGANIZATION.md                     ← This file
+│   └── LICENSE
+│
+├── 📊 dashboards/
+│   ├── Suricata IDS_IPS Dashboard.json     ★ MAIN DASHBOARD
+│   ├── telegraf-original.json              Optional system metrics
+│   └── archive/                            Old versions (reference only)
+│
+├── 🔧 scripts/
+│   ├── forward-suricata-eve-python.py      ★ Multi-interface forwarder
+│   ├── check-forwarder-status.sh           Status monitoring
+│   ├── check-system-health.sh              System diagnostics
+│   ├── restart-services.sh                 Service management
+│   ├── verify-suricata-data.sh             Data validation
+│   ├── configure-retention-policy.sh       Index lifecycle
+│   ├── check-and-restart-logstash.sh       Logstash maintenance
+│   ├── README.md                           Script documentation
+│   └── archive/                            Deprecated scripts
+│
+├── ⚙️ config/
+│   ├── logstash-suricata.conf              Logstash pipeline
+│   └── opensearch-index-template.json      Index template (geo_point)
+│
+├── 📚 docs/
+│   ├── INSTALL_SIEM_STACK.md               SIEM installation guide
+│   ├── INSTALL_PFSENSE_FORWARDER.md        Forwarder deployment
+│   ├── INSTALL_DASHBOARD.md                Dashboard configuration
+│   ├── CONFIGURATION.md                    Advanced settings
+│   ├── TROUBLESHOOTING.md                  Problem solving
+│   ├── GEOIP_SETUP.md                      GeoIP database setup
+│   ├── MULTI_INTERFACE_RETENTION.md        Multi-WAN & retention
+│   └── archive/                            Historical docs
+│
+├── 🔌 plugins/
+│   ├── telegraf_pfifgw.php                 Gateway monitoring
+│   ├── telegraf_temperature.sh             Temperature stats
+│   ├── telegraf_unbound.sh                 DNS resolver stats
+│   ├── telegraf_unbound_lite.sh            Lightweight DNS stats
+│   ├── README.md                           Plugin documentation
+│   └── Old/                                Deprecated plugins
+│
+├── 🖼️ media/
+│   ├── Suricata IDS_IPS WAN Dashboard.png  Current dashboard screenshot
+│   └── Grafana-pfSense.png                 Additional preview
+│
+├── 🧪 tests/
+│   ├── test-multi-interface.sh             Multi-interface testing
+│   └── test-panel-compatibility.sh         Dashboard panel testing
+│
+└── 🚀 Installation Scripts
+    ├── install.sh                          ★ SIEM stack installer
+    ├── deploy-pfsense-forwarder.sh         ★ Forwarder deployer
+    └── install_plugins.sh                  Telegraf plugin installer
+```
+
+## Setup Workflow
+
+```mermaid
+graph TD
+    A[Clone Repo] --> B[Run install.sh on SIEM server]
+    B --> C[Deploy forwarder to pfSense]
+    C --> D[Configure Grafana datasource]
+    D --> E[Import dashboard]
+    E --> F[Done! View data]
+```
+
+1. **SIEM Server**: `sudo ./install.sh`
+2. **pfSense**: `./deploy-pfsense-forwarder.sh <pfsense-ip> <siem-ip>`
+3. **Grafana**: Add OpenSearch datasource
+4. **Dashboard**: Import JSON file
+
+## Documentation Map
+
+| Document | Audience | Content |
+|----------|----------|---------|
+| README.md | Everyone | Project overview, features, quick start |
+| QUICK_START.md | Beginners | Step-by-step 15-minute setup |
+| docs/INSTALL_SIEM_STACK.md | Admins | Detailed OpenSearch/Logstash/Grafana install |
+| docs/INSTALL_PFSENSE_FORWARDER.md | Admins | Manual forwarder deployment |
+| docs/CONFIGURATION.md | Advanced | Tuning, performance, customization |
+| docs/TROUBLESHOOTING.md | Support | Common issues and solutions |
+
+## Key Features
+
+### Multi-Interface Forwarder
+- Automatically detects ALL Suricata instances
+- Threaded monitoring of multiple eve.json files
+- No manual configuration for multiple WANs
+
+### GeoIP Enrichment
+- City-level location data
+- Proper geo_point mapping for Grafana geomap
+- Uses MaxMind GeoLite2-City database
+
+### Optimized Dashboard
+- No hardcoded datasource (user-selectable)
+- Clean pie charts (labels on hover only)
+- 54 fields excluded from alert table
+- Proper geohash aggregation for map
+
+## Archive Policy
+
+Moved to `archive/` when superseded or deprecated, but kept for reference.
