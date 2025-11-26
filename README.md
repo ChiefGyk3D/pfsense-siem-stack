@@ -1,442 +1,373 @@
-## Fork Information
+# pfSense Suricata IDS/IPS Dashboard for Grafana
 
-This project is forked from [VictorRobellini/pfSense-Dashboard](https://github.com/VictorRobellini/pfSense-Dashboard) with additional fixes and improvements.
+A complete monitoring solution for pfSense Suricata IDS/IPS using Grafana, OpenSearch, and Logstash. Features real-time alert visualization, GeoIP mapping, and comprehensive event analytics.
 
-### Improvements in This Fork
+![WAN Dashboard Preview](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
 
-- **Fixed WAN Total Traffic Panel**: Updated panel ID 296 to correctly calculate total download/upload using max-min differences instead of sum of differences, providing accurate monthly traffic totals
-- **Fixed Gateway RTT Panel**: Updated panel ID 4 to use modern `timeseries` panel type with simplified query and better visualization options
-- **Fixed Uptime Panel**: Updated panel ID 45 to use `dtdhms` unit formatter, displaying clean "9d 23h 11m 5s" format (requires Grafana 12.3.0+)
-- **Plugin Installation Script**: Added `install_plugins.sh` for easy SSH-based deployment of Telegraf plugins to pfSense with interactive selection
-- **Gateway RTT Troubleshooting**: Added comprehensive troubleshooting documentation for Gateway RTT monitoring issues
+*Live WAN-side monitoring with attack sources, alert signatures, and geographic visualization*
 
-#### Uptime Panel Details
+## 🌟 Features
 
-The uptime panel (ID: 45) now uses:
-- **Field:** `uptime` (seconds since boot)
-- **Unit:** `dtdhms` (Days Hours Minutes Seconds formatter)
-- **Display:** `9d 23h 11m 5s` format
-- **Requirements:** Grafana 12.3.0 or newer
+### WAN-Side Monitoring (Current)
+- **Real-time IDS/IPS Monitoring**: Live alert feeds with detailed signature information
+- **GeoIP Visualization**: Interactive world map showing attack sources with city-level accuracy
+- **Multi-Interface Support**: Monitors all Suricata instances simultaneously
+- **Event Analytics**: Comprehensive breakdowns by type, protocol, severity, and category
+- **Attack Tracking**: Top signatures, source countries, HTTP hosts, and more
+- **Clean Design**: Optimized pie charts and tables with minimal clutter
 
-**Why `dtdhms`?**
-- Clean, human-readable format
-- No auto-conversion to weeks (unlike `s`, `dtdurations`, or `clockms` units)
-- Native Grafana formatting without custom transformations
+### LAN-Side Monitoring (Coming Soon)
+- Internal network traffic analysis
+- RFC1918 source/destination filtering
+- Lateral movement detection
+- Internal host activity tracking
 
-**Tested with Grafana 12.3.0** - older versions (7.x) may display "1 weeks" instead.
+## 📋 Prerequisites
 
-## What's Monitored
-- Active Users
-- Uptime
-- CPU Load total
-- Disk Utilization
-- Memory Utilization
-- CPU Utilization per core (Single Graph)
-- Ram Utilization time graph
-- Load Average
-- Load Average Graph
-- CPU and ACPI Temperature Sensors
-- pfBlocker IP Stats
-- pfBlocker DNS Stats
-- Gateway Response time - dpinger
-- List of interfaces with IPv4, IPv6, Subnet, MAC, Status and pfSense labels thanks to [/u/trumee](https://www.reddit.com/r/PFSENSE/comments/fsss8r/additional_grafana_dashboard/fmal0t6/)
-- WAN Statistics - Traffic & Throughput (Identified by dashboard variable)
-- LAN Statistics - Traffic & Throughput (Identified by dashboard variable)
-- Unbound stats - Plugin and config included and working but not implemented
+### Required Software
+- **pfSense**: 2.7+ (tested on 2.8.1)
+- **Suricata**: IDS/IPS package installed on pfSense
+- **SIEM Server** (Ubuntu/Debian recommended):
+  - OpenSearch 2.x
+  - Logstash 8.x
+  - Grafana 12.x
+  - Python 3.11+ (for pfSense forwarder)
 
-![Screenshot](Grafana-pfSense.png)
+### Network Requirements
+- pfSense must be able to reach SIEM server on UDP port 5140 (Logstash)
+- Grafana accessible on port 3000
+- OpenSearch on port 9200
 
-## Running on
+## 🚀 Quick Start
 
-  Grafana 12.3.0+ (tested, older versions may have formatting issues)
-  InfluxDB 1.8.3
-
----
-
-## License
-
-This project (the pfSense Grafana Dashboard fork and associated scripts) is
-licensed under the Mozilla Public License Version 2.0 (MPL-2.0).
-
-You can find the license text in the included `LICENSE` file or at:
-http://mozilla.org/MPL/2.0/
-
-Short notice to include in source files:
-
-```
-SPDX-FileCopyrightText: 2025 ChiefGyk3D
-SPDX-License-Identifier: MPL-2.0
-```
-
-If you redistribute or modify the Covered Software in Executable Form, you
-must make the Source Code Form available under the terms of MPL-2.0.
-    
-## Known Issues
-    pfSense 2.6 - No Stats from pfBlocker - https://github.com/VictorRobellini/pfSense-Dashboard/issues/58 
-
-## Changelog
-This is just a summary, for more details look at the commits.
-
-- Big Performance boost for subqueries in dashboard: https://github.com/influxdata/influxdb/issues/9122
-- This update includes plugins, telegraf config and the dashboard
-- Added more pfBlocker information in separate panel to keep things organized.
-- Replaced telegraph_gateways.py with telegraph_gateways.php
-- Added gateway interface detail table
-- If things render weird, drop the following measurements: tail_ip_block_log, gateways, tail_dnsbl_log
-    
-## Heads up!
-
-Due to the update in the Gateway plugin (move from py to php), you may need to drop your gateways measurement.
-
-In the recent commits I updated the telegraf config to use the [Tails Input Plugin](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/tail) in place of the [Logparser Input Plugin](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/logparser) since it's been deprecated.
-
-I renamed many of the columns to reflect [what's being logged by pfBlockerNG-devel](https://github.com/pfsense/FreeBSD-ports/blob/232722ac52edaeede58b551e7e2efb690ce1023d/net/pfSense-pkg-pfBlockerNG-devel/files/usr/local/pkg/pfblockerng/pfblockerng.inc#L4597) and fixed some parsing bugs that cause lines to be skipped due to inconsistent log formatting.  As a result, the measurements ip_block_log and dnsbl_log have been replaced with tail_ip_block_log and tail_dnsbl_log respectively.
-
-I dropped the old measurements: ip_block_log, dnsbl_log
-
-If you cannot live without this data, you could use the panels [from this commit](https://github.com/VictorRobellini/pfSense-Dashboard/blob/0df10172506242105891a81f5076019b5a5867b0/pfSense-Grafana-Dashboard.json) and not update the config. Read my note about the Logparser Input Plugin above!
-
-If you want to load the complete logs files, you could probably change the telegraf config to:
-
-from_beginning = false
-
-to
-
-from_beginning = true
-
-I'm sure you can even rename the measurements, columns and update the tags, but that's beyond my influx capabilities.
-
-
-    
-### Templates of what I currently run in my Kubernetes homelab
-Kubernetes deployed locally with [these instructions](https://www.reddit.com/r/homelab/comments/ipsc4r/howto_k8s_metallb_and_external_dns_access_for/)
-
-Stripped [yaml templates](https://github.com/VictorRobellini/K8s-homelab-pub) used to deploy my homelab (including Influx and Grafana) are here
-
-
-### docker-compose example with persistent storage
-##### I've recently migrated my stack to Kubernetes, the image versions are updated but the docker-compose is untested.
-```docker-compose
-
-  grafana-pfSense:
-    image: "grafana/grafana:7.4.3"
-    container_name: grafana
-    hostname: grafana
-    mem_limit: 4gb
-    ports:
-      - "3000:3000"
-    environment:
-      TZ: "America/New_York"
-      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel,grafana-worldmap-panel"
-      GF_PATHS_DATA: "/var/lib/grafana"
-      GF_DEFAULT_INSTANCE_NAME: "home"
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_SERVER_ENABLE_GZIP: "true"
-      GF_SERVER_DOMAIN: "home.mydomain"
-    volumes:
-      - '/share/ContainerData/grafana:/var/lib/grafana'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100M"
-    network_mode: bridge
-
-  influxdb-pfsense:
-    image: "influxdb:1.8.3-alpine"
-    container_name: influxdb
-    hostname: influxdb
-    mem_limit: 10gb
-    ports:
-      - "2003:2003"
-      - "8086:8086"
-    environment:
-      TZ: "America/New_York"
-      INFLUXDB_DATA_QUERY_LOG_ENABLED: "false"
-      INFLUXDB_REPORTING_DISABLED: "true"
-      INFLUXDB_HTTP_AUTH_ENABLED: "true"
-      INFLUXDB_ADMIN_USER: "admin"
-      INFLUXDB_ADMIN_PASSWORD: "adminpassword"
-      INFLUXDB_USER: "pfsense"
-      INFLUXDB_USER_PASSWORD: "pfsenseuserpassword"
-      INFLUXDB_DB: "pfsense"
-    volumes:
-      - '/share/ContainerData/influxdb:/var/lib/influxdb'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100M"
-    network_mode: bridge
-```
-   
-**Make sure you are using pfBlockerNG-devel**
-
-## Configuration
-
-### Grafana
-The Config for the dashboard relies on the variables defined within the dashboard in Grafana.  When importing the dashboard, make sure to select your datasource. 
-
-Dashboard Settings -> Variables
-
-WAN - $WAN is a static variable defined so that a separate dashboard panel can be created for WAN interfaces stats.  Use a comma-separated list for multiple WAN interfaces.
-
-LAN_Interfaces - $LAN_Interfaces uses a regex to remove any interfaces you don't want to be grouped as LAN. The filtering happens in the "Regex" field. I use a negative lookahead regex to match the interfaces I want excluded.  It should be pretty easy to understand what you need to do here. I have excluded igb0 (WAN) and igb1,igb2,igb3 (only used to host vlans).
-
-After writing this up, I realize I need to change this variable name, it's just not going to happen right now. 
-
-### Telegraf
-[Telegraf Config](config/additional_config.conf)
-
-In the [/config](config/additional_config.conf) directory you will find all of the additional telegraf config. In pfSense, under Services -> Telegraf, at the bottom of the page with the teeny tiny text box is where you paste in the included config.
-
-I also included the config for Unbound DNS and it's commented out.  I'm not currently using it, but it's fully functional, just uncomment if you want to use it.
-
-### Plugins
-[Plugins](plugins)
-
-**Plugins get copied to your pfSense system**
-
-#### Easy Installation with SSH Script
-
-For easier deployment, use the included installation script:
+### 1. Install SIEM Stack (Ubuntu/Debian)
 
 ```bash
-./install_plugins.sh
+# Clone repository
+git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
+cd pfsense_grafana
+
+# Run automated SIEM installer (OpenSearch, Logstash, Grafana)
+sudo ./install.sh
 ```
 
-This interactive script will:
-- Connect to your pfSense system via SSH
-- Let you select which plugins to install
-- Copy plugins to `/usr/local/bin/` with proper permissions (555)
-- Optionally install the additional Telegraf configuration
-- Optionally restart the Telegraf service
+This installs the complete SIEM stack on your server.
 
-Available plugins:
-- `telegraf_pfifgw.php` - Gateway monitoring
-- `telegraf_temperature.sh` - Temperature sensors
-- `telegraf_unbound_lite.sh` - Unbound DNS (lite version)
-- `telegraf_unbound.sh` - Unbound DNS (full version)
+### 2. Configure Your Environment
 
-#### Manual Installation
+**Create your configuration file** (required):
 
-If you prefer to install manually:
-1. Copy plugins to your pfSense system in `/usr/local/bin`
-2. Set permissions to 555: `chmod 555 /usr/local/bin/telegraf_*.{php,sh}`
+```bash
+# Copy the example config
+cp config.env.example config.env
 
-I also included a wrapper script for Unbound DNS.  I'm not currently using it, but it's fully functional.
-   
-## Troubleshooting
+# Edit with your settings
+nano config.env
+```
 
-### Gateway RTT Not Working?
+**Minimum required settings:**
+```bash
+SIEM_HOST=192.168.210.10      # Your SIEM server IP
+PFSENSE_HOST=192.168.1.1       # Your pfSense firewall IP
+```
 
-If Gateway RTT (Round Trip Time) monitoring isn't showing data, see the comprehensive **[Gateway RTT Troubleshooting Guide](GATEWAY_RTT_TROUBLESHOOTING.md)**.
+All other settings have sensible defaults but can be customized.
 
-This covers:
-- Enabling gateway monitoring in pfSense
-- Verifying dpinger service
-- Testing the telegraf_pfifgw.php plugin
-- Checking data flow through Telegraf and InfluxDB
-- Dashboard configuration
+### 3. Run Automated Setup
 
-### Telegraf Plugins
+**ONE COMMAND** to configure everything:
 
-- You can run most plugins from a shell/ssh session to verify the output. (the environment vars may be different when telegraf is executing the plugin)
-- If you're copying from a windows system, make sure the [CRLF is correct](https://www.cyberciti.biz/faq/howto-unix-linux-convert-dos-newlines-cr-lf-unix-text-format/)
-- The below command should display unix line endings (\n or LF) as $ and Windows line endings (\r\n or CRLF) as ^M$.
+```bash
+./setup.sh
+```
 
-`# cat -e /usr/local/bin/telegraf_pfinterface.php`
+This single script will:
+- ✅ Load your configuration from `config.env`
+- ✅ Configure OpenSearch with proper index templates and auto-create settings
+- ✅ Deploy the forwarder to pfSense with your SIEM IP
+- ✅ Install and configure the watchdog for automatic restarts
+- ✅ Verify everything is working
 
-#### Telegraf Troubleshooting
-If you get no good output from running the plugin directly, try the following command before moving to the below step.
+**That's it!** No manual configuration needed.
 
-    # telegraf --test --config /usr/local/etc/telegraf.conf
+### 4. Import Dashboard
 
-To troubleshoot plugins further, add the following lines to the agent block in /usr/local/etc/telegraf.conf and send a HUP to the telegraf pid. You're going to need to do this from a ssh shell. One you update the config you are going to need to tell telegraf to read the new configs. If you restart telegraf from pfSense, this will not work since it will overwrite your changes.
+1. Open Grafana: `http://<siem-server-ip>:3000`
+2. Login (default: admin/admin)
+3. Go to **Dashboards** → **New** → **Import**
+4. Upload: `dashboards/Suricata IDS_IPS Dashboard.json`
+5. **Select your OpenSearch datasource** when prompted
+6. Click **Import**
 
-#### Telegraf Config (Paste in to [agent] section)
-    debug = true
-    quiet = false
-    logfile = "/var/log/telegraf/telegraf.log"
+### 5. Verify Installation
 
-#### Restarting Telegraf
-    # ps aux | grep '[t]elegraf.conf'
-    # kill -HUP <pid of telegraf proces>
+Check everything is working:
 
-Now go read /var/log/telegraf/telegraf.log
-    
-### InfluxDB
-When in doubt, run a few queries to see if the data you are looking for is being populated.
+```bash
+./scripts/status.sh
+```
 
-    bash-4.4# influx
-    Connected to http://localhost:8086 version 1.8.3
-    InfluxDB shell version: 1.8.3
-    > auth
-    username: admin
-    password:
-    > show databases
-    name: databases
-    name
-    ----
-    pfsense
-    _internal
-    > use pfsense
-    Using database pfsense
-    > show measurements
-    name: measurements
-    name
-    ----
-    cpu
-    disk
-    diskio
-    gateways
-    interface
-    mem
-    net
-    netstat
-    pf
-    processes
-    swap
-    system
-    tail_dnsbl_log
-    tail_ip_block_log
-    temperature
-    > select * from system limit 20
-    name: system
-    time                host                     load1         load15        load5         n_cpus n_users uptime     uptime_format
-    ----                ----                     -----         ------        -----         ------ ------- ------     -------------
-    1585272640000000000 pfSense.home         0.0615234375  0.07861328125 0.0791015625  4      1       196870     2 days,  6:41
-    1585272650000000000 pfSense.home         0.05126953125 0.07763671875 0.076171875   4      1       196880     2 days,  6:41
-    1585272660000000000 pfSense.home         0.04296875    0.07666015625 0.0732421875  4      1       196890     2 days,  6:41
-    1585272670000000000 pfSense.home         0.03564453125 0.07568359375 0.0703125     4      1       196900     2 days,  6:41
-    1585272680000000000 pfSense.home         0.02978515625 0.07470703125 0.0673828125  4      1       196910     2 days,  6:41
-    1585272690000000000 pfSense.home         0.02490234375 0.07373046875 0.064453125   4      1       196920     2 days,  6:42
-    ...
-    
+This will verify:
+- ✅ OpenSearch is running and configured correctly
+- ✅ Logstash is listening for events
+- ✅ Forwarder is running on pfSense
+- ✅ Data is flowing and recent
+- ✅ Watchdog is installed
+- ✅ Suricata is generating events
 
-How to drop influx measurement
+**Green checkmarks** = everything is working!  
+**Red X's** = see the error messages and suggested fixes
 
-    bash-4.4# influx
-    Connected to http://localhost:8086 version 1.8.3
-    InfluxDB shell version: 1.8.3
-    > auth
-    username: admin
-    password:
-    > use pfsense
-    Using database pfsense
-    > drop measurement ip_block_log
+## 📁 Project Structure
 
-## [Original Reddit thread](https://www.reddit.com/r/PFSENSE/comments/fsss8r/additional_grafana_dashboard/ "Originial Reddit thread")
+```
+pfsense_grafana/
+├── config.env.example          # Configuration template (copy to config.env)
+├── setup.sh                    # 🌟 ONE-COMMAND automated setup
+├── install.sh                  # SIEM stack installer (run first)
+├── dashboards/                 # Grafana dashboard JSON files
+│   └── Suricata IDS_IPS Dashboard.json    ← Import this
+├── scripts/
+│   ├── forward-suricata-eve-python.py     ← Multi-interface forwarder
+│   ├── install-opensearch-config.sh       ← OpenSearch configuration
+│   ├── status.sh                          ← 🔍 Comprehensive health check
+│   ├── restart-services.sh                ← Restart SIEM services
+│   └── configure-retention-policy.sh      ← Set data retention
+├── config/                     # Configuration files
+│   ├── README.md                          ← OpenSearch setup docs
+│   ├── logstash-suricata.conf             ← Logstash pipeline
+│   └── opensearch-index-template.json     ← Index with geo_point
+├── docs/                       # Detailed documentation
+│   ├── OPENSEARCH_AUTO_CREATE.md          ← Midnight UTC problem fix
+│   ├── TROUBLESHOOTING.md                 ← Common issues
+│   └── GEOIP_SETUP.md                     ← GeoIP configuration
+├── plugins/                    # Optional Telegraf plugins
+│   └── telegraf_*.php/sh                  ← System metrics collectors
+└── media/                      # Screenshots
+    └── Suricata IDS_IPS WAN Dashboard.png ← Dashboard preview
+```
 
-I was going to post this in the thread made by [/u/seb6596](https://www.reddit.com/u/seb6596 "/u/seb6596") since this is based on [their dashboard](https://www.reddit.com/r/PFSENSE/comments/fsf7f7/my_pfsense_monitor_dashboard_in_grafana/ "their dashboard"), but I made quite a few changes and wanted to include information that would get lost in the thread.
+**Key files:**
+- `config.env.example` → Copy to `config.env` and customize
+- `setup.sh` → Run this after installing SIEM stack
+- `scripts/status.sh` → Check if everything is working
 
-What I updated:
+## 📊 Dashboard Panels
 
-- Created dashboard wide variables to make the dashboard more portable and easily configurable. You shouldn't need to update any of the queries.
-- Took some inspiration and panels [from this dashboard](https://grafana.com/grafana/dashboards/9806 "from this dashboard")
-- Included gateway RTT from dpinger thanks to [this integration](https://forum.netgate.com/topic/142093/can-telegraf-package-gather-latency-packet-loss-information/3 "this integration")
-- Pulled information from the "return_gateways_status_text" function in "/etc/inc/gwlb.inc" to return the actual status of the gateway, as well as the current loss/rtt and IP values.
-- Used[ telegraf configs](https://www.reddit.com/r/pfBlockerNG/comments/bu0ms0/pfblockerngtelegrafinfluxdb_ip_block_list/ " telegraf configs") from this post by [/u/PeskyWarrior](https://www.reddit.com/u/PeskyWarrior "/u/PeskyWarrior")
-- Tag, templating - No need to specify all cpus or interfaces in the graph queries. These values are pulled in with queries.
-- Added chart to show all adapters, IP, MAC and Status[ from here](https://github.com/influxdata/telegraf/issues/3756#issuecomment-485606025 " from here")
-- Added Temperature data based on feedback from[ /u/tko1982](https://www.reddit.com/u/tko1982 " /u/tko1982") - CPU Temp and any other ACPI device that reports temp is now collected and reported
+### Current Dashboard: WAN-Side Monitoring
 
-### TODO
+Focused on external threats and inbound attack analysis.
 
-- Include IP and ping methods from [/u/seb6596](https://www.reddit.com/u/seb6596 "/u/seb6596") when they are back online.
-- Make it pretty. I've never been good at this part
-- Get the RTT calculations right from the dpinger integration. It's in microseconds but for some reason doesn't match the graphs in pfSense when I compare them.
-- Figure out if I can show subnet and media speed/duplex for the interfaces
-- Use the pfSense labels in the graphs that show network stats - 2 different measurements
+#### Statistics
+- **Events & Alerts**: Combined counter with sparklines and color-coded thresholds
+- **Event Type Distribution**: Pie chart showing alert, http, dns, tls, etc.
+- **Protocol Distribution**: TCP, UDP, ICMP breakdown
+- **Interface Distribution**: Traffic by WAN interface
+
+#### Alerts
+- **Top 10 Alert Signatures**: Most triggered IDS rules
+- **IDS Alert Logs**: Detailed table with time, signature, IPs, ports, countries
+- **Alert Severity Breakdown**: Critical, high, medium, low classification
+
+#### Geographic Visualization
+- **Inbound Attack Sources Map**: Interactive world map with geohash clusters
+- **Top 10 Source Countries**: Donut chart of attack origins
+- **Country Statistics Table**: Detailed breakdown with event counts
+
+#### HTTP Traffic Analysis
+- **Top 10 HTTP Hosts**: Most accessed domains
+- **HTTP Methods**: GET, POST, etc. distribution
+
+### Upcoming: LAN-Side Dashboard
+
+A companion dashboard for internal network monitoring (in development):
+- Internal host communication patterns
+- East-West traffic analysis
+- RFC1918 source/destination focus
+- Potential lateral movement detection
+
+## 🔧 Configuration
+
+### Customize Logstash Input
+
+Edit `/etc/logstash/conf.d/suricata.conf`:
+
+```ruby
+input {
+  udp {
+    port => 5140
+    codec => json
+  }
+}
+```
+
+### Adjust Data Retention
+
+```bash
+# Configure index lifecycle policy
+scripts/configure-retention-policy.sh
+```
+
+Default retention: 30 days
+
+### GeoIP Updates
+
+The forwarder uses MaxMind GeoLite2-City database. To update:
+
+```bash
+# On pfSense, if using ntopng, it auto-updates
+# Manual update:
+ssh root@pfsense
+fetch -o /usr/local/share/ntopng/GeoLite2-City.mmdb \
+  https://github.com/PrxyHunter/GeoLite2/raw/master/GeoLite2-City.mmdb
+```
+
+## 🔍 Troubleshooting
+
+### Quick Diagnosis
+
+**Run the status check first:**
+
+```bash
+./scripts/status.sh
+```
+
+This will identify most common problems automatically.
+
+### Common Issues
+
+**1. Dashboard shows no data**
+- Run `./scripts/status.sh` to check forwarder status
+- Verify: `./setup.sh` was run successfully
+- Check forwarder logs: `ssh root@<pfsense-ip> 'tail -f /var/log/system.log | grep suricata'`
+
+**2. Data stops at midnight UTC** ⚠️ MOST COMMON
+- **Cause**: OpenSearch auto-create disabled
+- **Fix**: Run `./setup.sh` (it configures this automatically)
+- **Details**: See `docs/OPENSEARCH_AUTO_CREATE.md`
+
+**3. Forwarder not running**
+- Check SSH access to pfSense
+- Run: `ssh root@<pfsense-ip> 'ps aux | grep forward-suricata'`
+- Restart: `./setup.sh` (it will restart the forwarder)
+
+**4. Multiple forwarders running**
+- Kill extras: `ssh root@<pfsense-ip> 'pkill -f forward-suricata'`
+- Run `./setup.sh` to start single clean instance
+
+**5. Wrong SIEM IP configured**
+- Edit `config.env` with correct SIEM IP
+- Run `./setup.sh` to redeploy with new config
+
+### Detailed Troubleshooting
+
+See `docs/TROUBLESHOOTING.md` for comprehensive troubleshooting guide.
+
+### Geomap Not Displaying
+
+The geomap requires proper `geo_point` mapping. Check:
+
+```bash
+# Verify mapping
+curl http://localhost:9200/suricata-*/_mapping | jq '.[] | .mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location'
+
+# Should show: {"type": "geo_point"}
+```
+
+If not, re-create the index template:
+
+```bash
+curl -X PUT "http://localhost:9200/_index_template/suricata-template" \
+  -H 'Content-Type: application/json' \
+  -d @config/opensearch-index-template.json
+```
+
+### Forwarder Not Monitoring All Interfaces
+
+The forwarder should automatically detect all Suricata instances. If missing interfaces:
+
+```bash
+# Check available eve.json files
+ssh root@pfsense 'ls -la /var/log/suricata/*/eve.json'
+
+# Restart forwarder
+pkill -f forward-suricata
+nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
+```
+
+See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.
+
+### pfBlocker Panels Show No Data
+
+If the Telegraf dashboard's pfBlocker panels are empty, this is usually caused by pfSense's filterlog daemon not properly handling log rotation.
+
+**Quick Fix:**
+```bash
+# Via SSH to pfSense
+ssh root@pfsense
+php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();'
+php -r 'require_once("/usr/local/pkg/pfblockerng/pfblockerng.inc"); pfblockerng_sync_on_changes();'
+```
+
+**Prevention & Monitoring:**
+See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for:
+- GUI configuration options
+- Automated monitoring setup
+- Preventive measures
+- Integration with status.sh
+
+## 📖 Documentation
+
+### Setup Guides
+- **[Quick Start Guide](QUICK_START.md)**: Fast setup for experienced users
+- **[SIEM Stack Installation](docs/INSTALL_SIEM_STACK.md)**: Detailed OpenSearch/Logstash/Grafana setup
+- **[Forwarder Installation](docs/INSTALL_PFSENSE_FORWARDER.md)**: pfSense forwarder deployment
+- **[Dashboard Import](docs/INSTALL_DASHBOARD.md)**: Dashboard configuration and customization
+
+### Configuration
+- **[GeoIP Setup](docs/GEOIP_SETUP.md)**: MaxMind database installation
+- **[Configuration Guide](docs/CONFIGURATION.md)**: Advanced settings and tuning
+- **[Telegraf Interface Fixes](docs/TELEGRAF_INTERFACE_FIXES.md)**: Universal interface detection
+- **[Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
+
+### Troubleshooting
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and fixes
+- **[pfSense Filterlog Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md)**: Fix for pfBlocker data loss
+- **[OpenSearch Auto-Create](docs/OPENSEARCH_AUTO_CREATE.md)**: Midnight UTC data stoppage fix
+
+## 🔐 Security Considerations
+
+- **Firewall Rules**: Restrict Logstash UDP 5140 to pfSense IP only
+- **OpenSearch**: Bind to localhost or use authentication
+- **Grafana**: Change default admin password immediately
+- **GeoIP Data**: Contains location information - secure appropriately
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Test changes thoroughly
+4. Submit pull request with clear description
+
+## 📜 License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
+
+## 🙏 Credits
+
+- Original pfSense Telegraf dashboards by various contributors
+- Suricata IDS/IPS by OISF
+- OpenSearch by Amazon
+- Grafana by Grafana Labs
+
+## 💬 Support
+
+- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- **Documentation**: [Wiki](https://github.com/ChiefGyk3D/pfsense_grafana/wiki)
 
 ---
 
-## 💝 Support Development
-
-If you find this pfSense Grafana Dashboard fork useful, consider supporting development:
-
-### Recurring Support
-
-<div align="center">
-  <table>
-    <tr>
-      <!-- markdownlint-disable MD013 -->
-      <td align="center"><a href="https://patreon.com/chiefgyk3d?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink" title="Patreon"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/patreon.svg" width="32" height="32" alt="Patreon"/></a></td>
-      <td align="center"><a href="https://streamelements.com/chiefgyk3d/tip" title="StreamElements"><img src="media/streamelements.png" width="32" height="32" alt="StreamElements"/></a></td>
-      <!-- markdownlint-enable MD013 -->
-    </tr>
-    <tr>
-      <td align="center">Patreon</td>
-      <td align="center">StreamElements</td>
-    </tr>
-  </table>
-</div>
-
-### Cryptocurrency Tips
-
-<div align="center">
-  <table style="border:none;">
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/bitcoin.svg" width="28" height="28" alt="Bitcoin"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Bitcoin</b><br/>
-        <code style="font-size:12px;">bc1qztdzcy2wyavj2tsuandu4p0tcklzttvdnzalla</code>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/monero.svg" width="28" height="28" alt="Monero"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Monero</b><br/>
-        <code style="font-size:12px;">84Y34QubRwQYK2HNviezeH9r6aRcPvgWmKtDkN3EwiuVbp6sNLhm9ffRgs6BA9X1n9jY7wEN16ZEpiEngZbecXseUrW8SeQ</code>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ethereum.svg" width="28" height="28" alt="Ethereum"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Ethereum</b><br/>
-        <code style="font-size:12px;">0x554f18cfB684889c3A60219BDBE7b050C39335ED</code>
-      </td>
-    </tr>
-  </table>
-</div>
-
----
-
-<div align="center">
-
-Made with ❤️ by [ChiefGyk3D](https://github.com/ChiefGyk3D)
-
-## Author & Socials
-
-<!-- markdownlint-disable MD013 -->
-<table>
-  <tr>
-    <td align="center"><a href="https://social.chiefgyk3d.com/@chiefgyk3d" title="Mastodon"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastodon.svg" width="32" height="32" alt="Mastodon"/></a></td>
-    <td align="center"><a href="https://bsky.app/profile/chiefgyk3d.com" title="Bluesky"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/bluesky.svg" width="32" height="32" alt="Bluesky"/></a></td>
-    <td align="center"><a href="http://twitch.tv/chiefgyk3d" title="Twitch"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/twitch.svg" width="32" height="32" alt="Twitch"/></a></td>
-    <td align="center"><a href="https://www.youtube.com/channel/UCvFY4KyqVBuYd7JAl3NRyiQ" title="YouTube"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/youtube.svg" width="32" height="32" alt="YouTube"/></a></td>
-    <td align="center"><a href="https://kick.com/chiefgyk3d" title="Kick"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/kick.svg" width="32" height="32" alt="Kick"/></a></td>
-    <td align="center"><a href="https://www.tiktok.com/@chiefgyk3d" title="TikTok"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tiktok.svg" width="32" height="32" alt="TikTok"/></a></td>
-    <td align="center"><a href="https://discord.chiefgyk3d.com" title="Discord"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg" width="32" height="32" alt="Discord"/></a></td>
-    <td align="center"><a href="https://matrix-invite.chiefgyk3d.com" title="Matrix"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/matrix.svg" width="32" height="32" alt="Matrix"/></a></td>
-  </tr>
-<!-- markdownlint-enable MD013 -->
-  <tr>
-    <td align="center">Mastodon</td>
-    <td align="center">Bluesky</td>
-    <td align="center">Twitch</td>
-    <td align="center">YouTube</td>
-    <td align="center">Kick</td>
-    <td align="center">TikTok</td>
-    <td align="center">Discord</td>
-    <td align="center">Matrix</td>
-  </tr>
-</table>
-
-<sub>Fork improvements and maintenance by ChiefGyk3D</sub>
-
-</div>
+**Made with ❤️ for the pfSense community**

@@ -1,0 +1,139 @@
+{
+  "index_patterns": ["suricata-*"],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "5s"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "suricata": {
+          "properties": {
+            "eve": {
+              "properties": {
+                "timestamp": {
+                  "type": "date"
+                },
+                "event_type": {
+                  "type": "keyword"
+                },
+                "src_ip": {
+                  "type": "ip"
+                },
+                "dest_ip": {
+                  "type": "ip"
+                },
+                "proto": {
+                  "type": "keyword"
+                },
+                "geoip_src": {
+                  "properties": {
+                    "location": {
+                      "type": "geo_point"
+                    },
+                    "country_code": {
+                      "type": "keyword"
+                    },
+                    "country_name": {
+                      "type": "keyword"
+                    },
+                    "city_name": {
+                      "type": "keyword"
+                    },
+                    "region_name": {
+                      "type": "keyword"
+                    },
+                    "continent_code": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "geoip_dest": {
+                  "properties": {
+                    "location": {
+                      "type": "geo_point"
+                    },
+                    "country_code": {
+                      "type": "keyword"
+                    },
+                    "country_name": {
+                      "type": "keyword"
+                    },
+                    "city_name": {
+                      "type": "keyword"
+                    },
+                    "region_name": {
+                      "type": "keyword"
+                    },
+                    "continent_code": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "alert": {
+                  "properties": {
+                    "signature": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword"
+                        }
+                      }
+                    },
+                    "category": {
+                      "type": "keyword"
+                    },
+                    "severity": {
+                      "type": "integer"
+                    },
+                    "action": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "http": {
+                  "properties": {
+                    "hostname": {
+                      "type": "keyword"
+                    },
+                    "url": {
+                      "type": "text"
+                    },
+                    "http_method": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "dns": {
+                  "properties": {
+                    "query": {
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "tls": {
+                  "properties": {
+                    "sni": {
+                      "type": "keyword"
+                    },
+                    "version": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
