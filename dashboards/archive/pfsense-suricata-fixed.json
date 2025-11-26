@@ -1897,7 +1897,7 @@
         "options": [],
         "query": "{\"find\": \"terms\", \"field\":\"suricata.eve.in_iface\",\"size\": \"1000000\" }",
         "refresh": 2,
-        "regex": "",
+        "regex": "/^[^\\^]+$/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",

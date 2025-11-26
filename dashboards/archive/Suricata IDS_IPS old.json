@@ -1,46 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_OPENSEARCH",
-      "label": "Opensearch",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "grafana-opensearch-datasource",
-      "pluginName": "OpenSearch"
-    }
-  ],
-  "__requires": [
-    {
-      "type": "datasource",
-      "id": "grafana-opensearch-datasource",
-      "name": "OpenSearch",
-      "version": "1.0.0"
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "8.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "piechart",
-      "name": "Pie chart",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -60,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 18,
+  "id": 38,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "description": "Total events and alerts",
       "fieldConfig": {
@@ -80,7 +38,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -100,7 +58,7 @@
                   "steps": [
                     {
                       "color": "green",
-                      "value": null
+                      "value": 0
                     },
                     {
                       "color": "yellow",
@@ -128,7 +86,7 @@
                   "steps": [
                     {
                       "color": "green",
-                      "value": null
+                      "value": 0
                     },
                     {
                       "color": "yellow",
@@ -146,10 +104,10 @@
         ]
       },
       "gridPos": {
-        "x": 0,
-        "y": 0,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 0
       },
       "id": 101,
       "options": {
@@ -157,14 +115,17 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "values": false,
-          "fields": "",
           "calcs": [
             "sum"
-          ]
+          ],
+          "fields": "",
+          "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "12.3.0",
       "targets": [
@@ -184,7 +145,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -212,7 +173,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -302,10 +263,10 @@
         ]
       },
       "gridPos": {
-        "x": 12,
-        "y": 0,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 12,
+        "y": 0
       },
       "id": 1,
       "options": {
@@ -353,7 +314,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -370,300 +331,9 @@
       "type": "timeseries"
     },
     {
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": true
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 18,
-        "w": 8,
-        "h": 10
-      },
-      "id": 5,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Count"
-          }
-        ]
-      },
-      "pluginVersion": "12.3.0",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "suricata.eve.src_ip.keyword": "Source IP"
-            }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "bucketAggs": [
-            {
-              "field": "suricata.eve.src_ip.keyword",
-              "id": "2",
-              "settings": {
-                "order": "desc",
-                "orderBy": "_count",
-                "size": "20"
-              },
-              "type": "terms"
-            }
-          ],
-          "datasource": {
-            "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
-          },
-          "metrics": [
-            {
-              "id": "1",
-              "type": "count"
-            }
-          ],
-          "query": "",
-          "refId": "A",
-          "timeField": "@timestamp"
-        }
-      ],
-      "title": "Top 20 Source IPs",
-      "type": "table"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": true
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 18,
-        "w": 8,
-        "h": 10
-      },
-      "id": 6,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Count"
-          }
-        ]
-      },
-      "pluginVersion": "12.3.0",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "suricata.eve.dest_ip.keyword": "Destination IP"
-            }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "bucketAggs": [
-            {
-              "field": "suricata.eve.dest_ip.keyword",
-              "id": "2",
-              "settings": {
-                "order": "desc",
-                "orderBy": "_count",
-                "size": "20"
-              },
-              "type": "terms"
-            }
-          ],
-          "datasource": {
-            "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
-          },
-          "metrics": [
-            {
-              "id": "1",
-              "type": "count"
-            }
-          ],
-          "query": "",
-          "refId": "A",
-          "timeField": "@timestamp"
-        }
-      ],
-      "title": "Top 20 Destination IPs",
-      "type": "table"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": true
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 18,
-        "w": 8,
-        "h": 10
-      },
-      "id": 9,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Count"
-          }
-        ]
-      },
-      "pluginVersion": "12.3.0",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "suricata.eve.dns.rrname.keyword": "DNS Query"
-            }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "bucketAggs": [
-            {
-              "field": "suricata.eve.dns.rrname.keyword",
-              "id": "2",
-              "settings": {
-                "order": "desc",
-                "orderBy": "_count",
-                "size": "20"
-              },
-              "type": "terms"
-            }
-          ],
-          "datasource": {
-            "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
-          },
-          "metrics": [
-            {
-              "id": "1",
-              "type": "count"
-            }
-          ],
-          "query": "suricata.eve.event_type:dns",
-          "refId": "A",
-          "timeField": "@timestamp"
-        }
-      ],
-      "title": "Top 20 DNS Queries",
-      "type": "table"
-    },
-    {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "fieldConfig": {
         "defaults": {
@@ -682,10 +352,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 8,
+        "h": 10,
         "w": 8,
-        "h": 10
+        "x": 0,
+        "y": 8
       },
       "id": 102,
       "options": {
@@ -701,17 +371,20 @@
         },
         "pieType": "pie",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
+        "sort": "desc",
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "alias": "",
@@ -730,7 +403,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -749,7 +422,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "fieldConfig": {
         "defaults": {
@@ -768,10 +441,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 8,
-        "y": 8,
+        "h": 10,
         "w": 8,
-        "h": 10
+        "x": 8,
+        "y": 8
       },
       "id": 103,
       "options": {
@@ -787,17 +460,20 @@
         },
         "pieType": "pie",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
+        "sort": "desc",
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "alias": "",
@@ -816,7 +492,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -835,7 +511,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "fieldConfig": {
         "defaults": {
@@ -854,10 +530,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 16,
-        "y": 8,
+        "h": 10,
         "w": 8,
-        "h": 10
+        "x": 16,
+        "y": 8
       },
       "id": 104,
       "options": {
@@ -873,17 +549,20 @@
         },
         "pieType": "pie",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
+        "sort": "desc",
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "alias": "",
@@ -902,7 +581,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -919,9 +598,285 @@
       "type": "piechart"
     },
     {
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Count"
+          }
+        ]
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "suricata.eve.src_ip.keyword",
+              "id": "2",
+              "settings": {
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "bf53unpmdj0u8c"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Top 20 Source IPs",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "suricata.eve.src_ip.keyword": "Source IP"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Count"
+          }
+        ]
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "suricata.eve.dest_ip.keyword",
+              "id": "2",
+              "settings": {
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "bf53unpmdj0u8c"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Top 20 Destination IPs",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "suricata.eve.dest_ip.keyword": "Destination IP"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Count"
+          }
+        ]
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "suricata.eve.dns.rrname.keyword",
+              "id": "2",
+              "settings": {
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "bf53unpmdj0u8c"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "suricata.eve.event_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Top 20 DNS Queries",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "suricata.eve.dns.rrname.keyword": "DNS Query"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "fieldConfig": {
         "defaults": {
@@ -933,6 +888,9 @@
             "cellOptions": {
               "type": "auto"
             },
+            "footer": {
+              "reducers": []
+            },
             "inspect": false
           },
           "mappings": [],
@@ -941,7 +899,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "yellow",
@@ -957,10 +915,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 28,
+        "h": 10,
         "w": 12,
-        "h": 10
+        "x": 0,
+        "y": 28
       },
       "id": 108,
       "options": {
@@ -974,18 +932,6 @@
         ]
       },
       "pluginVersion": "12.3.0",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "suricata.eve.dest_port": "Port"
-            }
-          }
-        }
-      ],
       "targets": [
         {
           "alias": "",
@@ -1004,7 +950,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1018,12 +964,24 @@
         }
       ],
       "title": "Top 10 Destination Ports",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "suricata.eve.dest_port": "Port"
+            }
+          }
+        }
+      ],
       "type": "table"
     },
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "fieldConfig": {
         "defaults": {
@@ -1042,10 +1000,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 12,
-        "y": 28,
+        "h": 10,
         "w": 12,
-        "h": 10
+        "x": 12,
+        "y": 28
       },
       "id": 109,
       "options": {
@@ -1061,17 +1019,20 @@
         },
         "pieType": "pie",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
+        "sort": "desc",
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "alias": "",
@@ -1090,7 +1051,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1109,7 +1070,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "description": "Top alert signatures triggering",
       "fieldConfig": {
@@ -1129,10 +1090,10 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 38,
+        "h": 10,
         "w": 12,
-        "h": 10
+        "x": 0,
+        "y": 38
       },
       "id": 111,
       "options": {
@@ -1148,11 +1109,11 @@
         },
         "pieType": "donut",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
         "tooltip": {
           "mode": "single",
@@ -1177,7 +1138,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1196,7 +1157,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "description": "Detailed IDS alert logs",
       "fieldConfig": {
@@ -1213,8 +1174,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -1381,10 +1341,10 @@
         ]
       },
       "gridPos": {
-        "x": 12,
-        "y": 38,
+        "h": 10,
         "w": 12,
-        "h": 10
+        "x": 12,
+        "y": 38
       },
       "id": 110,
       "options": {
@@ -1416,7 +1376,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1453,6 +1413,7 @@
               "suricata.eve.alert.metadata.updated_at": true,
               "suricata.eve.alert.rev": true,
               "suricata.eve.alert.signature_id": true,
+              "suricata.eve.app_proto": true,
               "suricata.eve.direction": true,
               "suricata.eve.event_type": true,
               "suricata.eve.flow": true,
@@ -1466,21 +1427,6 @@
               "suricata.eve.flow.src_port": true,
               "suricata.eve.flow.start": true,
               "suricata.eve.flow_id": true,
-              "suricata.eve.in_iface": true,
-              "suricata.eve.packet": true,
-              "suricata.eve.packet_info": true,
-              "suricata.eve.packet_info.linktype": true,
-              "suricata.eve.payload_printable": true,
-              "suricata.eve.pkt_src": true,
-              "suricata.eve.stream": true,
-              "suricata.eve.timestamp": true,
-              "suricata.eve.geoip_src.city_name": true,
-              "suricata.eve.geoip_src.continent_code": true,
-              "suricata.eve.geoip_src.country_name": true,
-              "suricata.eve.geoip_src.location": true,
-              "suricata.eve.geoip_src.location.lat": true,
-              "suricata.eve.geoip_src.location.lon": true,
-              "suricata.eve.geoip_src.region_name": true,
               "suricata.eve.geoip_dest.city_name": true,
               "suricata.eve.geoip_dest.continent_code": true,
               "suricata.eve.geoip_dest.country_name": true,
@@ -1488,25 +1434,39 @@
               "suricata.eve.geoip_dest.location.lat": true,
               "suricata.eve.geoip_dest.location.lon": true,
               "suricata.eve.geoip_dest.region_name": true,
-              "suricata.interface": true,
-              "suricata.eve.app_proto": true,
+              "suricata.eve.geoip_src.city_name": true,
+              "suricata.eve.geoip_src.continent_code": true,
+              "suricata.eve.geoip_src.country_name": true,
+              "suricata.eve.geoip_src.location": true,
+              "suricata.eve.geoip_src.location.lat": true,
+              "suricata.eve.geoip_src.location.lon": true,
+              "suricata.eve.geoip_src.region_name": true,
+              "suricata.eve.in_iface": true,
+              "suricata.eve.packet": true,
+              "suricata.eve.packet_info": true,
+              "suricata.eve.packet_info.linktype": true,
               "suricata.eve.payload": true,
+              "suricata.eve.payload_printable": true,
+              "suricata.eve.pkt_src": true,
               "suricata.eve.quic.version": true,
-              "suricata.eve.tx_id": true
+              "suricata.eve.stream": true,
+              "suricata.eve.timestamp": true,
+              "suricata.eve.tx_id": true,
+              "suricata.interface": true
             },
             "indexByName": {
               "@timestamp": 0,
-              "suricata.eve.alert.category": 1,
-              "suricata.eve.alert.signature": 2,
               "suricata.eve.alert.action": 3,
+              "suricata.eve.alert.category": 1,
               "suricata.eve.alert.severity": 4,
-              "suricata.eve.proto": 5,
-              "suricata.eve.src_ip": 6,
-              "suricata.eve.src_port": 7,
-              "suricata.eve.geoip_src.country_code": 8,
+              "suricata.eve.alert.signature": 2,
               "suricata.eve.dest_ip": 9,
               "suricata.eve.dest_port": 10,
-              "suricata.eve.geoip_dest.country_code": 11
+              "suricata.eve.geoip_dest.country_code": 11,
+              "suricata.eve.geoip_src.country_code": 8,
+              "suricata.eve.proto": 5,
+              "suricata.eve.src_ip": 6,
+              "suricata.eve.src_port": 7
             },
             "renameByName": {
               "@timestamp": "Time",
@@ -1530,7 +1490,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "description": "Top 10 source countries",
       "fieldConfig": {
@@ -1569,11 +1529,11 @@
         },
         "pieType": "donut",
         "reduceOptions": {
-          "values": true,
-          "fields": "",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": "",
+          "values": true
         },
         "tooltip": {
           "mode": "single",
@@ -1599,7 +1559,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1618,7 +1578,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "${DS_OPENSEARCH}"
+        "uid": "bf53unpmdj0u8c"
       },
       "description": "Geographic distribution of inbound attack sources",
       "fieldConfig": {
@@ -1638,8 +1598,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -1713,8 +1672,8 @@
               }
             },
             "location": {
-              "mode": "geohash",
-              "geohash": "suricata.eve.geoip_src.location"
+              "geohash": "suricata.eve.geoip_src.location",
+              "mode": "geohash"
             },
             "name": "Attack Sources",
             "tooltip": true,
@@ -1748,7 +1707,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "${DS_OPENSEARCH}"
+            "uid": "bf53unpmdj0u8c"
           },
           "metrics": [
             {
@@ -1778,7 +1737,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Suricata IDS/IPS Dashboard",
-  "uid": "suricata-complete",
-  "version": 2
+  "title": "Suricata IDS/IPS WAN Dashboard 2",
+  "uid": "suricata-WAN-2",
+  "version": 1
 }
