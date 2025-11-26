@@ -319,15 +319,18 @@ See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for
 ## 📖 Documentation
 
 ### Setup Guides
+- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: 🎯 Complete step-by-step checklist for first-time setup
 - **[Quick Start Guide](QUICK_START.md)**: Fast setup for experienced users
 - **[SIEM Stack Installation](docs/INSTALL_SIEM_STACK.md)**: Detailed OpenSearch/Logstash/Grafana setup
 - **[Forwarder Installation](docs/INSTALL_PFSENSE_FORWARDER.md)**: pfSense forwarder deployment
 - **[Dashboard Import](docs/INSTALL_DASHBOARD.md)**: Dashboard configuration and customization
 
 ### Configuration
+- **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: 🌟 Complete guide for new users - rule selection, performance tuning, IDS vs IPS
 - **[GeoIP Setup](docs/GEOIP_SETUP.md)**: MaxMind database installation
 - **[Configuration Guide](docs/CONFIGURATION.md)**: Advanced settings and tuning
 - **[Telegraf Interface Fixes](docs/TELEGRAF_INTERFACE_FIXES.md)**: Universal interface detection
+- **[Forwarder Monitoring](docs/SURICATA_FORWARDER_MONITORING.md)**: Automatic restart and monitoring strategies
 - **[Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
 
 ### Troubleshooting
