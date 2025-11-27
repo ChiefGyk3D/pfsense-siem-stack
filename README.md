@@ -1,103 +1,242 @@
-# pfSense Suricata IDS/IPS Dashboard for Grafana
+# pfSense SIEM & IDS/IPS Monitoring Stack
 
-A complete monitoring solution for pfSense Suricata IDS/IPS using Grafana, OpenSearch, and Logstash. Features real-time alert visualization, GeoIP mapping, and comprehensive event analytics.
+> **Open-source SIEM infrastructure for pfSense firewalls** — Comprehensive monitoring, logging, and threat detection using OpenSearch, Logstash, InfluxDB, and Grafana.
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![pfSense](https://img.shields.io/badge/pfSense-2.7%2B-blue)](https://www.pfsense.org/)
+[![Grafana](https://img.shields.io/badge/Grafana-12.x-orange)](https://grafana.com/)
+[![OpenSearch](https://img.shields.io/badge/OpenSearch-2.x-blue)](https://opensearch.org/)
+
+---
+
+## 📖 Overview
+
+What started as a quick fix to a Grafana panel evolved into a **complete overhaul** of pfSense monitoring and logging infrastructure. This project provides:
+
+- **Full SIEM Stack**: OpenSearch for event storage, Logstash for parsing/enrichment, InfluxDB for time-series metrics
+- **Comprehensive IDS/IPS Monitoring**: Real-time Suricata alerts with GeoIP mapping, signature tracking, and attack visualization
+- **East-West Traffic Detection**: Internal network monitoring to detect lateral movement and insider threats
+- **Resilient Data Pipeline**: Rotation-aware forwarders, watchdogs, restart hooks, and automated recovery
+- **Production-Ready**: Optimized for dual-WAN inline IPS deployments with per-VLAN policy customization
+- **Fully Documented**: Installation guides, troubleshooting playbooks, optimization strategies, and architecture diagrams
 
 ![WAN Dashboard Preview](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
-
 *Live WAN-side monitoring with attack sources, alert signatures, and geographic visualization*
 
-## 🌟 Features
+---
 
-### WAN-Side Monitoring (Current)
-- **Real-time IDS/IPS Monitoring**: Live alert feeds with detailed signature information
-- **GeoIP Visualization**: Interactive world map showing attack sources with city-level accuracy
-- **Multi-Interface Support**: Monitors all Suricata instances simultaneously
-- **Event Analytics**: Comprehensive breakdowns by type, protocol, severity, and category
-- **Attack Tracking**: Top signatures, source countries, HTTP hosts, and more
-- **Clean Design**: Optimized pie charts and tables with minimal clutter
+## �️ Architecture
 
-### LAN-Side Monitoring (Coming Soon)
-- Internal network traffic analysis
-- RFC1918 source/destination filtering
-- Lateral movement detection
-- Internal host activity tracking
+![Architecture Diagram](docs/architecture.png)
 
-## 📋 Prerequisites
+### Data Flow
 
-### Required Software
-- **pfSense**: 2.7+ (tested on 2.8.1)
-- **Suricata**: IDS/IPS package installed on pfSense
-- **SIEM Server** (Ubuntu/Debian recommended):
-  - OpenSearch 2.x
-  - Logstash 8.x
-  - Grafana 12.x
-  - Python 3.11+ (for pfSense forwarder)
+1. **pfSense** runs Suricata on multiple interfaces (WAN inline IPS, VLAN IDS)
+2. **Forwarder** (`forward-suricata-eve.py`) tails eve.json logs, enriches with GeoIP, handles rotation
+3. **Logstash** receives events via UDP, parses/nests under `suricata.eve.*`, forwards to storage
+4. **OpenSearch** indexes events for search and aggregation (geomap, dashboards)
+5. **InfluxDB** stores time-series metrics for rates/counters (optional but recommended)
+6. **Grafana** visualizes everything with dashboards, alerts, and geomaps
+7. **Watchdogs** monitor the pipeline and restart components on failure
 
-### Network Requirements
-- pfSense must be able to reach SIEM server on UDP port 5140 (Logstash)
-- Grafana accessible on port 3000
-- OpenSearch on port 9200
+### Key Components
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| **Suricata** | IDS/IPS engine | pfSense (per-interface) |
+| **PfBlockerNG** | Upstream blocklists | pfSense |
+| **Forwarder** | Log shipping + GeoIP | pfSense → SIEM |
+| **Logstash** | Parsing & enrichment | SIEM server |
+| **OpenSearch** | Event storage | SIEM server |
+| **InfluxDB** | Time-series DB | SIEM server |
+| **Grafana** | Visualization | SIEM server |
+| **Watchdogs** | Pipeline monitoring | pfSense + SIEM |
+
+---
+
+## ✨ Features
+
+### 🔥 IDS/IPS Monitoring
+- **Real-time alerts** from Suricata with signature details and severity
+- **GeoIP visualization** with city-level accuracy on interactive world maps
+- **Multi-interface support** monitors all Suricata instances (WAN, VLANs, lagg)
+- **Event analytics** by type, protocol, severity, category, and application
+- **Attack tracking**: Top signatures, source countries, HTTP hosts, JA3 fingerprints
+
+### 🌐 Network Intelligence
+- **Dual-WAN inline IPS** with Snort + Emerging Threats on both uplinks
+- **East-West detection** for lateral movement across VLANs
+- **Per-VLAN policies**: Heavy monitoring on IoT, lighter on trusted VLANs
+- **PfBlockerNG integration** for upstream threat filtering
+
+### 🛠️ Reliability & Operations
+- **Log rotation handling**: Inode-aware forwarder survives Suricata rotations
+- **Watchdogs**: Auto-restart forwarder and Suricata on failure
+- **Restart hooks**: Ensure proper startup after pfSense upgrades
+- **Debug logging**: Comprehensive troubleshooting with `/var/log/suricata_forwarder_debug.log`
+- **Automated setup**: One-command deployment scripts for entire stack
+
+### � Dashboards & Alerts
+- **WAN monitoring**: Attack sources, signatures, protocols, top talkers
+- **LAN monitoring**: Internal traffic, RFC1918 flows, lateral movement
+- **Interface distribution**: Traffic breakdown by interface/VLAN
+- **Alerting**: Grafana alerts + webhook integrations (Slack, email)
+
+---
 
 ## 🚀 Quick Start
 
-### 1. Install SIEM Stack (Ubuntu/Debian)
+### Prerequisites
+
+**SIEM Server** (Ubuntu/Debian 22.04+):
+- 8GB+ RAM (16GB recommended)
+- 100GB+ disk space
+- Root/sudo access
+
+**pfSense Firewall**:
+- pfSense 2.7+ (tested on 2.8.1)
+- Suricata package installed
+- SSH enabled with key-based auth
+- Python 3.11+ available
+
+### Installation (3 Commands)
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
 cd pfsense_grafana
 
-# Run automated SIEM installer (OpenSearch, Logstash, Grafana)
+# 2. Install SIEM stack (OpenSearch, Logstash, Grafana)
 sudo ./install.sh
-```
 
-This installs the complete SIEM stack on your server.
-
-### 2. Configure Your Environment
-
-**Create your configuration file** (required):
-
-```bash
-# Copy the example config
+# 3. Configure environment and deploy to pfSense
 cp config.env.example config.env
-
-# Edit with your settings
-nano config.env
+nano config.env  # Set SIEM_HOST and PFSENSE_HOST
+./setup.sh       # Automated deployment
 ```
 
-**Minimum required settings:**
+**That's it!** The setup script:
+- ✅ Configures OpenSearch index templates
+- ✅ Deploys forwarder to pfSense with GeoIP enrichment
+- ✅ Installs watchdogs for automatic recovery
+- ✅ Verifies data flow from pfSense → Logstash → OpenSearch
+
+### Import Dashboards
+
+1. Open Grafana: `http://<siem-server>:3000` (admin/admin)
+2. Go to **Dashboards** → **Import**
+3. Upload `dashboards/Suricata IDS_IPS Dashboard.json`
+4. Select your OpenSearch datasource
+5. Click **Import**
+
+---
+
+## 📚 Documentation
+
+### Getting Started
+- **[Quick Start Guide](QUICK_START.md)** - 15-minute deployment walkthrough
+- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)** - Step-by-step validation
+- **[Documentation Index](docs/DOCUMENTATION_INDEX.md)** - Complete guide to all docs
+
+### Installation & Configuration
+- **[SIEM Stack Installation](docs/INSTALL_SIEM_STACK.md)** - OpenSearch, Logstash, Grafana
+- **[pfSense Forwarder Setup](docs/INSTALL_PFSENSE_FORWARDER.md)** - Python forwarder deployment
+- **[GeoIP Configuration](docs/GEOIP_SETUP.md)** - MaxMind database setup
+- **[Configuration Guide](docs/CONFIGURATION.md)** - All `config.env` options
+
+### Optimization & Tuning
+- **[Suricata Optimization](docs/SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **ESSENTIAL**
+  - Rule selection strategies
+  - Performance tuning (inline IPS vs IDS)
+  - Multi-interface configuration
+  - Testing and validation
+- **[PfBlockerNG Setup](docs/PFBLOCKERNG_OPTIMIZATION.md)** - Blocklist strategies
+- **[Retention Policies](docs/MULTI_INTERFACE_RETENTION.md)** - Index lifecycle management
+
+### Troubleshooting
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and fixes
+- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)** - Datasource and field issues
+- **[Log Rotation Fix](docs/LOG_ROTATION_FIX.md)** - Forwarder stuck on old files
+- **[Forwarder Monitoring](docs/FORWARDER_MONITORING_QUICK_REF.md)** - Health checks
+
+---
+
+## 🔧 Advanced Topics
+
+### Custom Deployment Scenarios
+
+**Inline IPS on WAN + IDS on VLANs:**
 ```bash
-SIEM_HOST=192.168.210.10      # Your SIEM server IP
-PFSENSE_HOST=192.168.1.1       # Your pfSense firewall IP
+# WAN interfaces: ix0, ix1 (inline IPS with Snort ET)
+# VLANs: lagg1.10, lagg1.14, lagg1.22, etc. (IDS with ET)
+# IoT VLANs: Heavy monitoring
+# NAS/trusted VLANs: Light monitoring
 ```
 
-All other settings have sensible defaults but can be customized.
+See [Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md) for per-VLAN policy configuration.
 
-### 3. Run Automated Setup
+**East-West Detection:**
+- Monitor RFC1918 → RFC1918 flows for lateral movement
+- Separate dashboard for internal traffic analysis
+- Detect anomalies like SMB brute force, RDP scanning, etc.
 
-**ONE COMMAND** to configure everything:
+See [LAN Monitoring Setup](docs/LAN_MONITORING.md) for configuration.
 
-```bash
-./setup.sh
-```
+### Watchdog & Automation
 
-This single script will:
-- ✅ Load your configuration from `config.env`
-- ✅ Configure OpenSearch with proper index templates and auto-create settings
-- ✅ Deploy the forwarder to pfSense with your SIEM IP
-- ✅ Install and configure the watchdog for automatic restarts
-- ✅ Verify everything is working
+**Forwarder Watchdog** (`suricata-forwarder-watchdog.sh`):
+- Monitors forwarder process health
+- Restarts on failure or stuck state
+- Runs via cron every 5 minutes
 
-**That's it!** No manual configuration needed.
+**Restart Hooks** (`suricata-restart-hook.sh`):
+- Ensures forwarder starts after Suricata upgrades
+- Handles log rotation gracefully
+- Integrated with pfSense Suricata package
 
-### 4. Import Dashboard
+See [scripts/README.md](scripts/README.md) for all helper scripts.
 
-1. Open Grafana: `http://<siem-server-ip>:3000`
-2. Login (default: admin/admin)
-3. Go to **Dashboards** → **New** → **Import**
-4. Upload: `dashboards/Suricata IDS_IPS Dashboard.json`
-5. **Select your OpenSearch datasource** when prompted
-6. Click **Import**
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Areas of interest:
+- Additional dashboards (firewall logs, Telegraf metrics, pfBlockerNG stats)
+- Performance optimizations
+- Docker/container deployment
+- Ansible playbooks
+- Additional forwarder integrations (Zeek, Snort3, etc.)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **pfSense** - Rock-solid firewall platform
+- **Suricata** - High-performance IDS/IPS engine
+- **OpenSearch** - Powerful search and analytics
+- **Grafana** - Beautiful visualization
+- **MaxMind** - GeoIP database
+- Community contributors and testers
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- **Documentation**: [docs/](docs/)
+
+---
+
+**Built with ❤️ for the pfSense and open-source security community**
 
 ### 5. Verify Installation
 

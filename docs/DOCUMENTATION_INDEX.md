@@ -1,83 +1,317 @@
 # Documentation Index
 
-Complete guide to all documentation in this repository.
-
-## 🚀 Getting Started
-
-**New to this project? Start here:**
-
-1. **[New User Checklist](NEW_USER_CHECKLIST.md)** ⭐ RECOMMENDED
-   - Step-by-step installation checklist
-   - Validation procedures
-   - Troubleshooting quick fixes
-   - Post-installation security hardening
-   - Maintenance schedule
-
-2. **[Main README](../README.md)**
-   - Project overview
-   - Quick start commands
-   - Architecture overview
-   - Dashboard screenshots
-
-3. **[Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ ESSENTIAL
-   - Rule selection strategies
-   - Performance tuning
-   - IDS vs IPS mode configuration
-   - Log management
-   - Testing and validation
+**Complete guide to all documentation** — Start here to find what you need.
 
 ---
 
-## 📦 Installation
+## 🚀 Quick Navigation
 
-### Initial Setup
-- **[SIEM Stack Installation](INSTALL_SIEM_STACK.md)**
-  - OpenSearch installation
-  - Logstash configuration
-  - Grafana setup
+| I want to... | Go to... |
+|--------------|----------|
+| **Get started from scratch** | [Main README](../README.md) → [Quick Start](../QUICK_START.md) |
+| **Install the SIEM stack** | [SIEM Stack Installation](INSTALL_SIEM_STACK.md) |
+| **Deploy forwarder to pfSense** | [pfSense Forwarder Setup](INSTALL_PFSENSE_FORWARDER.md) |
+| **Optimize Suricata** | [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) ⭐ |
+| **Fix "No Data" in dashboard** | [Dashboard Troubleshooting](DASHBOARD_NO_DATA_FIX.md) |
+| **Monitor internal traffic** | [LAN Monitoring Guide](LAN_MONITORING.md) |
+| **Configure blocklists** | [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md) |
+| **Troubleshoot issues** | [Troubleshooting Guide](TROUBLESHOOTING.md) |
+| **Understand architecture** | [Architecture Diagram](architecture.png) |
+
+---
+
+## 📖 Documentation Structure
+
+### 1. Getting Started
+
+**Start here if you're new:**
+
+- **[Main README](../README.md)** - Project overview, features, quick start
+- **[Quick Start Guide](../QUICK_START.md)** - 15-minute deployment walkthrough
+- **[New User Checklist](NEW_USER_CHECKLIST.md)** ⭐ - Step-by-step validation
+- **[Architecture Diagram](architecture.png)** - Visual overview of components
+
+**Read first:** [Main README](../README.md) → [Quick Start](../QUICK_START.md) → [New User Checklist](NEW_USER_CHECKLIST.md)
+
+---
+
+### 2. Installation & Deployment
+
+**Installing the SIEM stack:**
+
+- **[SIEM Stack Installation](INSTALL_SIEM_STACK.md)** - OpenSearch, Logstash, Grafana
   - System requirements
+  - Ubuntu/Debian installation
+  - Service configuration
+  - Security hardening
 
-- **[pfSense Forwarder Installation](INSTALL_PFSENSE_FORWARDER.md)**
-  - Python forwarder deployment
-  - GeoIP database setup
+**Deploying to pfSense:**
+
+- **[pfSense Forwarder Setup](INSTALL_PFSENSE_FORWARDER.md)** - Python forwarder deployment
+  - Automated via `setup.sh` (recommended)
+  - Manual installation
+  - GeoIP database configuration
   - Multi-interface support
-  - Configuration options
 
-- **[Dashboard Import](INSTALL_DASHBOARD.md)**
-  - Grafana dashboard import
-  - Data source configuration
+**Dashboard setup:**
+
+- **[Dashboard Import](INSTALL_DASHBOARD.md)** - Import Grafana dashboards
+  - Datasource configuration
   - Panel customization
   - Variable setup
 
-### Automated Setup
-- **Main README → Quick Start**
-  - ONE command: `./setup.sh`
-  - Automated everything
-  - No manual configuration
+**Automated deployment:**
+
+- **[README → Quick Start](../README.md#-quick-start)** - ONE command setup
+  - `./install.sh` - Install SIEM stack
+  - `./setup.sh` - Configure everything
+  - `./scripts/status.sh` - Verify installation
 
 ---
 
-## ⚙️ Configuration
+### 3. Configuration
 
-### Core Configuration
-- **[Configuration Guide](CONFIGURATION.md)**
-  - config.env settings
+**Core configuration:**
+
+- **[Configuration Guide](CONFIGURATION.md)** - All `config.env` settings
+  - Required settings
   - Advanced options
   - Performance tuning
   - Custom fields
 
-- **[GeoIP Setup](GEOIP_SETUP.md)**
-  - MaxMind database installation
+- **[GeoIP Setup](GEOIP_SETUP.md)** - MaxMind GeoIP database
+  - Installation methods
   - Auto-update configuration
   - ntopng integration
   - Manual updates
 
-### OpenSearch & Logstash
-- **[OpenSearch Auto-Create](OPENSEARCH_AUTO_CREATE.md)**
-  - Fixes midnight UTC data stoppage
+**OpenSearch & Logstash:**
+
+- **[OpenSearch Auto-Create](OPENSEARCH_AUTO_CREATE.md)** - Fix midnight UTC data stoppage
   - Index template configuration
-  - Action.auto_create_index settings
+  - `action.auto_create_index` settings
   - Index lifecycle policies
+
+- **[Retention Policies](MULTI_INTERFACE_RETENTION.md)** - Data lifecycle management
+  - Index rollover
+  - Automatic deletion
+  - Per-interface retention
+
+**Telegraf (optional):**
+
+- **[Telegraf Setup](TELEGRAF_PFBLOCKER_SETUP.md)** - pfSense metrics collection
+- **[Telegraf Restart Procedure](TELEGRAF_RESTART_PROCEDURE.md)** - Troubleshooting
+
+---
+
+### 4. Optimization & Tuning
+
+**Essential reading:**
+
+- **[Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **MUST READ**
+  - Rule selection strategies
+  - Performance tuning (inline IPS vs IDS)
+  - Multi-interface configuration
+  - Testing and validation
+  - IDS vs IPS mode decision tree
+
+**Threat intelligence:**
+
+- **[PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md)** - Upstream blocklisting
+  - Recommended feeds
+  - Configuration best practices
+  - Integration with Suricata
+  - Performance tips
+
+**Advanced monitoring:**
+
+- **[LAN Monitoring & East-West Detection](LAN_MONITORING.md)** - Internal traffic monitoring
+  - Suricata on VLANs
+  - Lateral movement detection
+  - Per-VLAN policies
+  - Use cases and examples
+
+---
+
+### 5. Troubleshooting
+
+**General issues:**
+
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common problems and solutions
+  - No data in dashboard
+  - Forwarder not running
+  - OpenSearch connection issues
+  - Logstash pipeline errors
+
+**Specific issues:**
+
+- **[Dashboard "No Data" Fix](DASHBOARD_NO_DATA_FIX.md)** - Comprehensive dashboard troubleshooting
+  - Datasource issues
+  - Field mapping problems
+  - EOF behavior
+  - Time range issues
+
+- **[Log Rotation Fix](LOG_ROTATION_FIX.md)** - Forwarder stuck on old files
+  - How rotation works
+  - Inode monitoring solution
+  - Verification steps
+  - Prevention
+
+- **[pfSense Filterlog Rotation](PFSENSE_FILTERLOG_ROTATION_FIX.md)** - Filterlog specific issues
+
+- **[Telegraf Interface Fixes](TELEGRAF_INTERFACE_FIXES.md)** - Telegraf interface stats issues
+
+**Monitoring forwarder health:**
+
+- **[Forwarder Monitoring Quick Reference](FORWARDER_MONITORING_QUICK_REF.md)** - Health checks
+- **[Suricata Forwarder Monitoring](SURICATA_FORWARDER_MONITORING.md)** - Detailed monitoring setup
+
+---
+
+### 6. Advanced Topics
+
+**Scripts and automation:**
+
+- **[Scripts README](../scripts/README.md)** - All helper scripts explained
+  - Forwarders
+  - Watchdogs
+  - Configuration tools
+  - Utilities
+
+**Specific guides:**
+
+- **[MAC Vendor Lookup Setup](MAC_VENDOR_LOOKUP_SETUP.md)** - Enrich with OUI data
+- **[pfSense Information Panel Issue](PF_INFORMATION_PANEL_ISSUE.md)** - Specific panel fix
+- **[Filterlog Monitoring Cron](SETUP_FILTERLOG_MONITORING_CRON.md)** - Automated monitoring
+
+---
+
+### 7. Reference
+
+**Project documentation:**
+
+- **[CHANGELOG](../CHANGELOG.md)** - Version history and changes
+- **[LICENSE](../LICENSE)** - MIT License
+- **[CONTRIBUTING](../CONTRIBUTING.md)** - How to contribute
+- **[Organization](../ORGANIZATION.md)** - Project structure
+
+**Session notes:**
+
+- **[Session Summary](SESSION_SUMMARY.md)** - Development session notes (historical)
+
+---
+
+## 📚 Recommended Reading Order
+
+### For New Users
+
+1. **[Main README](../README.md)** - Understand what this project does
+2. **[Architecture Diagram](architecture.png)** - Visualize components
+3. **[Quick Start](../QUICK_START.md)** - Deploy in 15 minutes
+4. **[New User Checklist](NEW_USER_CHECKLIST.md)** - Validate installation
+5. **[Suricata Optimization](SURICATA_OPTIMIZATION_GUIDE.md)** - Tune for your environment
+
+### For Advanced Users
+
+1. **[Configuration Guide](CONFIGURATION.md)** - Understand all options
+2. **[PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md)** - Add upstream filtering
+3. **[LAN Monitoring](LAN_MONITORING.md)** - Monitor internal traffic
+4. **[Forwarder Monitoring](FORWARDER_MONITORING_QUICK_REF.md)** - Ensure reliability
+5. **[Scripts README](../scripts/README.md)** - Automate operations
+
+### For Troubleshooters
+
+1. **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Start here
+2. **[Dashboard "No Data" Fix](DASHBOARD_NO_DATA_FIX.md)** - Dashboard issues
+3. **[Log Rotation Fix](LOG_ROTATION_FIX.md)** - Forwarder issues
+4. **`./scripts/status.sh`** - Automated diagnostics
+
+---
+
+## 🔍 Finding Specific Information
+
+### By Component
+
+| Component | Documentation |
+|-----------|---------------|
+| **Suricata** | [Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md), [LAN Monitoring](LAN_MONITORING.md) |
+| **Forwarder** | [Installation](INSTALL_PFSENSE_FORWARDER.md), [Monitoring](FORWARDER_MONITORING_QUICK_REF.md), [Rotation Fix](LOG_ROTATION_FIX.md) |
+| **OpenSearch** | [Auto-Create](OPENSEARCH_AUTO_CREATE.md), [Retention](MULTI_INTERFACE_RETENTION.md) |
+| **Logstash** | [SIEM Installation](INSTALL_SIEM_STACK.md), [Configuration](CONFIGURATION.md) |
+| **Grafana** | [Dashboard Import](INSTALL_DASHBOARD.md), [No Data Fix](DASHBOARD_NO_DATA_FIX.md) |
+| **PfBlockerNG** | [Optimization Guide](PFBLOCKERNG_OPTIMIZATION.md) |
+| **Telegraf** | [Setup](TELEGRAF_PFBLOCKER_SETUP.md), [Restart](TELEGRAF_RESTART_PROCEDURE.md) |
+
+### By Task
+
+| Task | Documentation |
+|------|---------------|
+| **Install everything** | [Quick Start](../QUICK_START.md) |
+| **Deploy forwarder** | [Forwarder Installation](INSTALL_PFSENSE_FORWARDER.md) |
+| **Optimize Suricata** | [Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) |
+| **Monitor internal traffic** | [LAN Monitoring](LAN_MONITORING.md) |
+| **Fix no data** | [Dashboard Fix](DASHBOARD_NO_DATA_FIX.md) |
+| **Configure GeoIP** | [GeoIP Setup](GEOIP_SETUP.md) |
+| **Set retention** | [Retention Policies](MULTI_INTERFACE_RETENTION.md) |
+
+---
+
+## 📁 Documentation Files
+
+**Active documentation** (current and maintained):
+
+```
+docs/
+├── DOCUMENTATION_INDEX.md          ← You are here
+├── architecture.mmd / .png         ← Architecture diagram
+│
+├── Getting Started
+│   ├── NEW_USER_CHECKLIST.md
+│   └── ../QUICK_START.md
+│
+├── Installation
+│   ├── INSTALL_SIEM_STACK.md
+│   ├── INSTALL_PFSENSE_FORWARDER.md
+│   └── INSTALL_DASHBOARD.md
+│
+├── Configuration
+│   ├── CONFIGURATION.md
+│   ├── GEOIP_SETUP.md
+│   ├── OPENSEARCH_AUTO_CREATE.md
+│   └── MULTI_INTERFACE_RETENTION.md
+│
+├── Optimization
+│   ├── SURICATA_OPTIMIZATION_GUIDE.md  ⭐
+│   ├── PFBLOCKERNG_OPTIMIZATION.md
+│   └── LAN_MONITORING.md
+│
+├── Troubleshooting
+│   ├── TROUBLESHOOTING.md
+│   ├── DASHBOARD_NO_DATA_FIX.md
+│   ├── LOG_ROTATION_FIX.md
+│   ├── FORWARDER_MONITORING_QUICK_REF.md
+│   └── SURICATA_FORWARDER_MONITORING.md
+│
+└── archive/                         ← Historical docs
+```
+
+**Archive** (`docs/archive/`): Old documentation kept for reference
+
+---
+
+## 🆘 Getting Help
+
+1. **Check documentation** - Use this index to find relevant guides
+2. **Run diagnostics** - `./scripts/status.sh` for automated checks
+3. **Search issues** - [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
+4. **Ask questions** - [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+5. **Report bugs** - [New Issue](https://github.com/ChiefGyk3D/pfsense_grafana/issues/new)
+
+---
+
+**Last updated:** 2025-11-27 (Project overhaul)
+
+**Maintained by:** [@ChiefGyk3D](https://github.com/ChiefGyk3D)
 
 - **[OpenSearch Configuration](../config/README.md)**
   - Index templates
