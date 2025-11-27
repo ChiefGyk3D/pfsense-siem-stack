@@ -543,5 +543,434 @@ a1013.dsct.akamai.net # CNAME for (analytics-ipv6.tiktokw.us)
 .sundaysky.com #AI Player Needed for Work benefits
 urlscan.io #URL Scan
 .urlscan.io #URL Scan
-myip.ms #myip.ms blacklist
-.myip.ms #myip.ms blacklist
+# Privacy & Security Services
+.signal.org # Signal secure messaging
+signal.org # Signal secure messaging
+.protonmail.com # Proton secure email
+protonmail.com # Proton secure email
+.proton.me # Proton secure email (new domain)
+proton.me # Proton secure email (new domain)
+.duckduckgo.com # Privacy search engine
+duckduckgo.com # Privacy search engine
+.brave.com # Privacy browser
+brave.com # Privacy browser
+# Apple Services (iOS/macOS)
+.apple.com # Apple services
+apple.com # Apple services
+.icloud.com # iCloud services
+icloud.com # iCloud services
+.apple-cloudkit.com # iCloud CloudKit
+apple-cloudkit.com # iCloud CloudKit
+.apple-mapkit.com # Apple Maps
+apple-mapkit.com # Apple Maps
+.cdn-apple.com # Apple CDN
+cdn-apple.com # Apple CDN
+.mzstatic.com # Apple iTunes/App Store CDN
+mzstatic.com # Apple iTunes/App Store CDN
+.apple-dns.net # Apple DNS
+apple-dns.net # Apple DNS
+.appleiphonecell.com # Apple iPhone cellular services
+appleiphonecell.com # Apple iPhone cellular services
+.push.apple.com # Apple Push Notification
+push.apple.com # Apple Push Notification
+init.itunes.apple.com # Apple iTunes initialization
+.isg-apple.com.akadns.net # Apple Akamai CDN
+.ls.apple.com # Apple location services
+ls.apple.com # Apple location services
+.guzzoni.apple.com # Siri
+guzzoni.apple.com # Siri
+.smoot.apple.com # Siri
+smoot.apple.com # Siri
+# Banking - US National Banks
+.bankofamerica.com # Bank of America
+bankofamerica.com # Bank of America
+.chase.com # Chase Bank
+chase.com # Chase Bank
+.wellsfargo.com # Wells Fargo
+wellsfargo.com # Wells Fargo
+.citi.com # Citibank
+citi.com # Citibank
+.citibank.com # Citibank
+citibank.com # Citibank
+.usbank.com # U.S. Bank
+usbank.com # U.S. Bank
+.pnc.com # PNC Bank
+pnc.com # PNC Bank
+.capitalone.com # Capital One
+capitalone.com # Capital One
+.tdbank.com # TD Bank
+tdbank.com # TD Bank
+.bbt.com # BB&T (Truist)
+bbt.com # BB&T (Truist)
+.truist.com # Truist Bank
+truist.com # Truist Bank
+.suntrust.com # SunTrust (Truist)
+suntrust.com # SunTrust (Truist)
+.regions.com # Regions Bank
+regions.com # Regions Bank
+.key.com # KeyBank
+key.com # KeyBank
+.fifththird.com # Fifth Third Bank
+fifththird.com # Fifth Third Bank
+.ally.com # Ally Bank
+ally.com # Ally Bank
+.citizens.com # Citizens Bank
+citizens.com # Citizens Bank
+.huntington.com # Huntington Bank
+huntington.com # Huntington Bank
+.mufg.jp # MUFG Union Bank
+mufg.jp # MUFG Union Bank
+.unionbank.com # Union Bank
+unionbank.com # Union Bank
+.mtb.com # M&T Bank
+mtb.com # M&T Bank
+.santanderbank.com # Santander Bank
+santanderbank.com # Santander Bank
+.discover.com # Discover Bank
+discover.com # Discover Bank
+.synchronybank.com # Synchrony Bank
+synchronybank.com # Synchrony Bank
+.goldmansachs.com # Goldman Sachs (Marcus)
+goldmansachs.com # Goldman Sachs (Marcus)
+.marcus.com # Marcus by Goldman Sachs
+marcus.com # Marcus by Goldman Sachs
+.schwab.com # Charles Schwab Bank
+schwab.com # Charles Schwab Bank
+.americanexpress.com # American Express
+americanexpress.com # American Express
+.amex.com # American Express
+amex.com # American Express
+# Federal Credit Unions
+.navyfederal.org # Navy Federal Credit Union
+navyfederal.org # Navy Federal Credit Union
+.penfed.org # Pentagon Federal Credit Union
+penfed.org # Pentagon Federal Credit Union
+.alliantcreditunion.org # Alliant Credit Union
+alliantcreditunion.org # Alliant Credit Union
+.statefarm.com # State Farm Bank
+statefarm.com # State Farm Bank
+.usaa.com # USAA
+usaa.com # USAA
+# State Credit Unions - Alabama
+.alabamacu.com # Alabama Credit Union
+alabamacu.com # Alabama Credit Union
+.avadian.org # Avadian Credit Union (AL)
+avadian.org # Avadian Credit Union (AL)
+# State Credit Unions - Alaska
+.alaskausafcu.org # Alaska USA Federal Credit Union
+alaskausafcu.org # Alaska USA Federal Credit Union
+# State Credit Unions - Arizona
+.arizonafederal.org # Arizona Federal Credit Union
+arizonafederal.org # Arizona Federal Credit Union
+.desertschools.org # Desert Schools Federal Credit Union (AZ)
+desertschools.org # Desert Schools Federal Credit Union (AZ)
+.nationalbank.com # National Bank of Arizona
+nationalbank.com # National Bank of Arizona
+# State Credit Unions - Arkansas
+.arkansasfcu.org # Arkansas Federal Credit Union
+arkansasfcu.org # Arkansas Federal Credit Union
+# State Credit Unions - California
+.goldcoastfcu.org # Golden 1 Credit Union (CA)
+goldcoastfcu.org # Golden 1 Credit Union (CA)
+.golden1.com # Golden 1 Credit Union (CA)
+golden1.com # Golden 1 Credit Union (CA)
+.schoolsfirstfcu.org # SchoolsFirst Federal Credit Union (CA)
+schoolsfirstfcu.org # SchoolsFirst Federal Credit Union (CA)
+.logix.org # Logix Federal Credit Union (CA)
+logix.org # Logix Federal Credit Union (CA)
+.wescom.org # Wescom Credit Union (CA)
+wescom.org # Wescom Credit Union (CA)
+.sccu.com # San Diego County Credit Union (CA)
+sccu.com # San Diego County Credit Union (CA)
+.firsttech.org # First Tech Federal Credit Union (CA/OR)
+firsttech.org # First Tech Federal Credit Union (CA/OR)
+# State Credit Unions - Colorado
+.ent.com # Ent Credit Union (CO)
+ent.com # Ent Credit Union (CO)
+.wingsfinancialcu.org # Wings Financial Credit Union (CO)
+wingsfinancialcu.org # Wings Financial Credit Union (CO)
+# State Credit Unions - Connecticut
+.connycu.org # Connecticut State Employees Credit Union
+connycu.org # Connecticut State Employees Credit Union
+# State Credit Unions - Delaware
+.delone.org # Del-One Federal Credit Union (DE)
+delone.org # Del-One Federal Credit Union (DE)
+# State Credit Unions - Florida
+.suncoastcreditunion.com # Suncoast Credit Union (FL)
+suncoastcreditunion.com # Suncoast Credit Union (FL)
+.midflorida.com # MidFlorida Credit Union
+midflorida.com # MidFlorida Credit Union
+.vistaccu.com # VyStar Credit Union (FL)
+vistaccu.com # VyStar Credit Union (FL)
+# State Credit Unions - Georgia
+.deltacommunityfcu.com # Delta Community Credit Union (GA)
+deltacommunityfcu.com # Delta Community Credit Union (GA)
+.lgfcu.org # LGE Community Credit Union (GA)
+lgfcu.org # LGE Community Credit Union (GA)
+# State Credit Unions - Hawaii
+.hawaiistatefcu.com # Hawaii State Federal Credit Union
+hawaiistatefcu.com # Hawaii State Federal Credit Union
+.hicufcu.org # Hawaiian Islands Credit Union
+hicufcu.org # Hawaiian Islands Credit Union
+# State Credit Unions - Idaho
+.capedfcu.org # Capital Educators Federal Credit Union (ID)
+capedfcu.org # Capital Educators Federal Credit Union (ID)
+# State Credit Unions - Illinois
+.abtfcu.org # Alliant Credit Union (IL)
+abtfcu.org # Alliant Credit Union (IL)
+.latinocu.org # Latino Community Credit Union (IL)
+latinocu.org # Latino Community Credit Union (IL)
+# State Credit Unions - Indiana
+.telcocu.com # Teachers Credit Union (IN)
+telcocu.com # Teachers Credit Union (IN)
+.indianauniversity.org # Indiana University Credit Union
+indianauniversity.org # Indiana University Credit Union
+# State Credit Unions - Iowa
+.veridiancu.org # Veridian Credit Union (IA)
+veridiancu.org # Veridian Credit Union (IA)
+# State Credit Unions - Kansas
+.cpcreditunion.org # Community America Credit Union (KS)
+cpcreditunion.org # Community America Credit Union (KS)
+# State Credit Unions - Kentucky
+.uky.edu # University of Kentucky Federal Credit Union
+uky.edu # University of Kentucky Federal Credit Union
+# State Credit Unions - Louisiana
+.redrivercu.org # Red River Credit Union (LA)
+redrivercu.org # Red River Credit Union (LA)
+# State Credit Unions - Maine
+.mainestatecu.org # Maine State Credit Union
+mainestatecu.org # Maine State Credit Union
+# State Credit Unions - Maryland
+.sesloc.org # SECU of Maryland
+sesloc.org # SECU of Maryland
+.secumd.org # SECU of Maryland
+secumd.org # SECU of Maryland
+# State Credit Unions - Massachusetts
+.dcu.org # Digital Federal Credit Union (MA)
+dcu.org # Digital Federal Credit Union (MA)
+.mitfcu.org # MIT Federal Credit Union (MA)
+mitfcu.org # MIT Federal Credit Union (MA)
+# State Credit Unions - Michigan
+.lmcu.org # Lake Michigan Credit Union
+lmcu.org # Lake Michigan Credit Union
+.msgcu.org # Michigan State University Federal Credit Union
+msgcu.org # Michigan State University Federal Credit Union
+# State Credit Unions - Minnesota
+.spire.org # Spire Credit Union (MN)
+spire.org # Spire Credit Union (MN)
+.affinitiplus.org # Affinity Plus Federal Credit Union (MN)
+affinitiplus.org # Affinity Plus Federal Credit Union (MN)
+# State Credit Unions - Mississippi
+.keesler.org # Keesler Federal Credit Union (MS)
+keesler.org # Keesler Federal Credit Union (MS)
+# State Credit Unions - Missouri
+.como.org # Community America Credit Union (MO)
+como.org # Community America Credit Union (MO)
+# State Credit Unions - Montana
+.montanacu.com # Montana Federal Credit Union
+montanacu.com # Montana Federal Credit Union
+# State Credit Unions - Nebraska
+.firstnebraska.org # First Nebraska Credit Union
+firstnebraska.org # First Nebraska Credit Union
+# State Credit Unions - Nevada
+.onenvcu.org # One Nevada Credit Union
+onenvcu.org # One Nevada Credit Union
+.clarkcountycu.org # Clark County Credit Union (NV)
+clarkcountycu.org # Clark County Credit Union (NV)
+# State Credit Unions - New Hampshire
+.servicecu.org # Service Credit Union (NH)
+servicecu.org # Service Credit Union (NH)
+# State Credit Unions - New Jersey
+.affinity.org # Affinity Federal Credit Union (NJ)
+affinity.org # Affinity Federal Credit Union (NJ)
+# State Credit Unions - New Mexico
+.snfcu.org # Sandia Laboratory Federal Credit Union (NM)
+snfcu.org # Sandia Laboratory Federal Credit Union (NM)
+# State Credit Unions - New York
+.tfcu.org # Teachers Federal Credit Union (NY)
+tfcu.org # Teachers Federal Credit Union (NY)
+.ibew3.org # Bethpage Federal Credit Union (NY)
+ibew3.org # Bethpage Federal Credit Union (NY)
+.bethpagefcu.com # Bethpage Federal Credit Union (NY)
+bethpagefcu.com # Bethpage Federal Credit Union (NY)
+# State Credit Unions - North Carolina
+.ncsecu.org # State Employees' Credit Union of North Carolina
+ncsecu.org # State Employees' Credit Union of North Carolina
+.lge-cu.com # Coastal Credit Union (NC)
+lge-cu.com # Coastal Credit Union (NC)
+# State Credit Unions - North Dakota
+.starionbank.com # Starion Financial (ND)
+starionbank.com # Starion Financial (ND)
+# State Credit Unions - Ohio
+.wrightpattcu.org # Wright-Patt Credit Union (OH)
+wrightpattcu.org # Wright-Patt Credit Union (OH)
+.roundpointmortgage.com # Roundpoint Mortgage (OH)
+roundpointmortgage.com # Roundpoint Mortgage (OH)
+.kemba.org # Kemba Credit Union (OH)
+kemba.org # Kemba Credit Union (OH)
+.telhio.org # Telhio Credit Union (OH)
+telhio.org # Telhio Credit Union (OH)
+# State Credit Unions - Oklahoma
+.tinker.org # Tinker Federal Credit Union (OK)
+tinker.org # Tinker Federal Credit Union (OK)
+# State Credit Unions - Oregon
+.onpointcu.com # OnPoint Community Credit Union (OR)
+onpointcu.com # OnPoint Community Credit Union (OR)
+.oregonstatecu.com # Oregon State Credit Union
+oregonstatecu.com # Oregon State Credit Union
+# State Credit Unions - Pennsylvania
+.psecu.com # Pennsylvania State Employees Credit Union
+psecu.com # Pennsylvania State Employees Credit Union
+.trumarkcreditunion.org # TruMark Financial Credit Union (PA)
+trumarkcreditunion.org # TruMark Financial Credit Union (PA)
+# State Credit Unions - Rhode Island
+.navigantcu.org # Navigant Credit Union (RI)
+navigantcu.org # Navigant Credit Union (RI)
+# State Credit Unions - South Carolina
+.scfcu.org # South Carolina Federal Credit Union
+scfcu.org # South Carolina Federal Credit Union
+# State Credit Unions - South Dakota
+.dakotalandbank.com # DakotaLand Federal Credit Union (SD)
+dakotalandbank.com # DakotaLand Federal Credit Union (SD)
+# State Credit Unions - Tennessee
+.orion.org # Orion Federal Credit Union (TN)
+orion.org # Orion Federal Credit Union (TN)
+.tvacreditunion.com # TVA Community Credit Union (TN)
+tvacreditunion.com # TVA Community Credit Union (TN)
+# State Credit Unions - Texas
+.ufcu.org # University Federal Credit Union (TX)
+ufcu.org # University Federal Credit Union (TX)
+.randolphbrooks.org # Randolph-Brooks Federal Credit Union (TX)
+randolphbrooks.org # Randolph-Brooks Federal Credit Union (TX)
+.securityservicefcu.org # Security Service Federal Credit Union (TX)
+securityservicefcu.org # Security Service Federal Credit Union (TX)
+.atmocreditunion.com # Atmos Energy Credit Union (TX)
+atmocreditunion.com # Atmos Energy Credit Union (TX)
+# State Credit Unions - Utah
+.americafirst.com # America First Credit Union (UT)
+americafirst.com # America First Credit Union (UT)
+.mountainamericacu.com # Mountain America Credit Union (UT)
+mountainamericacu.com # Mountain America Credit Union (UT)
+# State Credit Unions - Vermont
+.vtfcu.org # Vermont Federal Credit Union
+vtfcu.org # Vermont Federal Credit Union
+# State Credit Unions - Virginia
+.vacu.org # Virginia Credit Union
+vacu.org # Virginia Credit Union
+.langleycu.org # Langley Federal Credit Union (VA)
+langleycu.org # Langley Federal Credit Union (VA)
+# State Credit Unions - Washington
+.becu.org # Boeing Employees Credit Union (WA)
+becu.org # Boeing Employees Credit Union (WA)
+.wecu.com # WECU (WA)
+wecu.com # WECU (WA)
+.stcu.org # Spokane Teachers Credit Union (WA)
+stcu.org # Spokane Teachers Credit Union (WA)
+# State Credit Unions - West Virginia
+.wvcu.org # West Virginia Credit Union
+wvcu.org # West Virginia Credit Union
+# State Credit Unions - Wisconsin
+.uwcu.org # UW Credit Union (WI)
+uwcu.org # UW Credit Union (WI)
+.summitcreditunion.com # Summit Credit Union (WI)
+summitcreditunion.com # Summit Credit Union (WI)
+# State Credit Unions - Wyoming
+.bluepcu.com # Blue Federal Credit Union (WY)
+bluepcu.com # Blue Federal Credit Union (WY)
+# International Banks (Commented - Uncomment if needed)
+# .hsbc.com # HSBC (UK/Hong Kong)
+# hsbc.com # HSBC
+# .hsbc.co.uk # HSBC UK
+# hsbc.co.uk # HSBC UK
+# .barclays.com # Barclays (UK)
+# barclays.com # Barclays
+# .barclays.co.uk # Barclays UK
+# barclays.co.uk # Barclays UK
+# .lloydsbank.com # Lloyds Bank (UK)
+# lloydsbank.com # Lloyds Bank
+# .natwest.com # NatWest (UK)
+# natwest.com # NatWest
+# .rbs.com # Royal Bank of Scotland
+# rbs.com # Royal Bank of Scotland
+# .santander.com # Santander (Spain)
+# santander.com # Santander
+# .santander.co.uk # Santander UK
+# santander.co.uk # Santander UK
+# .bnpparibas.com # BNP Paribas (France)
+# bnpparibas.com # BNP Paribas
+# .societegenerale.com # Société Générale (France)
+# societegenerale.com # Société Générale
+# .credit-agricole.com # Crédit Agricole (France)
+# credit-agricole.com # Crédit Agricole
+# .deutschebank.com # Deutsche Bank (Germany)
+# deutschebank.com # Deutsche Bank
+# .commerzbank.com # Commerzbank (Germany)
+# commerzbank.com # Commerzbank
+# .ing.com # ING Bank (Netherlands)
+# ing.com # ING Bank
+# .abnamro.com # ABN AMRO (Netherlands)
+# abnamro.com # ABN AMRO
+# .ubs.com # UBS (Switzerland)
+# ubs.com # UBS
+# .credit-suisse.com # Credit Suisse (Switzerland)
+# credit-suisse.com # Credit Suisse
+# .rabobank.com # Rabobank (Netherlands)
+# rabobank.com # Rabobank
+# .unicredit.it # UniCredit (Italy)
+# unicredit.it # UniCredit
+# .intesasanpaolo.com # Intesa Sanpaolo (Italy)
+# intesasanpaolo.com # Intesa Sanpaolo
+# .bbva.com # BBVA (Spain)
+# bbva.com # BBVA
+# .caixabank.com # CaixaBank (Spain)
+# caixabank.com # CaixaBank
+# .rbc.com # Royal Bank of Canada
+# rbc.com # Royal Bank of Canada
+# .td.com # TD Bank (Canada)
+# td.com # TD Bank Canada
+# .scotiabank.com # Scotiabank (Canada)
+# scotiabank.com # Scotiabank
+# .bmo.com # Bank of Montreal
+# bmo.com # Bank of Montreal
+# .cibc.com # CIBC (Canada)
+# cibc.com # CIBC
+# .nab.com.au # National Australia Bank
+# nab.com.au # NAB
+# .commbank.com.au # Commonwealth Bank (Australia)
+# commbank.com.au # Commonwealth Bank
+# .westpac.com.au # Westpac (Australia)
+# westpac.com.au # Westpac
+# .anz.com # ANZ Bank (Australia/New Zealand)
+# anz.com # ANZ Bank
+# .asb.co.nz # ASB Bank (New Zealand)
+# asb.co.nz # ASB Bank
+# .icicibank.com # ICICI Bank (India)
+# icicibank.com # ICICI Bank
+# .hdfcbank.com # HDFC Bank (India)
+# hdfcbank.com # HDFC Bank
+# .sbi.co.in # State Bank of India
+# sbi.co.in # State Bank of India
+# .dbs.com # DBS Bank (Singapore)
+# dbs.com # DBS Bank
+# .ocbc.com # OCBC Bank (Singapore)
+# ocbc.com # OCBC Bank
+# .uob.com # UOB Bank (Singapore)
+# uob.com # UOB Bank
+# .boc.cn # Bank of China
+# boc.cn # Bank of China
+# .icbc.com.cn # Industrial and Commercial Bank of China
+# icbc.com.cn # ICBC
+# .ccb.com # China Construction Bank
+# ccb.com # China Construction Bank
+# .abchina.com # Agricultural Bank of China
+# abchina.com # Agricultural Bank of China
+# .bankofchina.com # Bank of China (International)
+# bankofchina.com # Bank of China
+# .mizuhobank.com # Mizuho Bank (Japan)
+# mizuhobank.com # Mizuho Bank
+# .smbc.co.jp # Sumitomo Mitsui Banking Corporation (Japan)
+# smbc.co.jp # SMBC
+# .bk.mufg.jp # MUFG Bank (Japan)
+# bk.mufg.jp # MUFG Bank
+# .nomura.com # Nomura Bank (Japan)
+# nomura.com # Nomura Bank
