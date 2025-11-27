@@ -211,4 +211,4 @@ Long-term ideas (no timeline, community-driven):
 
 **Last Updated**: November 27, 2025  
 **Maintainer**: [ChiefGyk3D](https://github.com/ChiefGyk3D)  
-**License**: MIT
+**License**: MPL 2.0
