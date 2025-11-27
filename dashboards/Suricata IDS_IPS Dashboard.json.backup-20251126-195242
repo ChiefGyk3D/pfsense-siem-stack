@@ -66,7 +66,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Total events and alerts",
       "fieldConfig": {
@@ -184,7 +184,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -212,7 +212,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -220,7 +220,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert",
+          "query": "suricata.eve.event_type:alert",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -331,7 +331,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "event_type.keyword",
+              "field": "suricata.eve.event_type.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -353,7 +353,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -429,7 +429,7 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "src_ip.keyword": "Source IP"
+              "suricata.eve.src_ip.keyword": "Source IP"
             }
           }
         }
@@ -438,7 +438,7 @@
         {
           "bucketAggs": [
             {
-              "field": "src_ip.keyword",
+              "field": "suricata.eve.src_ip.keyword",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -450,7 +450,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -526,7 +526,7 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "dest_ip.keyword": "Destination IP"
+              "suricata.eve.dest_ip.keyword": "Destination IP"
             }
           }
         }
@@ -535,7 +535,7 @@
         {
           "bucketAggs": [
             {
-              "field": "dest_ip.keyword",
+              "field": "suricata.eve.dest_ip.keyword",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -547,7 +547,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -623,7 +623,7 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "dns.rrname.keyword": "DNS Query"
+              "suricata.eve.dns.rrname.keyword": "DNS Query"
             }
           }
         }
@@ -632,7 +632,7 @@
         {
           "bucketAggs": [
             {
-              "field": "dns.rrname.keyword",
+              "field": "suricata.eve.dns.rrname.keyword",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -644,7 +644,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -652,7 +652,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:dns",
+          "query": "suricata.eve.event_type:dns",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -663,7 +663,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -717,7 +717,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "event_type.keyword",
+              "field": "suricata.eve.event_type.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -730,7 +730,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -749,7 +749,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -803,7 +803,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "proto.keyword",
+              "field": "suricata.eve.proto.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -816,7 +816,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -835,7 +835,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -874,7 +874,6 @@
         "pieType": "pie",
         "reduceOptions": {
           "values": true,
-          "limit": 50,
           "fields": "",
           "calcs": [
             "lastNotNull"
@@ -896,14 +895,14 @@
                 "min_doc_count": "1",
                 "order": "desc",
                 "orderBy": "_count",
-                "size": "50"
+                "size": "10"
               },
               "type": "terms"
             }
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -922,7 +921,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -982,7 +981,7 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "dest_port": "Port"
+              "suricata.eve.dest_port": "Port"
             }
           }
         }
@@ -992,7 +991,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "dest_port",
+              "field": "suricata.eve.dest_port",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1005,7 +1004,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1024,7 +1023,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1078,7 +1077,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "http.hostname.keyword",
+              "field": "suricata.eve.http.hostname.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1091,7 +1090,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1110,7 +1109,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Top alert signatures triggering",
       "fieldConfig": {
@@ -1165,7 +1164,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "alert.signature.keyword",
+              "field": "suricata.eve.alert.signature.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1178,7 +1177,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1186,7 +1185,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert",
+          "query": "suricata.eve.event_type:alert",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1197,7 +1196,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Detailed IDS alert logs",
       "fieldConfig": {
@@ -1417,7 +1416,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1425,7 +1424,7 @@
               "type": "logs"
             }
           ],
-          "query": "event_type:alert",
+          "query": "suricata.eve.event_type:alert",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1443,85 +1442,85 @@
               "_type": true,
               "event": true,
               "host.ip": true,
-              "alert.gid": true,
-              "alert.metadata": true,
-              "alert.metadata.affected_product": true,
-              "alert.metadata.attack_target": true,
-              "alert.metadata.created_at": true,
-              "alert.metadata.deployment": true,
-              "alert.metadata.signature_severity": true,
-              "alert.metadata.tag": true,
-              "alert.metadata.updated_at": true,
-              "alert.rev": true,
-              "alert.signature_id": true,
-              "direction": true,
-              "event_type": true,
-              "flow": true,
-              "flow.bytes_toclient": true,
-              "flow.bytes_toserver": true,
-              "flow.dest_ip": true,
-              "flow.dest_port": true,
-              "flow.pkts_toclient": true,
-              "flow.pkts_toserver": true,
-              "flow.src_ip": true,
-              "flow.src_port": true,
-              "flow.start": true,
-              "flow_id": true,
-              "in_iface": true,
-              "packet": true,
-              "packet_info": true,
-              "packet_info.linktype": true,
-              "payload_printable": true,
-              "pkt_src": true,
-              "stream": true,
-              "timestamp": true,
-              "geoip_src.city_name": true,
-              "geoip_src.continent_code": true,
-              "geoip_src.country_name": true,
-              "geoip_src.location": true,
-              "geoip_src.location.lat": true,
-              "geoip_src.location.lon": true,
-              "geoip_src.region_name": true,
-              "geoip_dest.city_name": true,
-              "geoip_dest.continent_code": true,
-              "geoip_dest.country_name": true,
-              "geoip_dest.location": true,
-              "geoip_dest.location.lat": true,
-              "geoip_dest.location.lon": true,
-              "geoip_dest.region_name": true,
+              "suricata.eve.alert.gid": true,
+              "suricata.eve.alert.metadata": true,
+              "suricata.eve.alert.metadata.affected_product": true,
+              "suricata.eve.alert.metadata.attack_target": true,
+              "suricata.eve.alert.metadata.created_at": true,
+              "suricata.eve.alert.metadata.deployment": true,
+              "suricata.eve.alert.metadata.signature_severity": true,
+              "suricata.eve.alert.metadata.tag": true,
+              "suricata.eve.alert.metadata.updated_at": true,
+              "suricata.eve.alert.rev": true,
+              "suricata.eve.alert.signature_id": true,
+              "suricata.eve.direction": true,
+              "suricata.eve.event_type": true,
+              "suricata.eve.flow": true,
+              "suricata.eve.flow.bytes_toclient": true,
+              "suricata.eve.flow.bytes_toserver": true,
+              "suricata.eve.flow.dest_ip": true,
+              "suricata.eve.flow.dest_port": true,
+              "suricata.eve.flow.pkts_toclient": true,
+              "suricata.eve.flow.pkts_toserver": true,
+              "suricata.eve.flow.src_ip": true,
+              "suricata.eve.flow.src_port": true,
+              "suricata.eve.flow.start": true,
+              "suricata.eve.flow_id": true,
+              "suricata.eve.in_iface": true,
+              "suricata.eve.packet": true,
+              "suricata.eve.packet_info": true,
+              "suricata.eve.packet_info.linktype": true,
+              "suricata.eve.payload_printable": true,
+              "suricata.eve.pkt_src": true,
+              "suricata.eve.stream": true,
+              "suricata.eve.timestamp": true,
+              "suricata.eve.geoip_src.city_name": true,
+              "suricata.eve.geoip_src.continent_code": true,
+              "suricata.eve.geoip_src.country_name": true,
+              "suricata.eve.geoip_src.location": true,
+              "suricata.eve.geoip_src.location.lat": true,
+              "suricata.eve.geoip_src.location.lon": true,
+              "suricata.eve.geoip_src.region_name": true,
+              "suricata.eve.geoip_dest.city_name": true,
+              "suricata.eve.geoip_dest.continent_code": true,
+              "suricata.eve.geoip_dest.country_name": true,
+              "suricata.eve.geoip_dest.location": true,
+              "suricata.eve.geoip_dest.location.lat": true,
+              "suricata.eve.geoip_dest.location.lon": true,
+              "suricata.eve.geoip_dest.region_name": true,
               "suricata.interface": true,
-              "app_proto": true,
-              "payload": true,
-              "quic.version": true,
-              "tx_id": true
+              "suricata.eve.app_proto": true,
+              "suricata.eve.payload": true,
+              "suricata.eve.quic.version": true,
+              "suricata.eve.tx_id": true
             },
             "indexByName": {
               "@timestamp": 0,
-              "alert.category": 1,
-              "alert.signature": 2,
-              "alert.action": 3,
-              "alert.severity": 4,
-              "proto": 5,
-              "src_ip": 6,
-              "src_port": 7,
-              "geoip_src.country_code": 8,
-              "dest_ip": 9,
-              "dest_port": 10,
-              "geoip_dest.country_code": 11
+              "suricata.eve.alert.category": 1,
+              "suricata.eve.alert.signature": 2,
+              "suricata.eve.alert.action": 3,
+              "suricata.eve.alert.severity": 4,
+              "suricata.eve.proto": 5,
+              "suricata.eve.src_ip": 6,
+              "suricata.eve.src_port": 7,
+              "suricata.eve.geoip_src.country_code": 8,
+              "suricata.eve.dest_ip": 9,
+              "suricata.eve.dest_port": 10,
+              "suricata.eve.geoip_dest.country_code": 11
             },
             "renameByName": {
               "@timestamp": "Time",
-              "alert.action": "Action",
-              "alert.category": "Category",
-              "alert.severity": "Severity",
-              "alert.signature": "Signature",
-              "dest_ip": "Dest IP",
-              "dest_port": "Dest Port",
-              "geoip_dest.country_code": "Dest Country",
-              "geoip_src.country_code": "Src Country",
-              "proto": "Protocol",
-              "src_ip": "Src IP",
-              "src_port": "Src Port"
+              "suricata.eve.alert.action": "Action",
+              "suricata.eve.alert.category": "Category",
+              "suricata.eve.alert.severity": "Severity",
+              "suricata.eve.alert.signature": "Signature",
+              "suricata.eve.dest_ip": "Dest IP",
+              "suricata.eve.dest_port": "Dest Port",
+              "suricata.eve.geoip_dest.country_code": "Dest Country",
+              "suricata.eve.geoip_src.country_code": "Src Country",
+              "suricata.eve.proto": "Protocol",
+              "suricata.eve.src_ip": "Src IP",
+              "suricata.eve.src_port": "Src Port"
             }
           }
         }
@@ -1531,7 +1530,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Top 10 source countries",
       "fieldConfig": {
@@ -1587,7 +1586,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "geoip_src.country_code.keyword",
+              "field": "suricata.eve.geoip_src.country_code.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1600,7 +1599,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1619,7 +1618,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Geographic distribution of inbound attack sources",
       "fieldConfig": {
@@ -1749,7 +1748,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {

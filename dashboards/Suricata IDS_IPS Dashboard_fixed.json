@@ -66,7 +66,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Total events and alerts",
       "fieldConfig": {
@@ -184,7 +184,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -212,7 +212,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -353,7 +353,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -450,7 +450,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -547,7 +547,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -644,7 +644,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -663,7 +663,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -730,7 +730,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -749,7 +749,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -816,7 +816,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -835,7 +835,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -874,7 +874,6 @@
         "pieType": "pie",
         "reduceOptions": {
           "values": true,
-          "limit": 50,
           "fields": "",
           "calcs": [
             "lastNotNull"
@@ -890,20 +889,20 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "suricata.eve.in_iface.keyword",
+              "field": "in_iface.keyword",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
                 "order": "desc",
                 "orderBy": "_count",
-                "size": "50"
+                "size": "10"
               },
               "type": "terms"
             }
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -922,7 +921,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1005,7 +1004,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1024,7 +1023,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1091,7 +1090,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1110,7 +1109,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Top alert signatures triggering",
       "fieldConfig": {
@@ -1178,7 +1177,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1197,7 +1196,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Detailed IDS alert logs",
       "fieldConfig": {
@@ -1417,7 +1416,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1531,7 +1530,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Top 10 source countries",
       "fieldConfig": {
@@ -1600,7 +1599,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1619,7 +1618,7 @@
     {
       "datasource": {
         "type": "grafana-opensearch-datasource",
-        "uid": "bf53unpmdj0u8c"
+        "uid": "${DS_OPENSEARCH}"
       },
       "description": "Geographic distribution of inbound attack sources",
       "fieldConfig": {
@@ -1715,7 +1714,7 @@
             },
             "location": {
               "mode": "geohash",
-              "geohash": "suricata.eve.geoip_src.location"
+              "geohash": "geoip_src.location"
             },
             "name": "Attack Sources",
             "tooltip": true,
@@ -1739,7 +1738,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "suricata.eve.geoip_src.location",
+              "field": "geoip_src.location",
               "id": "2",
               "settings": {
                 "precision": "3"
@@ -1749,7 +1748,7 @@
           ],
           "datasource": {
             "type": "grafana-opensearch-datasource",
-            "uid": "bf53unpmdj0u8c"
+            "uid": "${DS_OPENSEARCH}"
           },
           "metrics": [
             {
@@ -1757,7 +1756,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.event_type:alert AND _exists_:suricata.eve.geoip_src.location",
+          "query": "event_type:alert AND _exists_:geoip_src.location",
           "refId": "A",
           "timeField": "@timestamp"
         }
