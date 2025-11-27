@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Backups
+*_backup
+*_old
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Local testing
+local-test-*
+*.local
+
+# Sensitive data
+*.pem
+*.key
+*.crt
+secrets/
+
+# Configuration (user-specific)
+config.env

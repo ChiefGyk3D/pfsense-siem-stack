@@ -1,0 +1,104 @@
+flowchart TB
+  Internet(("Internet")) -->|Network Traffic| pfSense[pfSense Gateway]
+
+  subgraph pfSenseHost["pfSense Host"]
+    direction TB
+    
+    subgraph SecurityLayer["Security Layer"]
+      direction TB
+      PB[pfBlockerNG<br/>DNS/IP Blocklists]
+      
+      subgraph SuricataInstances["Suricata IDS/IPS"]
+        direction LR
+        S_WAN["WAN Interface<br/>Inline IPS Mode"]
+        S_LAN["LAN/VLAN Interfaces<br/>IDS/IPS Mode"]
+      end
+      
+      PB -.->|Feeds blocklists| S_WAN
+      PB -.->|Feeds blocklists| S_LAN
+    end
+    
+    subgraph LogCollection["Log Collection"]
+      direction TB
+      EveLogs["EVE JSON Logs<br/>/var/log/suricata/*/eve.json"]
+      FilterLogs["Filter Logs<br/>/var/log/filter.log"]
+      
+      S_WAN --> EveLogs
+      S_LAN --> EveLogs
+      PB --> FilterLogs
+    end
+    
+    subgraph DataShippers["Data Shippers"]
+      direction LR
+      Forwarder["Python Forwarder<br/>GeoIP Enrichment<br/>Rotation-Aware"]
+      Telegraf["Telegraf Agent<br/>System Metrics<br/>pfBlocker Stats<br/>Interface Stats"]
+    end
+    
+    EveLogs --> Forwarder
+    FilterLogs --> Telegraf
+    
+    subgraph Management["Management & Monitoring"]
+      direction LR
+      Watchdogs["Watchdog Scripts<br/>Health Checks"]
+      RestartHooks["Restart Hooks<br/>Service Recovery"]
+    end
+    
+    Watchdogs -.->|Monitor| Forwarder
+    Watchdogs -.->|Monitor| SuricataInstances
+    RestartHooks -.->|Restart| Forwarder
+    RestartHooks -.->|Restart| SuricataInstances
+  end
+
+  subgraph Backend["SIEM Backend Stack"]
+    direction TB
+    
+    subgraph Processing["Data Processing"]
+      Logstash["Logstash<br/>Parse & Nest EVE Events<br/>Transform to suricata.eve.*"]
+    end
+    
+    subgraph Storage["Data Storage"]
+      direction LR
+      OpenSearch["OpenSearch<br/>Event/Log Store<br/>Full-Text Search"]
+      InfluxDB["InfluxDB<br/>Time-Series Database<br/>Metrics & Stats"]
+    end
+    
+    Logstash -->|Index events| OpenSearch
+    Logstash -->|Extract metrics| InfluxDB
+  end
+
+  subgraph Frontend["Visualization Layer"]
+    direction TB
+    Grafana["Grafana Dashboards"]
+    
+    subgraph Dashboards["Dashboard Types"]
+      direction LR
+      SuriDash["Suricata IDS/IPS<br/>Geomaps, Alerts, Flows"]
+      TeleDash["System Metrics<br/>Interface Stats, pfBlocker"]
+    end
+    
+    Grafana --> Dashboards
+  end
+
+  Forwarder -->|JSON over UDP/TCP| Logstash
+  Telegraf -->|Metrics| InfluxDB
+  
+  OpenSearch --> Grafana
+  InfluxDB --> Grafana
+  
+  Grafana -.->|Alert Rules| Notifications["Alerting<br/>Webhooks, Email, Slack"]
+
+  classDef pfsense fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+  classDef security fill:#ffebee,stroke:#c62828,stroke-width:2px
+  classDef shipper fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef backend fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+  classDef storage fill:#fffde7,stroke:#f9a825,stroke-width:2px
+  classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+  classDef monitor fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  
+  class pfSenseHost pfsense
+  class SecurityLayer,PB,SuricataInstances,S_WAN,S_LAN security
+  class DataShippers,Forwarder,Telegraf shipper
+  class Processing,Logstash backend
+  class Storage,OpenSearch,InfluxDB storage
+  class Frontend,Grafana,Dashboards frontend
+  class Management,Watchdogs,RestartHooks monitor

@@ -6893,50 +6893,34 @@
       },
       {
         "allValue": null,
-        "current": {
-          "selected": false,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "description": null,
+        "current": {},
+        "datasource": "$dataSource",
+        "definition": "SHOW TAG VALUES FROM \"gateways\" WITH KEY = \"interface\" WHERE \"host\" =~ /^$Host$/",
+        "description": "WAN interfaces (auto-detected from gateways)",
         "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": null,
+        "label": "WAN",
         "multi": true,
         "name": "WAN",
-        "options": [
-          {
-            "selected": true,
-            "text": "All",
-            "value": "$__all"
-          },
-          {
-            "selected": false,
-            "text": "igb0",
-            "value": "igb0"
-          },
-          {
-            "selected": false,
-            "text": "ovpnc1",
-            "value": "ovpnc1"
-          }
-        ],
-        "query": "igb0,ovpnc1",
-        "queryValue": "",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"gateways\" WITH KEY = \"interface\" WHERE \"host\" =~ /^$Host$/",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "custom"
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": null,
         "current": {},
         "datasource": "$dataSource",
         "definition": "SHOW TAG VALUES FROM \"net\" WITH KEY = \"interface\" WHERE \"host\" =~ /^$Host$/ ",
-        "description": null,
+        "description": "LAN interfaces (excludes enc0 and WAN interfaces)",
         "error": null,
         "hide": 0,
         "includeAll": true,
@@ -6946,7 +6930,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"net\" WITH KEY = \"interface\" WHERE \"host\" =~ /^$Host$/ ",
         "refresh": 1,
-        "regex": "/^(?!enc0$|igb0$|igb1$|igb2$|igb3$|ovpnc1$)/",
+        "regex": "/^(?!enc0$)/",
         "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
