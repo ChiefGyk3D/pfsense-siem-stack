@@ -170,7 +170,7 @@ def find_eve_logs():
     return sorted(matches)  # Return sorted list for consistent order
 
 def tail_log_file(eve_log, sock):
-    """Tail a single EVE log file and forward events"""
+    """Tail a single EVE log file and forward events with log rotation detection"""
     interface = eve_log.split('/')[-2]  # Extract interface directory name
     geoip_status = "enabled" if geoip_reader else "disabled"
     msg = f"suricata-forwarder: Thread monitoring {interface} ({eve_log}) - GeoIP: {geoip_status}"
@@ -178,18 +178,47 @@ def tail_log_file(eve_log, sock):
     debug_log(msg)
     
     event_count = 0
+    file_handle = None
+    last_inode = None
+    
     try:
-        with open(eve_log, 'r') as f:
-            # Seek to end of file (tail -f behavior)
-            f.seek(0, 2)
-            debug_log(f"[{interface}] Monitoring, waiting for events...")
+        while True:
+            # Check if file exists and get current inode
+            try:
+                current_stat = os.stat(eve_log)
+                current_inode = current_stat.st_ino
+            except (FileNotFoundError, OSError) as e:
+                debug_log(f"[{interface}] File not found, waiting: {e}")
+                if file_handle:
+                    file_handle.close()
+                    file_handle = None
+                time.sleep(2)
+                continue
             
-            while True:
-                line = f.readline()
+            # Open/reopen file if needed (first run or after rotation)
+            if file_handle is None or last_inode != current_inode:
+                if file_handle:
+                    debug_log(f"[{interface}] Log rotation detected (inode {last_inode} -> {current_inode}), reopening")
+                    msg = f"suricata-forwarder [{interface}]: Log rotated, reopening file"
+                    syslog.syslog(syslog.LOG_INFO, msg)
+                    file_handle.close()
+                
+                file_handle = open(eve_log, 'r')
+                # Seek to end of file (tail -f behavior) - only on first open
+                if last_inode is None:
+                    file_handle.seek(0, 2)
+                    debug_log(f"[{interface}] Initial open, seeking to end")
+                else:
+                    debug_log(f"[{interface}] Reopened after rotation, reading from start")
+                
+                last_inode = current_inode
+                debug_log(f"[{interface}] Monitoring inode {current_inode}, waiting for events...")
+            
+            line = file_handle.readline()
+            if line:
+                # Process non-empty lines
+                line = line.strip()
                 if line:
-                    # Process non-empty lines
-                    line = line.strip()
-                    if line:
                         try:
                             # Parse JSON
                             event = json.loads(line)
@@ -220,12 +249,15 @@ def tail_log_file(eve_log, sock):
                             syslog.syslog(syslog.LOG_WARNING, msg)
                             debug_log(f"[{interface}] ERROR: {msg}")
                 else:
-                    # No new data, sleep briefly
+                    # No new data, sleep briefly before checking for rotation
                     time.sleep(0.1)
     except Exception as e:
         msg = f"suricata-forwarder [{interface}]: Fatal error in thread: {e}"
         syslog.syslog(syslog.LOG_ERR, msg)
         debug_log(f"[{interface}] FATAL: {msg}")
+    finally:
+        if file_handle:
+            file_handle.close()
 
 def main():
     eve_logs = find_eve_logs()
