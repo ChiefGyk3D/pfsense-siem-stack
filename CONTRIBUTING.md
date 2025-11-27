@@ -347,7 +347,7 @@ Screenshots, diagrams, links to similar projects.
 
 ## 📜 License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the MPL 2.0 License.
 
 ---
 

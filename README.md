@@ -2,7 +2,7 @@
 
 > **Complete SIEM infrastructure for pfSense firewalls** — From basic IDS/IPS monitoring to enterprise-grade threat detection with OpenSearch, Graylog, and Wazuh integration options.
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](LICENSE)
 [![pfSense](https://img.shields.io/badge/pfSense-2.7%2B-blue)](https://www.pfsense.org/)
 [![Suricata](https://img.shields.io/badge/Suricata-7.0%2B-orange)](https://suricata.io/)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-yellow)]()
@@ -296,7 +296,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📝 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Mozilla Public License 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
