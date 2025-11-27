@@ -1,35 +1,55 @@
-# Documentation Index
+# pfSense Knowledge Base - Documentation Index
 
-**Complete guide to all documentation** — Start here to find what you need.
+> **Complete navigation guide** — Find any documentation quickly
 
----
-
-## 🚀 Quick Navigation
-
-| I want to... | Go to... |
-|--------------|----------|
-| **Get started from scratch** | [Main README](../README.md) → [Quick Start](../QUICK_START.md) |
-| **Install the SIEM stack** | [SIEM Stack Installation](INSTALL_SIEM_STACK.md) |
-| **Deploy forwarder to pfSense** | [pfSense Forwarder Setup](INSTALL_PFSENSE_FORWARDER.md) |
-| **Optimize Suricata** | [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) ⭐ |
-| **Fix "No Data" in dashboard** | [Dashboard Troubleshooting](DASHBOARD_NO_DATA_FIX.md) |
-| **Monitor internal traffic** | [LAN Monitoring Guide](LAN_MONITORING.md) |
-| **Configure blocklists** | [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md) |
-| **Troubleshoot issues** | [Troubleshooting Guide](TROUBLESHOOTING.md) |
-| **Understand architecture** | [Architecture Diagram](architecture.png) |
+This is the central index for the pfSense Knowledge Base, covering SIEM infrastructure, security hardening, network monitoring, automation, and operational procedures.
 
 ---
 
-## 📖 Documentation Structure
+## 🎯 Find What You Need
+
+| I want to... | Go to... | Status |
+|--------------|----------|--------|
+| **Get started from scratch** | [Main README](../README.md) → [Quick Start](../QUICK_START.md) | ✅ Stable |
+| **See what's complete vs WIP** | [Project Status](../README.md#-project-status) | ✅ Updated |
+| **Install the SIEM stack** | [SIEM Stack Installation](INSTALL_SIEM_STACK.md) | ✅ Stable |
+| **Deploy forwarder to pfSense** | [pfSense Forwarder Setup](INSTALL_PFSENSE_FORWARDER.md) | ✅ Stable |
+| **Optimize Suricata** | [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) ⭐ | ✅ Stable |
+| **Manage Suricata signatures** | [SID Management](../config/sid/README.md) | 🚧 Testing |
+| **Fix "No Data" in dashboard** | [Dashboard Troubleshooting](DASHBOARD_NO_DATA_FIX.md) | ✅ Stable |
+| **Monitor internal traffic** | [LAN Monitoring Guide](LAN_MONITORING.md) | 🚧 Dashboard Pending |
+| **Configure blocklists** | [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md) | ✅ Stable |
+| **Fix log rotation issues** | [Log Rotation Fix](LOG_ROTATION_FIX.md) | ✅ Solved |
+| **Troubleshoot issues** | [Troubleshooting Guide](TROUBLESHOOTING.md) | ✅ Stable |
+| **Understand architecture** | [Architecture Diagram](architecture.png) | ✅ Complete |
+
+**Legend**: ✅ Stable & Production-Ready | 🚧 Work in Progress | 📝 Planned
+
+---
+
+## � Knowledge Base Scope
+
+This repository documents:
+- **✅ SIEM & Logging**: OpenSearch, Logstash, Grafana monitoring (stable, docs improving)
+- **✅ IDS/IPS Security**: Suricata optimization, SID management, PfBlockerNG (stable, SID testing)
+- **✅ Network Monitoring**: Multi-WAN, VLAN segmentation, interface tracking (stable)
+- **✅ Automation**: Log forwarding, watchdogs, automated recovery (stable)
+- **🚧 Advanced Analytics**: LAN monitoring dashboard, anomaly detection (planned)
+- **🚧 Multi-Firewall**: Central management of multiple pfSense instances (planned)
+
+---
+
+## �📖 Documentation Structure
 
 ### 1. Getting Started
 
 **Start here if you're new:**
 
-- **[Main README](../README.md)** - Project overview, features, quick start
+- **[Main README](../README.md)** - Project overview, features, architecture, status
 - **[Quick Start Guide](../QUICK_START.md)** - 15-minute deployment walkthrough
 - **[New User Checklist](NEW_USER_CHECKLIST.md)** ⭐ - Step-by-step validation
 - **[Architecture Diagram](architecture.png)** - Visual overview of components
+- **[Project Organization](../ORGANIZATION.md)** - File structure and navigation
 
 **Read first:** [Main README](../README.md) → [Quick Start](../QUICK_START.md) → [New User Checklist](NEW_USER_CHECKLIST.md)
 
@@ -37,10 +57,21 @@
 
 ### 2. Installation & Deployment
 
+**Before you start:**
+
+- **[Hardware Requirements](HARDWARE_REQUIREMENTS.md)** ⭐ **READ THIS FIRST**
+  - 🚨 Critical warnings (NO SD CARDS for logging!)
+  - SIEM server specs (16GB RAM minimum, 32GB recommended)
+  - pfSense requirements (Suricata needs quad-core, 8-16GB RAM)
+  - Storage planning and sizing
+  - Production reference configurations
+  - Why Suricata over Snort (multithreading)
+  - GeoIP setup requirements
+
 **Installing the SIEM stack:**
 
 - **[SIEM Stack Installation](INSTALL_SIEM_STACK.md)** - OpenSearch, Logstash, Grafana
-  - System requirements
+  - System requirements (see Hardware Requirements first)
   - Ubuntu/Debian installation
   - Service configuration
   - Security hardening
@@ -107,6 +138,15 @@
 ### 4. Optimization & Tuning
 
 **Essential reading:**
+
+- **[Suricata Configuration Guide](SURICATA_CONFIGURATION.md)** ⭐ **START HERE**
+  - Why Suricata over Snort (multithreading)
+  - Rule sources (ET, Snort, Feodo, Abuse.ch)
+  - **Critical**: Stream memory increase (REQUIRED)
+  - Interface configuration (IPS vs IDS)
+  - GeoIP setup with MaxMind
+  - Performance monitoring
+  - Common issues and solutions
 
 - **[Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **MUST READ**
   - Rule selection strategies
