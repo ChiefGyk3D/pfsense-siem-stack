@@ -236,32 +236,63 @@ This will identify most common problems automatically.
 
 ### Common Issues
 
-**1. Dashboard shows no data**
+**1. Dashboard shows "No Data"** ⚠️ MOST COMMON
+- **Symptom**: Grafana panels show "No Data" even though Suricata is running
+- **Causes**: 
+  - Datasource variable not resolved (`${DS_OPENSEARCH}` instead of actual datasource UID)
+  - Nested field structure vs flat field queries (dashboard expecting `event_type` but data has `suricata.eve.event_type`)
+  - Logstash config changed from flat to nested structure
+  - Dashboard looking at wrong time range (new flat data only exists in recent timeframe)
+- **Fixes**:
+  1. Check datasource configuration: Dashboard must use actual UID, not `${DS_OPENSEARCH}` variable
+  2. Verify field structure: `curl -s "http://localhost:9200/suricata-*/_search?size=1" | jq '.hits.hits[0]._source | keys'`
+  3. If fields are nested under `suricata.eve.*`, update Logstash config to flatten OR update dashboard queries
+  4. Run `./scripts/status.sh` to diagnose data flow issues
+  5. Adjust time range to match when data started flowing (check index creation timestamps)
+
+**2. Alerts not showing but other events are**
+- **Symptom**: DNS, TLS, HTTP events work, but alert panels empty
+- **Cause**: Forwarder only tails from EOF (end of file), missing historical alerts
+- **Fix**: Wait for NEW alerts to be generated after forwarder starts
+- **Why**: The forwarder uses `f.seek(0, 2)` to start at end of file, so pre-existing alerts aren't forwarded
+- **Solution**: Generate test alerts or wait for real attacks to trigger rules
+
+**3. Data structure mismatch**
+- **Symptom**: Old data works but new data doesn't (or vice versa)
+- **Diagnosis**: 
+  ```bash
+  # Check if you have both nested and flat structures
+  curl -s "http://localhost:9200/_search?size=0" -H 'Content-Type: application/json' \
+    -d '{"aggs":{"nested":{"filter":{"exists":{"field":"suricata.eve.event_type"}}},"flat":{"filter":{"exists":{"field":"event_type"}}}}}'
+  ```
+- **Fix**: 
+  1. Choose flat or nested structure (flat is simpler)
+  2. Update Logstash config to match
+  3. Update dashboard field references to match
+  4. Optional: Reindex old data to match new structure
+
+**4. Forwarder not running**
 - Run `./scripts/status.sh` to check forwarder status
 - Verify: `./setup.sh` was run successfully
 - Check forwarder logs: `ssh root@<pfsense-ip> 'tail -f /var/log/system.log | grep suricata'`
 
-**2. Data stops at midnight UTC** ⚠️ MOST COMMON
+**5. Data stops at midnight UTC**
 - **Cause**: OpenSearch auto-create disabled
 - **Fix**: Run `./setup.sh` (it configures this automatically)
 - **Details**: See `docs/OPENSEARCH_AUTO_CREATE.md`
 
-**3. Forwarder not running**
-- Check SSH access to pfSense
-- Run: `ssh root@<pfsense-ip> 'ps aux | grep forward-suricata'`
-- Restart: `./setup.sh` (it will restart the forwarder)
-
-**4. Multiple forwarders running**
+**6. Multiple forwarders running**
 - Kill extras: `ssh root@<pfsense-ip> 'pkill -f forward-suricata'`
 - Run `./setup.sh` to start single clean instance
 
-**5. Wrong SIEM IP configured**
+**7. Wrong SIEM IP configured**
 - Edit `config.env` with correct SIEM IP
 - Run `./setup.sh` to redeploy with new config
 
 ### Detailed Troubleshooting
 
-See `docs/TROUBLESHOOTING.md` for comprehensive troubleshooting guide.
+- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)**: 🔥 Complete guide for the most common issue - panels showing "No Data"
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Comprehensive troubleshooting for all components
 
 ### Geomap Not Displaying
 
@@ -334,7 +365,8 @@ See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for
 - **[Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
 
 ### Troubleshooting
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and fixes
+- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)**: 🔥 **START HERE** - Fix the most common issue (panels showing "No Data")
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and fixes for all components
 - **[pfSense Filterlog Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md)**: Fix for pfBlocker data loss
 - **[OpenSearch Auto-Create](docs/OPENSEARCH_AUTO_CREATE.md)**: Midnight UTC data stoppage fix
 
