@@ -1,24 +1,51 @@
-# pfSense SIEM & IDS/IPS Monitoring Stack
+# pfSense SIEM Stack
 
-> **Open-source SIEM infrastructure for pfSense firewalls** — Comprehensive monitoring, logging, and threat detection using OpenSearch, Logstash, InfluxDB, and Grafana.
+> **Complete SIEM infrastructure for pfSense firewalls** — From basic IDS/IPS monitoring to enterprise-grade threat detection with OpenSearch, Graylog, and Wazuh integration options.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![pfSense](https://img.shields.io/badge/pfSense-2.7%2B-blue)](https://www.pfsense.org/)
-[![Grafana](https://img.shields.io/badge/Grafana-12.x-orange)](https://grafana.com/)
-[![OpenSearch](https://img.shields.io/badge/OpenSearch-2.x-blue)](https://opensearch.org/)
+[![Suricata](https://img.shields.io/badge/Suricata-7.0%2B-orange)](https://suricata.io/)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-yellow)]()
+
+> 🎯 **Multi-SIEM Support**: Choose your SIEM backend — OpenSearch (current ✅), Graylog (planned 📝), Wazuh (planned 📝) — with unified pfSense integration.
+
+> ⚠️ **Work in Progress**: The logging and SIEM components are actively being developed and refined. OpenSearch implementation is production-ready. Graylog and Wazuh support planned based on community contributions. Core functionality is stable, but documentation and automation are continuously improving. Contributions and feedback welcome!
 
 ---
 
 ## 📖 Overview
 
-What started as a quick fix to a Grafana panel evolved into a **complete overhaul** of pfSense monitoring and logging infrastructure. This project provides:
+What started as a simple Grafana dashboard tweak evolved into a **comprehensive pfSense SIEM infrastructure project**. This repository captures lessons learned from deploying and operating enterprise-grade pfSense security monitoring, with support for multiple SIEM backends to fit your needs.
+
+> **⚠️ SCOPE NOTICE**: This project focuses on **pfSense-based security and monitoring**. For UniFi equipment (switches, APs, controllers), use [UniFi Poller](https://github.com/unpoller/unpoller) instead - it's purpose-built for UniFi telemetry and integrates excellently with Grafana + InfluxDB.
+
+### 🎯 Current Implementation (OpenSearch - Production Ready ✅)
 
 - **Full SIEM Stack**: OpenSearch for event storage, Logstash for parsing/enrichment, InfluxDB for time-series metrics
-- **Comprehensive IDS/IPS Monitoring**: Real-time Suricata alerts with GeoIP mapping, signature tracking, and attack visualization
+- **Comprehensive IDS/IPS Monitoring**: Real-time Suricata alerts with GeoIP mapping, signature tracking, and attack visualization  
 - **East-West Traffic Detection**: Internal network monitoring to detect lateral movement and insider threats
 - **Resilient Data Pipeline**: Rotation-aware forwarders, watchdogs, restart hooks, and automated recovery
 - **Production-Ready**: Optimized for dual-WAN inline IPS deployments with per-VLAN policy customization
-- **Fully Documented**: Installation guides, troubleshooting playbooks, optimization strategies, and architecture diagrams
+
+### 🔮 Future SIEM Backends (Planned)
+
+- **Graylog** 📝 - Easier setup, better web UI, excellent alerting ([see roadmap](docs/siem/graylog/README.md))
+- **Wazuh** 📝 - EDR capabilities, compliance reporting, active response ([see roadmap](docs/siem/wazuh/README.md))
+- **[Compare All Options](docs/siem/COMPARISON.md)** - Feature matrix and decision guide
+
+### 📚 Knowledge Base Coverage
+
+- **Security Hardening**: IDS/IPS configuration, blocklist optimization, signature management
+- **Network Monitoring**: Multi-WAN setups, VLAN segmentation, interface tracking
+- **Automation**: Log forwarding, watchdog monitoring, automated recovery
+- **Performance Tuning**: Resource optimization, retention policies, query performance
+- **Troubleshooting**: Common issues, debugging techniques, validation procedures
+- **Deployment Guides**: Step-by-step installation, configuration templates, best practices
+
+
+**📍 Quick Links**: [SIEM Comparison](docs/siem/COMPARISON.md) | [Hardware Requirements](docs/HARDWARE_REQUIREMENTS.md) ⭐ | [Project Status](#-project-status) | [Roadmap](ROADMAP.md) | [Documentation Index](docs/DOCUMENTATION_INDEX.md) | [Contributing](CONTRIBUTING.md)
+
+---
 
 ![WAN Dashboard Preview](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
 *Live WAN-side monitoring with attack sources, alert signatures, and geographic visualization*
@@ -54,22 +81,50 @@ What started as a quick fix to a Grafana panel evolved into a **complete overhau
 
 ---
 
+---
+
+## 📊 Project Status
+
+### ✅ Production Ready
+- **Suricata Multi-Interface Monitoring** - Stable, tested on 15 instances (2 WAN + 13 VLAN)
+- **Log Forwarder** - Inode-aware rotation handling, GeoIP enrichment, watchdog monitoring
+- **OpenSearch/Logstash Pipeline** - Nested format, index templates, retention policies
+- **WAN Security Dashboard** - Attack visualization, signature tracking, geographic mapping
+- **PfBlockerNG Integration** - Blocklist optimization, DNSBL whitelisting
+- **Automated Installation** - One-command SIEM stack deployment
+
+### 🚧 Active Development (Functional but Evolving)
+- **Documentation** - Continuously improving guides, adding troubleshooting scenarios
+- **SID Management** - 219 optimized rules, suppress.conf refinement (testing in production)
+- **LAN Monitoring Dashboard** - East-west traffic panels (planned)
+- **Automation Scripts** - Additional watchdogs, health checks, recovery procedures
+- **Performance Tuning** - Index optimization, query performance, resource usage
+
+### 📝 Planned Features
+- **Snort Integration** - Currently Suricata-focused, Snort support coming
+- **Multi-Firewall Support** - Central monitoring for multiple pfSense instances
+- **Advanced Analytics** - Machine learning for anomaly detection
+- **Configuration UI** - Web interface for easier setup
+- **Mobile Dashboard** - Grafana mobile optimization
+
+
 ## ✨ Features
 
-### 🔥 IDS/IPS Monitoring
+### 🔥 IDS/IPS Monitoring (✅ Stable)
 - **Real-time alerts** from Suricata with signature details and severity
 - **GeoIP visualization** with city-level accuracy on interactive world maps
 - **Multi-interface support** monitors all Suricata instances (WAN, VLANs, lagg)
 - **Event analytics** by type, protocol, severity, category, and application
 - **Attack tracking**: Top signatures, source countries, HTTP hosts, JA3 fingerprints
+- **SID optimization**: 219 tuned signatures for reduced false positives
 
-### 🌐 Network Intelligence
+### 🌐 Network Intelligence (✅ Stable)
 - **Dual-WAN inline IPS** with Snort + Emerging Threats on both uplinks
-- **East-West detection** for lateral movement across VLANs
+- **East-West detection** for lateral movement across VLANs (🚧 dashboard pending)
 - **Per-VLAN policies**: Heavy monitoring on IoT, lighter on trusted VLANs
 - **PfBlockerNG integration** for upstream threat filtering
 
-### 🛠️ Reliability & Operations
+### 🛠️ Reliability & Operations (✅ Stable)
 - **Log rotation handling**: Inode-aware forwarder survives Suricata rotations
 - **Watchdogs**: Auto-restart forwarder and Suricata on failure
 - **Restart hooks**: Ensure proper startup after pfSense upgrades
@@ -78,9 +133,9 @@ What started as a quick fix to a Grafana panel evolved into a **complete overhau
 
 ### � Dashboards & Alerts
 - **WAN monitoring**: Attack sources, signatures, protocols, top talkers
-- **LAN monitoring**: Internal traffic, RFC1918 flows, lateral movement
+- **LAN monitoring**: Internal traffic, RFC1918 flows (🚧 dashboard development)
 - **Interface distribution**: Traffic breakdown by interface/VLAN
-- **Alerting**: Grafana alerts + webhook integrations (Slack, email)
+- **Alerting**: Grafana alerts + webhook integrations (🚧 refining rules)
 
 ---
 
@@ -88,14 +143,42 @@ What started as a quick fix to a Grafana panel evolved into a **complete overhau
 
 ### Prerequisites
 
-**SIEM Server** (Ubuntu/Debian 22.04+):
-- 8GB+ RAM (16GB recommended)
-- 100GB+ disk space
-- Root/sudo access
+> **🚨 CRITICAL HARDWARE WARNING**: 
+> 
+> **DO NOT USE RASPBERRY PI WITH SD CARDS OR SIMILAR SETUPS FOR LOGGING!**
+> 
+> High-frequency log writes will **destroy SD cards within weeks**. At minimum, use a SATA SSD with USB 3.0 adapter. For production logging/SIEM, invest in proper hardware to avoid data loss and constant rebuilds.
+
+**SIEM Server** (Ubuntu/Debian 22.04+ or similar):
+- **CPU**: Dual-core minimum (quad-core recommended for Logstash processing)
+  - AMD/Intel with SMT/Hyper-Threading strongly recommended
+- **RAM**: **16GB minimum, 32GB recommended** for full logging stack
+  - OpenSearch: 8GB+ heap
+  - Logstash: 2-4GB heap
+  - InfluxDB: 2-4GB (recommended for time-series metrics)
+  - Grafana: 1-2GB
+  - System overhead: 2-4GB
+- **Storage**: 
+  - **100GB+ SSD minimum** (NVMe preferred for write performance)
+  - Consider 500GB-1TB for 30+ day retention with moderate traffic
+  - **NO SD CARDS** - Use proper SSDs or you'll regret it
+- **Network**: Gigabit ethernet minimum
+- **OS**: Ubuntu Server 24.04 LTS recommended (tested configuration)
+- **Access**: Root/sudo access, static IP
+
+**Production Reference**: Purism Librem Mini (Intel Core i7-10510U, 32GB RAM, 2TB NVMe) running Ubuntu Server 24.04 LTS handles home lab with significant headroom.
 
 **pfSense Firewall**:
 - pfSense 2.7+ (tested on 2.8.1)
-- Suricata package installed
+- **For PfBlockerNG only**: 4-8GB RAM sufficient (even with many blocklists)
+- **For Suricata IDS/IPS**:
+  - **CPU**: Quad-core minimum (more cores = more throughput)
+    - Intel Atom C3758 (8-core) handles 15 Suricata instances at 25-35% average load
+    - **Expect CPU spikes to 100% for 3-5 minutes during rule reloads**
+  - **RAM**: 8-16GB for multi-interface deployments
+  - **Stream Memory**: Increase to **1073741824 bytes (1GB)** per interface (default 256MB causes crashes on multicore systems)
+    - Configure in: Services → Suricata → Interface → Stream tab
+- Suricata package installed and configured
 - SSH enabled with key-based auth
 - Python 3.11+ available
 
@@ -217,13 +300,40 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## � Related Projects
+
+### UniFi Network Monitoring
+
+**This project does NOT support UniFi equipment** (switches, access points, controllers).
+
+For UniFi monitoring with Grafana, use **[UniFi Poller](https://github.com/unpoller/unpoller)**:
+- Purpose-built for UniFi telemetry collection
+- Excellent Grafana dashboard integration
+- Supports InfluxDB and Prometheus
+- Active community and development
+- **Personal recommendation**: Use with InfluxDB for networking metrics
+
+**Why InfluxDB for UniFi Poller?**
+- Better compression for time-series data (interface metrics, client counts)
+- Faster queries for rate calculations
+- Lower RAM usage than OpenSearch for metrics
+- Proven combination for network monitoring
+
+See: [UniFi Poller Installation](https://unpoller.com/docs/install/installation)
+
+---
+
+## �🙏 Acknowledgments
 
 - **pfSense** - Rock-solid firewall platform
-- **Suricata** - High-performance IDS/IPS engine
+- **Suricata** - High-performance IDS/IPS engine with excellent multithreading
 - **OpenSearch** - Powerful search and analytics
-- **Grafana** - Beautiful visualization
-- **MaxMind** - GeoIP database
+- **Grafana** - Beautiful visualization and alerting
+- **MaxMind** - GeoLite2 GeoIP database (free tier)
+- **Emerging Threats** - Open IDS ruleset
+- **Snort/Cisco Talos** - Registered and subscriber rules
+- **Abuse.ch** - Feodo Tracker and SSL Blacklist
+- **UniFi Poller** - Inspiration for telemetry collection patterns
 - Community contributors and testers
 
 ---
@@ -261,35 +371,108 @@ This will verify:
 
 ```
 pfsense_grafana/
-├── config.env.example          # Configuration template (copy to config.env)
-├── setup.sh                    # 🌟 ONE-COMMAND automated setup
-├── install.sh                  # SIEM stack installer (run first)
-├── dashboards/                 # Grafana dashboard JSON files
-│   └── Suricata IDS_IPS Dashboard.json    ← Import this
-├── scripts/
-│   ├── forward-suricata-eve-python.py     ← Multi-interface forwarder
-│   ├── install-opensearch-config.sh       ← OpenSearch configuration
-│   ├── status.sh                          ← 🔍 Comprehensive health check
-│   ├── restart-services.sh                ← Restart SIEM services
-│   └── configure-retention-policy.sh      ← Set data retention
-├── config/                     # Configuration files
-│   ├── README.md                          ← OpenSearch setup docs
-│   ├── logstash-suricata.conf             ← Logstash pipeline
-│   └── opensearch-index-template.json     ← Index with geo_point
-├── docs/                       # Detailed documentation
-│   ├── OPENSEARCH_AUTO_CREATE.md          ← Midnight UTC problem fix
-│   ├── TROUBLESHOOTING.md                 ← Common issues
-│   └── GEOIP_SETUP.md                     ← GeoIP configuration
-├── plugins/                    # Optional Telegraf plugins
-│   └── telegraf_*.php/sh                  ← System metrics collectors
-└── media/                      # Screenshots
-    └── Suricata IDS_IPS WAN Dashboard.png ← Dashboard preview
+├── 📄 Quick Start
+│   ├── README.md                    ★ START HERE - Project overview & getting started
+│   ├── QUICK_START.md               Fast 15-minute deployment walkthrough
+│   ├── ORGANIZATION.md              File organization and directory structure
+│   ├── CHANGELOG.md                 Version history and recent changes
+│   └── CONTRIBUTING.md              Guidelines for contributions
+│
+├── 🚀 Installation & Setup
+│   ├── install.sh                   ★ SIEM stack installer (OpenSearch, Logstash, Grafana)
+│   ├── setup.sh                     ★ Automated configuration (one-command deployment)
+│   ├── install_plugins.sh           Telegraf plugin installer
+│   └── config.env.example           Configuration template
+│
+├── 📊 Dashboards & Visualization
+│   └── dashboards/
+│       ├── Suricata IDS_IPS Dashboard.json    ★ Main WAN-side security dashboard
+│       ├── telegraf-original.json             Optional system metrics dashboard
+│       └── archive/                           Historical dashboard versions
+│
+├── 🔧 Scripts & Automation
+│   └── scripts/
+│       ├── forward-suricata-eve.py            ★ Multi-interface log forwarder (Python)
+│       ├── status.sh                          ★ Comprehensive health check
+│       ├── check_custom_sids.sh               Suricata SID verification tool
+│       ├── restart-services.sh                Service management & recovery
+│       ├── configure-retention-policy.sh      Data lifecycle management
+│       ├── suricata-forwarder-watchdog.sh     Monitoring & auto-restart
+│       └── README.md                          Script documentation
+│
+├── ⚙️ Configuration Files
+│   └── config/
+│       ├── logstash-suricata.conf             ★ Logstash pipeline (parsing & enrichment)
+│       ├── opensearch-index-template.json     Index template with geo_point mapping
+│       ├── dnsbl_whitelist.txt                PfBlockerNG whitelist
+│       ├── pfblockerng_optimization.md        Blocklist configuration guide
+│       └── sid/                               Suricata signature management
+│           ├── disable/disablesid.conf        219 disabled SIDs (performance optimized)
+│           ├── suppress/suppress.conf         2 conditional suppressions (IP-specific)
+│           ├── README.md                      SID management documentation
+│           └── APPLYING_CHANGES.md            Deployment guide
+│
+├── 📚 Documentation (🚧 Active Development)
+│   └── docs/
+│       ├── DOCUMENTATION_INDEX.md             ★ Master documentation index
+│       ├── architecture.png                   Visual architecture diagram
+│       │
+│       ├── 🏗️ Installation Guides
+│       │   ├── INSTALL_SIEM_STACK.md          OpenSearch/Logstash/Grafana setup
+│       │   ├── INSTALL_PFSENSE_FORWARDER.md   Forwarder deployment to pfSense
+│       │   ├── INSTALL_DASHBOARD.md           Grafana dashboard import
+│       │   └── NEW_USER_CHECKLIST.md          Step-by-step validation
+│       │
+│       ├── 🔒 Security & IDS/IPS
+│       │   ├── SURICATA_OPTIMIZATION_GUIDE.md ★ Rule selection & tuning
+│       │   ├── PFBLOCKERNG_OPTIMIZATION.md    Blocklist configuration
+│       │   ├── LAN_MONITORING.md              Internal threat detection
+│       │   └── SURICATA_FORWARDER_MONITORING.md  Watchdog strategies
+│       │
+│       ├── ⚙️ Configuration & Tuning
+│       │   ├── CONFIGURATION.md               All config.env settings
+│       │   ├── GEOIP_SETUP.md                 MaxMind GeoIP database
+│       │   ├── MULTI_INTERFACE_RETENTION.md   Index lifecycle policies
+│       │   └── OPENSEARCH_AUTO_CREATE.md      Midnight UTC fix
+│       │
+│       ├── 🐛 Troubleshooting & Fixes
+│       │   ├── TROUBLESHOOTING.md             ★ Common issues & solutions
+│       │   ├── LOG_ROTATION_FIX.md            Inode-aware rotation handling
+│       │   ├── DASHBOARD_NO_DATA_FIX.md       Data flow validation
+│       │   └── TELEGRAF_INTERFACE_FIXES.md    Interface monitoring fixes
+│       │
+│       └── archive/                           Historical documentation
+│
+├── 🔌 Plugins (Optional Telegraf Metrics)
+│   └── plugins/
+│       ├── telegraf_pfifgw.php                Gateway status monitoring
+│       ├── telegraf_temperature.sh            Temperature sensors
+│       ├── telegraf_unbound.sh                DNS resolver stats
+│       └── README.md                          Plugin documentation
+│
+├── 🖼️ Media & Assets
+│   └── media/
+│       └── Suricata IDS_IPS WAN Dashboard.png Dashboard screenshot
+│
+└── 🧪 Testing & Validation
+    └── tests/
+        ├── test-multi-interface.sh            Multi-WAN testing
+        └── test-panel-compatibility.sh        Dashboard validation
 ```
 
-**Key files:**
-- `config.env.example` → Copy to `config.env` and customize
-- `setup.sh` → Run this after installing SIEM stack
-- `scripts/status.sh` → Check if everything is working
+**🌟 Essential Files to Get Started:**
+1. **[README.md](README.md)** - Project overview, architecture, features
+2. **[QUICK_START.md](QUICK_START.md)** - 15-minute deployment guide
+3. **[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** - Find any documentation
+4. **`install.sh`** - One command to install SIEM stack
+5. **`setup.sh`** - One command to configure everything
+6. **`scripts/status.sh`** - Verify installation and data flow
+
+**🚧 Work in Progress:**
+- SIEM logging infrastructure (functional, documentation evolving)
+- SID management optimization (219 rules tuned, testing in production)
+- Dashboard improvements (LAN monitoring panels planned)
+- Automation enhancements (watchdogs, recovery scripts)
 
 ## 📊 Dashboard Panels
 

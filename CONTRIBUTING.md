@@ -1,28 +1,55 @@
-# Contributing to pfSense SIEM Stack
+# Contributing to pfSense Knowledge Base
 
-Thank you for considering contributing to this project! This guide will help you get started.
+> **Help build the pfSense community knowledge repository**
+
+Thank you for considering contributing! This project has evolved from a simple dashboard into a comprehensive pfSense knowledge base. Whether you're sharing configuration tips, automation scripts, troubleshooting solutions, or documentation improvements, your contributions are valued.
 
 ---
 
-## 🎯 Areas Where We Need Help
+## 📚 What We're Building
 
-### High Priority
-- **Additional Dashboards**
-  - pfSense firewall log dashboard (filterlog)
-  - Telegraf metrics dashboard (system stats, interface traffic)
-  - pfBlockerNG statistics dashboard
-  - Snort3 integration dashboard
+This is not just a monitoring stack—it's a **knowledge repository** covering:
 
-- **Performance Optimizations**
-  - Logstash pipeline tuning
-  - OpenSearch index optimization
-  - Forwarder efficiency improvements
+- **SIEM & Logging**: OpenSearch, Logstash, Grafana, log forwarding
+- **Security**: IDS/IPS tuning, signature management, threat intelligence
+- **Network Monitoring**: Multi-WAN, VLAN segmentation, traffic analysis
+- **Automation**: Scripts, watchdogs, recovery procedures, deployment tools
+- **Operations**: Configuration management, troubleshooting, best practices
+- **Hardware & Performance**: Tuning guides, benchmarks, optimization strategies
 
-- **Documentation**
-  - Video walkthroughs
-  - Troubleshooting playbooks
-  - Architecture deep-dives
-  - Non-English translations
+---
+
+## 🎯 Ways to Contribute
+
+### 🔥 High Priority
+
+#### 1. Documentation & Knowledge Sharing
+- **Troubleshooting scenarios** you've encountered and solved
+- **Configuration examples** from your production deployments
+- **Performance tuning** lessons learned
+- **Hardware recommendations** based on your experience
+- **Video tutorials** or screen recordings
+- **Architecture diagrams** for different use cases
+- **Comparison guides** (e.g., Suricata vs Snort, inline vs passive)
+
+#### 2. SIEM & Logging (🚧 Active Development)
+- **LAN monitoring dashboard** - East-west traffic visualization
+- **Additional log parsers** - pfSense filterlog, HAProxy, Unbound, DHCP
+- **Alert rules** - Pre-configured detection rules with documentation
+- **Index optimization** - Performance tuning for large deployments
+- **Retention strategies** - Cost-effective storage management
+
+#### 3. Security Enhancements
+- **Signature tuning guides** - SID management strategies
+- **Threat intelligence integration** - MISP, abuse.ch, OTX feeds
+- **Blocklist optimization** - pfBlockerNG configuration best practices
+- **False positive documentation** - Known FPs and suppression strategies
+
+#### 4. Automation & Orchestration
+- **Ansible playbooks** - Automated deployment and configuration
+- **Monitoring scripts** - Health checks, alerting, recovery procedures
+- **Configuration management** - Version control for pfSense configs
+- **Backup/restore procedures** - Disaster recovery documentation
 
 ### Medium Priority
 - **Deployment Options**

@@ -1,12 +1,16 @@
-# Project Structure
+# Project Organization & Structure
 
-Complete file organization and usage guide for the pfSense Suricata Dashboard project.
+> **Repository Layout Guide** — File organization and navigation for the pfSense Knowledge Base
 
-## Quick Reference
+This repository has evolved from a simple Grafana dashboard into a comprehensive pfSense knowledge base covering security, monitoring, automation, and operations.
 
-**Want to set everything up?** → Start with [README.md](README.md)
-**In a hurry?** → Follow [QUICK_START.md](QUICK_START.md)
-**Something broken?** → Check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+## Quick Navigation
+
+**New to the project?** → Start with [README.md](README.md)  
+**Want quick deployment?** → Follow [QUICK_START.md](QUICK_START.md)  
+**Need specific docs?** → Browse [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)  
+**Something not working?** → Check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)  
+**Want to contribute?** → Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Essential Files
 
