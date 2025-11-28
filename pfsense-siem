@@ -1,0 +1,770 @@
+#!/bin/bash
+# pfSense SIEM Stack - Master Control Script
+# Complete management interface for pfSense monitoring infrastructure
+
+set -e
+
+VERSION="2.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/config.env"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
+
+# Functions
+print_banner() {
+    clear
+    cat << "EOF"
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ██████╗ ███████╗███████╗███████╗███╗   ██╗███████╗    ║
+║   ██╔══██╗██╔════╝██╔════╝██╔════╝████╗  ██║██╔════╝    ║
+║   ██████╔╝█████╗  ███████╗█████╗  ██╔██╗ ██║███████╗    ║
+║   ██╔═══╝ ██╔══╝  ╚════██║██╔══╝  ██║╚██╗██║╚════██║    ║
+║   ██║     ██║     ███████║███████╗██║ ╚████║███████║    ║
+║   ╚═╝     ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═══╝╚══════╝    ║
+║                                                           ║
+║           SIEM Stack Management Console                  ║
+║               Version 2.0.0                               ║
+╚═══════════════════════════════════════════════════════════╝
+EOF
+    echo ""
+}
+
+print_menu() {
+    echo -e "${CYAN}═══ Main Menu ═══${NC}"
+    echo ""
+    echo -e "${GREEN}Installation:${NC}"
+    echo "  1) Install SIEM Stack (OpenSearch + Logstash + Grafana)"
+    echo "  2) Deploy to pfSense (Forwarder + Watchdog)"
+    echo "  3) Configure OpenSearch (Index templates + Settings)"
+    echo "  4) Import Dashboards to Grafana"
+    echo ""
+    echo -e "${YELLOW}Management:${NC}"
+    echo "  5) Check System Status (Health check all components)"
+    echo "  6) Restart Services (OpenSearch + Logstash + Grafana)"
+    echo "  7) View Logs (OpenSearch / Logstash / Grafana / Forwarder)"
+    echo "  8) Configure Retention Policy"
+    echo ""
+    echo -e "${BLUE}pfSense Operations:${NC}"
+    echo "  9) Check Forwarder Status"
+    echo " 10) Restart Forwarder"
+    echo " 11) View Forwarder Logs"
+    echo " 12) Test pfSense Connectivity"
+    echo ""
+    echo -e "${MAGENTA}Advanced:${NC}"
+    echo " 13) Verify Data Flow (End-to-end test)"
+    echo " 14) Configure Custom SIDs (Suricata rules)"
+    echo " 15) Setup Telegram Alerts"
+    echo " 16) Backup Configuration"
+    echo " 17) Restore Configuration"
+    echo ""
+    echo -e "${CYAN}Documentation:${NC}"
+    echo " 18) View Quick Start Guide"
+    echo " 19) Open Troubleshooting Guide"
+    echo " 20) Show Configuration"
+    echo ""
+    echo "  0) Exit"
+    echo ""
+    echo -e "${CYAN}═════════════════${NC}"
+    echo ""
+}
+
+check_config() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo -e "${YELLOW}⚠ Configuration file not found${NC}"
+        echo ""
+        read -p "Create config.env now? (y/n): " CREATE
+        if [[ "$CREATE" =~ ^[Yy]$ ]]; then
+            if [ -f "${SCRIPT_DIR}/config.env.example" ]; then
+                cp "${SCRIPT_DIR}/config.env.example" "$CONFIG_FILE"
+                echo -e "${GREEN}✓ Created config.env from example${NC}"
+                echo ""
+                echo -e "${YELLOW}Please edit config.env with your settings:${NC}"
+                echo "  nano $CONFIG_FILE"
+                echo ""
+                echo "Required settings:"
+                echo "  • SIEM_HOST - IP address of your SIEM server"
+                echo "  • PFSENSE_HOST - IP address of your pfSense firewall"
+                echo ""
+                read -p "Press Enter to continue..."
+                return 1
+            else
+                echo -e "${RED}✗ config.env.example not found${NC}"
+                return 1
+            fi
+        fi
+        return 1
+    fi
+    source "$CONFIG_FILE"
+    return 0
+}
+
+# Installation Functions
+install_siem_stack() {
+    print_banner
+    echo -e "${CYAN}═══ Install SIEM Stack ═══${NC}"
+    echo ""
+    
+    if [ "$EUID" -ne 0 ]; then
+        echo -e "${RED}✗ This requires root privileges${NC}"
+        echo "  Run: sudo $0"
+        return
+    fi
+    
+    echo "This will install:"
+    echo "  • OpenSearch 2.x (Log storage)"
+    echo "  • Logstash 8.x (Log processing)"
+    echo "  • Grafana 12.x (Visualization)"
+    echo ""
+    echo "System Requirements:"
+    echo "  • 8GB+ RAM (16GB recommended)"
+    echo "  • 100GB+ disk space"
+    echo "  • Ubuntu 22.04+ or Debian 11+"
+    echo ""
+    
+    read -p "Continue with installation? (y/n): " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        return
+    fi
+    
+    bash "${SCRIPT_DIR}/install.sh"
+}
+
+deploy_to_pfsense() {
+    print_banner
+    echo -e "${CYAN}═══ Deploy to pfSense ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "This will deploy to pfSense:"
+    echo "  • Suricata forwarder (Python script)"
+    echo "  • Watchdog for auto-restart"
+    echo "  • Cron job for monitoring"
+    echo ""
+    echo "Target:"
+    echo "  • pfSense: ${PFSENSE_HOST}"
+    echo "  • SIEM:    ${SIEM_HOST}"
+    echo ""
+    
+    read -p "Continue with deployment? (y/n): " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        return
+    fi
+    
+    bash "${SCRIPT_DIR}/setup.sh"
+}
+
+configure_opensearch() {
+    print_banner
+    echo -e "${CYAN}═══ Configure OpenSearch ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Configuring OpenSearch:"
+    echo "  • Index templates"
+    echo "  • Auto-create settings"
+    echo "  • Field mappings (geo_point)"
+    echo ""
+    
+    bash "${SCRIPT_DIR}/scripts/install-opensearch-config.sh"
+}
+
+import_dashboards() {
+    print_banner
+    echo -e "${CYAN}═══ Import Dashboards ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Available dashboards:"
+    echo ""
+    echo "  1) pfsense_pfblockerng_system.json"
+    echo "     • pfSense system metrics"
+    echo "     • Network performance"
+    echo "     • PfBlockerNG statistics"
+    echo "     • Datasource: InfluxDB"
+    echo ""
+    echo "  2) Suricata IDS_IPS Dashboard.json"
+    echo "     • WAN-side security monitoring"
+    echo "     • Attack visualization"
+    echo "     • Geographic mapping"
+    echo "     • Datasource: OpenSearch"
+    echo ""
+    echo "  3) Suricata_Per_Interface.json"
+    echo "     • Per-VLAN/LAN monitoring"
+    echo "     • Dynamic interface sections"
+    echo "     • Internal threat detection"
+    echo "     • Datasource: OpenSearch"
+    echo ""
+    echo "  4) All dashboards"
+    echo ""
+    
+    read -p "Select dashboard to import [1-4]: " DASH_CHOICE
+    
+    GRAFANA_URL="http://${SIEM_HOST}:${GRAFANA_PORT:-3000}"
+    GRAFANA_USER="${GRAFANA_ADMIN_USER:-admin}"
+    GRAFANA_PASS="${GRAFANA_ADMIN_PASS:-admin}"
+    
+    echo ""
+    echo "Manual import instructions:"
+    echo "  1. Open Grafana: $GRAFANA_URL"
+    echo "  2. Login: $GRAFANA_USER / [password]"
+    echo "  3. Go to: Dashboards → Import"
+    echo "  4. Upload JSON file from dashboards/ directory"
+    echo "  5. Select appropriate datasource"
+    echo "  6. Click Import"
+    echo ""
+    
+    read -p "Press Enter to open documentation..."
+    less "${SCRIPT_DIR}/docs/INSTALL_DASHBOARD.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/INSTALL_DASHBOARD.md"
+}
+
+# Management Functions
+check_status() {
+    print_banner
+    echo -e "${CYAN}═══ System Status ═══${NC}"
+    echo ""
+    
+    bash "${SCRIPT_DIR}/scripts/status.sh"
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+restart_services() {
+    print_banner
+    echo -e "${CYAN}═══ Restart Services ═══${NC}"
+    echo ""
+    
+    if [ "$EUID" -ne 0 ]; then
+        echo -e "${RED}✗ This requires root privileges${NC}"
+        echo "  Run: sudo $0"
+        return
+    fi
+    
+    echo -e "${YELLOW}This will restart all SIEM services${NC}"
+    echo "  • OpenSearch"
+    echo "  • Logstash"
+    echo "  • Grafana"
+    echo ""
+    
+    read -p "Continue? (y/n): " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        return
+    fi
+    
+    bash "${SCRIPT_DIR}/scripts/restart-services.sh"
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+view_logs() {
+    print_banner
+    echo -e "${CYAN}═══ View Logs ═══${NC}"
+    echo ""
+    
+    echo "Select log to view:"
+    echo "  1) OpenSearch"
+    echo "  2) Logstash"
+    echo "  3) Grafana"
+    echo "  4) Forwarder (pfSense)"
+    echo "  5) All SIEM logs"
+    echo ""
+    
+    read -p "Select [1-5]: " LOG_CHOICE
+    
+    case $LOG_CHOICE in
+        1)
+            echo ""
+            echo -e "${GREEN}OpenSearch logs (Ctrl+C to exit):${NC}"
+            sudo journalctl -u opensearch -f
+            ;;
+        2)
+            echo ""
+            echo -e "${GREEN}Logstash logs (Ctrl+C to exit):${NC}"
+            sudo journalctl -u logstash -f
+            ;;
+        3)
+            echo ""
+            echo -e "${GREEN}Grafana logs (Ctrl+C to exit):${NC}"
+            sudo journalctl -u grafana-server -f
+            ;;
+        4)
+            if ! check_config; then
+                return
+            fi
+            echo ""
+            echo -e "${GREEN}Forwarder logs (Ctrl+C to exit):${NC}"
+            ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
+            ;;
+        5)
+            echo ""
+            echo -e "${GREEN}All SIEM logs (Ctrl+C to exit):${NC}"
+            sudo journalctl -u opensearch -u logstash -u grafana-server -f
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            ;;
+    esac
+}
+
+configure_retention() {
+    print_banner
+    echo -e "${CYAN}═══ Configure Retention Policy ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Current retention: ${RETENTION_DAYS:-30} days"
+    echo ""
+    read -p "Enter new retention in days: " NEW_RETENTION
+    
+    if [[ ! "$NEW_RETENTION" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}✗ Invalid number${NC}"
+        return
+    fi
+    
+    bash "${SCRIPT_DIR}/scripts/configure-retention-policy.sh" "$NEW_RETENTION"
+    
+    # Update config.env
+    if [ -f "$CONFIG_FILE" ]; then
+        sed -i "s/^RETENTION_DAYS=.*/RETENTION_DAYS=$NEW_RETENTION/" "$CONFIG_FILE"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# pfSense Operations
+check_forwarder() {
+    print_banner
+    echo -e "${CYAN}═══ Forwarder Status ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Checking forwarder on ${PFSENSE_HOST}..."
+    echo ""
+    
+    # Check if forwarder is running
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
+    
+    if [ -n "$FORWARDER_PID" ]; then
+        echo -e "${GREEN}✓ Forwarder is running${NC}"
+        echo "  PID: $FORWARDER_PID"
+        echo ""
+        
+        # Show monitored interfaces
+        echo "Monitored interfaces:"
+        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "lsof -p ${FORWARDER_PID} 2>/dev/null | grep eve.json | awk '{print \$9}'" | while read -r iface; do
+            echo "  • $iface"
+        done
+        
+        # Show recent log entries
+        echo ""
+        echo "Recent activity (last 10 entries):"
+        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "tail -10 /var/log/system.log | grep suricata-forwarder"
+    else
+        echo -e "${RED}✗ Forwarder is NOT running${NC}"
+        echo ""
+        echo "To start forwarder, run: Option 10 (Restart Forwarder)"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+restart_forwarder() {
+    print_banner
+    echo -e "${CYAN}═══ Restart Forwarder ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Restarting forwarder on ${PFSENSE_HOST}..."
+    
+    # Stop existing forwarder
+    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
+    sleep 2
+    
+    # Start forwarder
+    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+    sleep 3
+    
+    # Check status
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'")
+    
+    if [ -n "$FORWARDER_PID" ]; then
+        echo -e "${GREEN}✓ Forwarder restarted successfully${NC}"
+        echo "  PID: $FORWARDER_PID"
+    else
+        echo -e "${RED}✗ Failed to start forwarder${NC}"
+        echo ""
+        echo "Check logs:"
+        echo "  ssh ${PFSENSE_USER:-root}@${PFSENSE_HOST} 'tail -20 /var/log/system.log | grep suricata'"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+view_forwarder_logs() {
+    print_banner
+    echo -e "${CYAN}═══ Forwarder Logs ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Forwarder logs from ${PFSENSE_HOST}:"
+    echo ""
+    echo -e "${GREEN}(Ctrl+C to exit)${NC}"
+    echo ""
+    
+    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
+}
+
+test_pfsense_connectivity() {
+    print_banner
+    echo -e "${CYAN}═══ Test pfSense Connectivity ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Testing connection to ${PFSENSE_HOST}..."
+    echo ""
+    
+    # Ping test
+    echo -n "  Ping test... "
+    if ping -c 1 -W 2 "$PFSENSE_HOST" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+    fi
+    
+    # SSH test
+    echo -n "  SSH test... "
+    if ssh -o ConnectTimeout=5 -o BatchMode=yes "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "echo test" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed (may need password)${NC}"
+    fi
+    
+    # Suricata check
+    echo -n "  Suricata installed... "
+    SURICATA_CHECK=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "pkg info | grep -c suricata" 2>/dev/null || echo "0")
+    if [ "$SURICATA_CHECK" -gt 0 ]; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Not installed${NC}"
+    fi
+    
+    # Python check
+    echo -n "  Python 3.11 available... "
+    PYTHON_CHECK=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "which python3.11" 2>/dev/null)
+    if [ -n "$PYTHON_CHECK" ]; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Not found${NC}"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Advanced Functions
+verify_data_flow() {
+    print_banner
+    echo -e "${CYAN}═══ Verify Data Flow ═══${NC}"
+    echo ""
+    
+    if ! check_config; then
+        return
+    fi
+    
+    echo "Testing end-to-end data flow:"
+    echo ""
+    
+    # Check OpenSearch
+    echo -n "1. OpenSearch connectivity... "
+    if curl -s -f "http://${SIEM_HOST}:${OPENSEARCH_PORT:-9200}" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        echo ""
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Check event count
+    echo -n "2. Checking for events... "
+    EVENT_COUNT=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT:-9200}/${INDEX_PREFIX:-suricata}-*/_count" 2>/dev/null | jq -r '.count // 0')
+    if [ "$EVENT_COUNT" -gt 0 ]; then
+        echo -e "${GREEN}✓ $EVENT_COUNT events${NC}"
+    else
+        echo -e "${YELLOW}⚠ No events found${NC}"
+    fi
+    
+    # Check latest event
+    echo -n "3. Latest event age... "
+    LATEST=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT:-9200}/${INDEX_PREFIX:-suricata}-*/_search" \
+        -H 'Content-Type: application/json' \
+        -d '{"size":1,"sort":[{"@timestamp":"desc"}],"_source":["@timestamp"]}' 2>/dev/null | \
+        jq -r '.hits.hits[0]._source["@timestamp"] // "unknown"')
+    
+    if [ "$LATEST" != "unknown" ]; then
+        echo -e "${GREEN}✓ $LATEST${NC}"
+    else
+        echo -e "${YELLOW}⚠ No recent events${NC}"
+    fi
+    
+    # Check forwarder
+    echo -n "4. Forwarder status... "
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
+    if [ -n "$FORWARDER_PID" ]; then
+        echo -e "${GREEN}✓ Running (PID: $FORWARDER_PID)${NC}"
+    else
+        echo -e "${RED}✗ Not running${NC}"
+    fi
+    
+    # Generate test alert
+    echo ""
+    echo "5. Generating test alert..."
+    echo "   Run this from any machine behind pfSense:"
+    echo -e "   ${CYAN}curl http://testmyids.com${NC}"
+    echo ""
+    echo "   Then check for new events in Grafana"
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+configure_custom_sids() {
+    print_banner
+    echo -e "${CYAN}═══ Configure Custom SIDs ═══${NC}"
+    echo ""
+    
+    bash "${SCRIPT_DIR}/scripts/check_custom_sids.sh"
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+setup_telegram_alerts() {
+    print_banner
+    echo -e "${CYAN}═══ Setup Telegram Alerts ═══${NC}"
+    echo ""
+    
+    bash "${SCRIPT_DIR}/scripts/check-telegram-alerts.sh"
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+backup_configuration() {
+    print_banner
+    echo -e "${CYAN}═══ Backup Configuration ═══${NC}"
+    echo ""
+    
+    BACKUP_DIR="${HOME}/pfsense-siem-backups"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_FILE="${BACKUP_DIR}/backup_${TIMESTAMP}.tar.gz"
+    
+    mkdir -p "$BACKUP_DIR"
+    
+    echo "Creating backup..."
+    echo "  • Configuration files"
+    echo "  • Dashboards"
+    echo "  • Scripts"
+    echo ""
+    
+    tar -czf "$BACKUP_FILE" \
+        -C "${SCRIPT_DIR}" \
+        config.env \
+        dashboards/ \
+        config/ \
+        2>/dev/null || true
+    
+    if [ -f "$BACKUP_FILE" ]; then
+        echo -e "${GREEN}✓ Backup created${NC}"
+        echo "  Location: $BACKUP_FILE"
+        echo "  Size: $(du -h "$BACKUP_FILE" | cut -f1)"
+    else
+        echo -e "${RED}✗ Backup failed${NC}"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+restore_configuration() {
+    print_banner
+    echo -e "${CYAN}═══ Restore Configuration ═══${NC}"
+    echo ""
+    
+    BACKUP_DIR="${HOME}/pfsense-siem-backups"
+    
+    if [ ! -d "$BACKUP_DIR" ]; then
+        echo -e "${RED}✗ No backups found${NC}"
+        echo ""
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo "Available backups:"
+    echo ""
+    
+    BACKUPS=($(ls -1t "$BACKUP_DIR"/backup_*.tar.gz 2>/dev/null))
+    
+    if [ ${#BACKUPS[@]} -eq 0 ]; then
+        echo -e "${RED}✗ No backups found${NC}"
+        echo ""
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    for i in "${!BACKUPS[@]}"; do
+        echo "  $((i+1))) $(basename "${BACKUPS[$i]}")"
+    done
+    
+    echo ""
+    read -p "Select backup to restore [1-${#BACKUPS[@]}]: " BACKUP_CHOICE
+    
+    if [[ ! "$BACKUP_CHOICE" =~ ^[0-9]+$ ]] || [ "$BACKUP_CHOICE" -lt 1 ] || [ "$BACKUP_CHOICE" -gt ${#BACKUPS[@]} ]; then
+        echo -e "${RED}✗ Invalid choice${NC}"
+        echo ""
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    SELECTED_BACKUP="${BACKUPS[$((BACKUP_CHOICE-1))]}"
+    
+    echo ""
+    echo -e "${YELLOW}⚠ This will overwrite current configuration${NC}"
+    read -p "Continue? (y/n): " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        return
+    fi
+    
+    tar -xzf "$SELECTED_BACKUP" -C "${SCRIPT_DIR}"
+    
+    echo -e "${GREEN}✓ Configuration restored${NC}"
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Documentation Functions
+view_quick_start() {
+    print_banner
+    less "${SCRIPT_DIR}/QUICK_START.md" 2>/dev/null || cat "${SCRIPT_DIR}/QUICK_START.md"
+}
+
+view_troubleshooting() {
+    print_banner
+    less "${SCRIPT_DIR}/docs/TROUBLESHOOTING.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/TROUBLESHOOTING.md"
+}
+
+show_configuration() {
+    print_banner
+    echo -e "${CYAN}═══ Current Configuration ═══${NC}"
+    echo ""
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+        
+        echo "SIEM Server:"
+        echo "  Host:           ${SIEM_HOST}"
+        echo "  OpenSearch:     ${SIEM_HOST}:${OPENSEARCH_PORT:-9200}"
+        echo "  Logstash UDP:   ${SIEM_HOST}:${LOGSTASH_UDP_PORT:-5140}"
+        echo "  Grafana:        ${SIEM_HOST}:${GRAFANA_PORT:-3000}"
+        echo ""
+        echo "pfSense:"
+        echo "  Host:           ${PFSENSE_HOST}"
+        echo "  User:           ${PFSENSE_USER:-root}"
+        echo ""
+        echo "Settings:"
+        echo "  Index Prefix:   ${INDEX_PREFIX:-suricata}"
+        echo "  Retention:      ${RETENTION_DAYS:-30} days"
+        echo "  Debug:          ${DEBUG_ENABLED:-False}"
+        echo ""
+        echo "Config file:      $CONFIG_FILE"
+    else
+        echo -e "${RED}✗ Configuration file not found${NC}"
+        echo ""
+        echo "Create config.env to get started"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Main menu loop
+main() {
+    while true; do
+        print_banner
+        print_menu
+        
+        read -p "Enter choice [0-20]: " CHOICE
+        
+        case $CHOICE in
+            1) install_siem_stack ;;
+            2) deploy_to_pfsense ;;
+            3) configure_opensearch ;;
+            4) import_dashboards ;;
+            5) check_status ;;
+            6) restart_services ;;
+            7) view_logs ;;
+            8) configure_retention ;;
+            9) check_forwarder ;;
+            10) restart_forwarder ;;
+            11) view_forwarder_logs ;;
+            12) test_pfsense_connectivity ;;
+            13) verify_data_flow ;;
+            14) configure_custom_sids ;;
+            15) setup_telegram_alerts ;;
+            16) backup_configuration ;;
+            17) restore_configuration ;;
+            18) view_quick_start ;;
+            19) view_troubleshooting ;;
+            20) show_configuration ;;
+            0) 
+                print_banner
+                echo -e "${GREEN}Thank you for using pfSense SIEM Stack!${NC}"
+                echo ""
+                exit 0
+                ;;
+            *) 
+                echo -e "${RED}Invalid choice. Please try again.${NC}"
+                sleep 2
+                ;;
+        esac
+    done
+}
+
+# Run main menu
+main

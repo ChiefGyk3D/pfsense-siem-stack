@@ -16,18 +16,22 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 
 | File | Purpose | When to Use |
 |------|---------|-------------|
+| `pfsense-siem` ⭐ | Management console | **START HERE** - Interactive menu for everything |
 | `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
-| `deploy-pfsense-forwarder.sh` | Deploys forwarder | Run SECOND from your workstation |
+| `setup.sh` | Automated deployment | Run SECOND to deploy to pfSense |
 | `dashboards/pfsense_pfblockerng_system.json` | pfSense system dashboard | Import into Grafana (InfluxDB) |
 | `dashboards/Suricata IDS_IPS Dashboard.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
 | `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
 | `config/opensearch-index-template.json` | Index template | Auto-applied by install.sh |
-| `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by deploy script |
+| `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by setup.sh |
 
 ## Directory Structure
 
 ```
 pfsense_grafana/
+├── 🎮 Management Console
+│   └── pfsense-siem                        ★★★ INTERACTIVE MENU FOR EVERYTHING
+│
 ├── 📄 Core Documentation
 │   ├── README.md                           ← START HERE
 │   ├── QUICK_START.md                      ← Fast 15-min setup
@@ -91,17 +95,34 @@ pfsense_grafana/
 
 ## Setup Workflow
 
+### Option 1: Management Console (Recommended)
+
+```mermaid
+graph TD
+    A[Clone Repo] --> B[Run ./pfsense-siem]
+    B --> C[Option 1: Install SIEM Stack]
+    C --> D[Option 2: Deploy to pfSense]
+    D --> E[Option 3: Configure OpenSearch]
+    E --> F[Option 4: Import Dashboards]
+    F --> G[Option 5: Check Status]
+    G --> H[Done! View data]
+```
+
+**Single command:** `./pfsense-siem`
+
+### Option 2: Manual Commands
+
 ```mermaid
 graph TD
     A[Clone Repo] --> B[Run install.sh on SIEM server]
-    B --> C[Deploy forwarder to pfSense]
+    B --> C[Run setup.sh]
     C --> D[Configure Grafana datasource]
-    D --> E[Import dashboard]
+    D --> E[Import dashboards]
     E --> F[Done! View data]
 ```
 
 1. **SIEM Server**: `sudo ./install.sh`
-2. **pfSense**: `./deploy-pfsense-forwarder.sh <pfsense-ip> <siem-ip>`
+2. **Deployment**: `./setup.sh`
 3. **Grafana**: Add OpenSearch datasource
 4. **Dashboard**: Import JSON file
 
