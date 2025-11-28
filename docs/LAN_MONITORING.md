@@ -101,35 +101,84 @@ Add to **Local.rules** for custom detections.
 
 ## Grafana Dashboard for LAN Monitoring
 
-### Create Separate Dashboard
+### Suricata Per-Interface Dashboard
 
-**dashboards/Suricata_LAN_IDS.json** (to be created)
+**Dashboard**: `dashboards/Suricata_Per_Interface.json` ✅ **Production Ready**
 
-**Key Panels:**
+This dashboard provides **dynamic per-interface monitoring** with automatically repeating sections for each VLAN/interface you select.
 
-1. **Internal Alert Timeline**
-   - Query: `suricata.eve.event_type:alert AND suricata.eve.src_ip:(192.168.0.0/16 OR 10.0.0.0/8)`
-   - Visualization: Time series graph
+#### Dashboard Features
 
-2. **Top Internal Talkers**
-   - Query: `suricata.eve.src_ip:192.168.* OR suricata.eve.dest_ip:192.168.*`
-   - Aggregation: Terms on `suricata.eve.src_ip.keyword`
-   - Visualization: Table (src IP, dest IP, alert count)
+- **Multi-Select Interface Variable**: Choose one, multiple, or all interfaces
+- **Dynamic Row Repeating**: Automatically creates a monitoring section for each selected interface
+- **Complete Per-Interface Analytics**: Each interface gets its own set of panels
 
-3. **Lateral Movement Detection**
-   - Query: `suricata.eve.event_type:alert AND suricata.eve.src_ip:192.168.* AND suricata.eve.dest_ip:192.168.* AND NOT suricata.eve.src_ip:suricata.eve.dest_ip`
-   - Filter: Exclude same-subnet traffic
-   - Visualization: Sankey diagram (src → dest flows)
+#### Panels (Per Interface)
 
-4. **Internal Port Scans**
-   - Query: `suricata.eve.alert.signature:"*SCAN*" AND suricata.eve.src_ip:192.168.*`
-   - Aggregation: Count by `suricata.eve.src_ip.keyword`
-   - Visualization: Pie chart
+1. **Events & Alerts Counter**
+   - Total events and alerts for this interface
+   - Color-coded thresholds (green/yellow/red)
+   - Sparkline showing trend
 
-5. **SMB/RDP Brute Force**
-   - Query: `suricata.eve.dest_port:(445 OR 3389) AND suricata.eve.alert.signature:"*brute*"`
-   - Aggregation: Terms on `suricata.eve.src_ip.keyword`
-   - Visualization: Table
+2. **Top Alert Signatures**
+   - Pie chart of most triggered IDS rules
+   - Shows signature name and count
+   - Hover to see details
+
+3. **Alerts Timeline**
+   - Time series graph of alerts over time
+   - Identifies attack patterns and spikes
+
+4. **Top Source IPs**
+   - Bar chart of internal hosts generating most alerts
+   - Useful for identifying compromised devices
+
+5. **Top Destination IPs**
+   - Bar chart of most targeted internal hosts
+   - Identifies attack targets
+
+6. **Alert Logs Table**
+   - Complete alert details per interface
+   - Columns: Time, Category, Signature, Action, Severity, Protocol, IPs, Ports, Countries
+   - 50 most recent alerts
+
+#### How to Use
+
+1. **Import Dashboard**:
+   ```bash
+   Grafana → Dashboards → Import → Upload dashboards/Suricata_Per_Interface.json
+   ```
+
+2. **Select Interfaces**:
+   - Use the interface dropdown at the top
+   - Select specific VLANs (e.g., `lagg1.10`, `lagg1.22`)
+   - Or select "All" to see all interfaces
+
+3. **Customize Thresholds**:
+   - Edit dashboard
+   - Adjust threshold values per your traffic volume
+   - WAN interfaces: Higher thresholds (500/2000 alerts)
+   - LAN interfaces: Lower thresholds (50/200 alerts)
+
+#### Example Use Cases
+
+**Monitor IoT VLAN Only**:
+- Interface Variable: Select `lagg1.22` (IoT VLAN)
+- See only IoT-specific alerts and events
+- Identify compromised IoT devices
+
+**Compare Multiple VLANs**:
+- Interface Variable: Select `lagg1.10`, `lagg1.22`, `lagg1.23`
+- See side-by-side comparison of alert volumes
+- Identify which VLAN has most activity
+
+**Full Network View**:
+- Interface Variable: Select "All"
+- See every monitored interface with its own section
+- Scroll through to review all VLANs
+
+![Per-Interface Dashboard](../media/Suricata%20Per-Interface%20Dashboard.png)
+*Example of dynamic interface sections - each VLAN gets complete monitoring*
 
 ---
 
@@ -339,4 +388,9 @@ while true; do curl -s http://192.168.X.Y:8080/beacon; sleep 60; done
 
 ---
 
-**Next Steps**: Create LAN dashboard, test lateral movement detection, tune alert thresholds.
+**Next Steps**: 
+1. Import `Suricata_Per_Interface.json` dashboard
+2. Select interfaces to monitor (LAN VLANs)
+3. Test lateral movement detection
+4. Tune alert thresholds per VLAN
+5. Review dashboard data for anomalies

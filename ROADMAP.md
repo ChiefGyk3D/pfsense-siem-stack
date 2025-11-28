@@ -122,7 +122,7 @@ Build community-driven platform for pfSense knowledge sharing.
 |-----------|--------|-----|-------|
 | Documentation | 🚧 Ongoing | Continuous | Adding troubleshooting, scenarios |
 | SID Management | 🚧 Testing | Q1 2025 | 219 rules optimized, production testing |
-| LAN Dashboard | 🚧 Design | Q1 2025 | East-west traffic visualization |
+| Per-Interface Dashboard | ✅ Complete | Released | Dynamic VLAN/LAN sections |
 | Alert Rules | 🚧 Planning | Q2 2025 | Pre-configured detection library |
 
 ### 📝 Planned (Not Started)
