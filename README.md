@@ -186,6 +186,32 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 - SSH enabled with key-based auth
 - Python 3.11+ available
 
+### Recommended pfSense Packages
+
+These packages enhance functionality and are used/referenced throughout this project:
+
+| Package | Purpose | Why Recommended | Installation |
+|---------|---------|-----------------|--------------|
+| **pfBlockerNG-devel** | IP/DNS blocklists, GeoIP blocking | Essential for upstream threat filtering. Blocks known bad actors before they reach Suricata. The devel version has latest features and GeoIP updates. Dashboard includes pfBlockerNG statistics panels. | System → Package Manager → Available Packages → Install `pfBlockerNG-devel` |
+| **Telegraf** | Metrics collection agent | Collects system metrics (CPU, memory, interfaces) and sends to InfluxDB for the pfSense system dashboard. Required for hardware monitoring panels. | System → Package Manager → Available Packages → Install `telegraf` |
+| **ntopng** | Network traffic analysis | Provides GeoIP database updates automatically (GeoLite2-City.mmdb). The forwarder uses this database for IP geolocation enrichment. Also useful for deep packet inspection and flow analysis. | System → Package Manager → Available Packages → Install `ntopng` |
+| **Service_Watchdog** | Service monitoring | Monitors critical services (Suricata, Unbound, etc.) and auto-restarts on failure. Complements our forwarder watchdog for complete pipeline reliability. | System → Package Manager → Available Packages → Install `Service_Watchdog` |
+| **nut** | UPS monitoring | Network UPS Tools for power monitoring. Telegraf can collect UPS metrics for dashboard display. Critical for graceful shutdowns during power events. | System → Package Manager → Available Packages → Install `nut` (if using UPS) |
+
+**Installation Priority:**
+1. **pfBlockerNG-devel** - Install first, reduces attack surface before IDS/IPS
+2. **Suricata** - Core IDS/IPS functionality (required for this project)
+3. **Telegraf** - Required for system metrics dashboard
+4. **ntopng** - Recommended for auto-updating GeoIP database
+5. **Service_Watchdog** - Recommended for service reliability
+6. **nut** - Optional, only if using UPS hardware
+
+**Notes:**
+- **pfBlockerNG-devel vs pfBlockerNG**: Use `-devel` for latest GeoIP updates and features
+- **ntopng alternative**: If not using ntopng, manually update GeoIP database (see [GeoIP Setup](docs/GEOIP_SETUP.md))
+- **Telegraf configuration**: After installation, use included plugins from `plugins/` directory
+- **Service_Watchdog**: Configure to monitor at minimum: Suricata, Unbound, dpinger
+
 ### Installation (2 Options)
 
 #### Option 1: Interactive Management Console (Recommended)
