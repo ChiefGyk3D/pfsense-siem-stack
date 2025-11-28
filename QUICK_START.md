@@ -31,9 +31,41 @@ Get your pfSense monitoring stack running in **under 15 minutes**.
 
 ---
 
-## Installation (3 Steps)
+## Installation Methods
 
-### Step 1: Install SIEM Stack (5 minutes)
+### Method 1: Management Console (Recommended)
+
+**Easiest option** - Interactive menu for everything:
+
+```bash
+# Clone repository
+git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
+cd pfsense_grafana
+
+# Run management console
+./pfsense-siem
+
+# Use menu options:
+#  1) Install SIEM Stack
+#  2) Deploy to pfSense
+#  3) Configure OpenSearch
+#  4) Import Dashboards
+#  5) Check System Status
+```
+
+**Features:**
+- Complete interactive interface
+- All operations in one place
+- Built-in health checks
+- Service management
+- Log viewing
+- Troubleshooting tools
+
+**[Full documentation →](docs/MANAGEMENT_CONSOLE.md)**
+
+### Method 2: Manual Installation (3 Steps)
+
+#### Step 1: Install SIEM Stack (5 minutes)
 
 On your SIEM server:
 

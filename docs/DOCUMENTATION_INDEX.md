@@ -10,6 +10,8 @@ This is the central index for the pfSense Knowledge Base, covering SIEM infrastr
 
 | I want to... | Go to... | Status |
 |--------------|----------|--------|
+| **Use the management console** | [Management Console Guide](MANAGEMENT_CONSOLE.md) ⭐ | ✅ Stable |
+| **Learn about all helper scripts** | [Scripts Reference Guide](SCRIPTS_REFERENCE.md) | ✅ Stable |
 | **Get started from scratch** | [Main README](../README.md) → [Quick Start](../QUICK_START.md) | ✅ Stable |
 | **See what's complete vs WIP** | [Project Status](../README.md#-project-status) | ✅ Updated |
 | **Install the SIEM stack** | [SIEM Stack Installation](INSTALL_SIEM_STACK.md) | ✅ Stable |
