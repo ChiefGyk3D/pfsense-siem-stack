@@ -6794,7 +6794,8 @@
   "tags": [
     "pfsense",
     "pfblocker",
-    "telegraf"
+    "telegraf",
+    "security"
   ],
   "templating": {
     "list": [
@@ -7009,6 +7010,6 @@
   },
   "timezone": "",
   "title": "pfSense System Dashboard",
-  "uid": "GflT1CsMz",
+  "uid": "pfsense_system_pfblockerng",
   "version": 241
 }
