@@ -1765,15 +1765,18 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 42,
-  "tags": [],
+  "tags": [
+    "suricata",
+    "pfsense",
+    "opensearch",
+    "security",
+    "ids",
+    "ips"
+  ],
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": false,
-          "text": "OpenSearch",
-          "value": "OpenSearch"
-        },
+        "current": {},
         "hide": 0,
         "includeAll": false,
         "label": "Data Source",
@@ -1788,14 +1791,12 @@
       },
       {
         "current": {
-          "selected": true,
           "text": "All",
-          "value": "$__all"
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "type": "grafana-opensearch-datasource",
-          "uid": "${DS_OPENSEARCH}"
-        },
+        "datasource": "$DS_OPENSEARCH",
         "definition": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
         "hide": 0,
         "includeAll": true,
@@ -1806,7 +1807,6 @@
         "query": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       }
@@ -1819,6 +1819,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Suricata IDS/IPS Dashboard",
-  "uid": "cg3d-suricata-dash-1",
-  "version": 7
+  "uid": "suricata_ids_ips",
+  "version": 4
 }
