@@ -167,15 +167,30 @@ Version: 2.0+
 - [ ] Data source added
 - [ ] Test successful (green checkmark)
 
-#### 8. Import Dashboard
+#### 8. Import Dashboards
 
 **Navigate:** Dashboards (+) → Import → Upload JSON file
 
-**File:** `dashboards/Suricata IDS_IPS Dashboard.json`
+**Import all three dashboards:**
 
+**Dashboard 1: pfSense System & pfBlockerNG**
+- **File:** `dashboards/pfsense_pfblockerng_system.json`
+- **Datasource:** Select your InfluxDB datasource
 - [ ] Dashboard imported successfully
-- [ ] OpenSearch datasource selected during import
-- [ ] Dashboard opens without errors
+- [ ] Shows system metrics, network stats, pfBlockerNG blocks
+
+**Dashboard 2: Suricata WAN Monitoring**
+- **File:** `dashboards/Suricata IDS_IPS Dashboard.json`
+- **Datasource:** Select your OpenSearch datasource
+- [ ] Dashboard imported successfully
+- [ ] Shows WAN-side security events and alerts
+
+**Dashboard 3: Suricata Per-Interface (LAN Monitoring)**
+- **File:** `dashboards/Suricata_Per_Interface.json`
+- **Datasource:** Select your OpenSearch datasource
+- [ ] Dashboard imported successfully
+- [ ] Shows per-VLAN/interface sections
+- [ ] Interface dropdown populated with your interfaces
 
 ---
 
