@@ -839,7 +839,8 @@
     "ids",
     "ips",
     "pfsense",
-    "security"
+    "security",
+    "opensearch"
   ],
   "templating": {
     "list": [
