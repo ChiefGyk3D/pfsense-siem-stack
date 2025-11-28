@@ -188,7 +188,36 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 - SSH enabled with key-based auth
 - Python 3.11+ available
 
-### Installation (3 Commands)
+### Installation (2 Options)
+
+#### Option 1: Interactive Management Console (Recommended)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
+cd pfsense_grafana
+
+# 2. Run management console
+./pfsense-siem
+
+# Follow the interactive menu:
+#   - Option 1: Install SIEM Stack
+#   - Option 2: Deploy to pfSense
+#   - Option 3: Configure OpenSearch
+#   - Option 4: Import Dashboards
+```
+
+**Features:**
+- ✅ Complete interactive menu system
+- ✅ System health checks
+- ✅ Service management (start/stop/restart)
+- ✅ Log viewing (all components)
+- ✅ Configuration backup/restore
+- ✅ Built-in troubleshooting tools
+
+**[Full Management Console Documentation →](docs/MANAGEMENT_CONSOLE.md)**
+
+#### Option 2: Manual Commands
 
 ```bash
 # 1. Clone repository
@@ -752,10 +781,6 @@ Contributions welcome! Please:
 2. Create a feature branch
 3. Test changes thoroughly
 4. Submit pull request with clear description
-
-## 📜 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Credits
 
