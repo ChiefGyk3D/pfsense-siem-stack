@@ -1765,7 +1765,14 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 42,
-  "tags": [],
+  "tags": [
+    "suricata",
+    "ids",
+    "ips",
+    "pfsense",
+    "security",
+    "opensearch"
+  ],
   "templating": {
     "list": [
       {
