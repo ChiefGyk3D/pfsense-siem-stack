@@ -18,7 +18,9 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 |------|---------|-------------|
 | `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
 | `deploy-pfsense-forwarder.sh` | Deploys forwarder | Run SECOND from your workstation |
-| `dashboards/Suricata IDS_IPS Dashboard.json` | Main dashboard | Import THIRD into Grafana |
+| `dashboards/pfsense_pfblockerng_system.json` | pfSense system dashboard | Import into Grafana (InfluxDB) |
+| `dashboards/Suricata IDS_IPS Dashboard.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
+| `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
 | `config/opensearch-index-template.json` | Index template | Auto-applied by install.sh |
 | `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by deploy script |
 
@@ -33,8 +35,9 @@ pfsense_grafana/
 │   └── LICENSE
 │
 ├── 📊 dashboards/
-│   ├── Suricata IDS_IPS Dashboard.json     ★ MAIN DASHBOARD
-│   ├── telegraf-original.json              Optional system metrics
+│   ├── pfsense_pfblockerng_system.json     ★ pfSense system & pfBlockerNG
+│   ├── Suricata IDS_IPS Dashboard.json     ★ WAN-side security monitoring
+│   ├── Suricata_Per_Interface.json         ★ Per-interface LAN monitoring
 │   └── archive/                            Old versions (reference only)
 │
 ├── 🔧 scripts/
@@ -71,8 +74,10 @@ pfsense_grafana/
 │   └── Old/                                Deprecated plugins
 │
 ├── 🖼️ media/
-│   ├── Suricata IDS_IPS WAN Dashboard.png  Current dashboard screenshot
-│   └── Grafana-pfSense.png                 Additional preview
+│   ├── Grafana-pfSense.png                         pfSense system dashboard
+│   ├── Suricata IDS_IPS WAN Dashboard.png          WAN security dashboard
+│   ├── Suricata Per-Interface Dashboard.png        Per-interface dashboard
+│   └── streamelements.png                          Donation icon
 │
 ├── 🧪 tests/
 │   ├── test-multi-interface.sh             Multi-interface testing

@@ -6,7 +6,10 @@ Get your pfSense monitoring stack running in **under 15 minutes**.
 
 - **OpenSearch** - Log storage and search
 - **Logstash** - Log processing pipeline
-- **Grafana** - Beautiful dashboards
+- **Grafana** - Beautiful dashboards with three pre-built views:
+  - **pfSense System Dashboard** - Hardware, network, pfBlockerNG stats
+  - **Suricata WAN Dashboard** - External threat detection
+  - **Suricata Per-Interface Dashboard** - Internal/LAN monitoring
 - **Automated deployment** - One command for SIEM, one for pfSense
 - **Your choice**: Suricata IDS/IPS logs, Telegraf metrics, or both
 
@@ -118,16 +121,22 @@ bash check-forwarder-status.sh PFSENSE_IP
 **Access Grafana:**
 1. Open browser: `http://SIEM_IP:3000`
 2. Login: `admin` / (your password)
-3. Import dashboard:
+3. Import dashboards (import all three):
    - Click ➕ → Import
-   - Upload `dashboards/suricata-complete.json`
-   - Select OpenSearch datasource
-   - Click Import
+   - **Dashboard 1**: Upload `dashboards/pfsense_pfblockerng_system.json`
+     - Select InfluxDB datasource
+     - Click Import
+   - **Dashboard 2**: Upload `dashboards/Suricata IDS_IPS Dashboard.json`
+     - Select OpenSearch datasource
+     - Click Import
+   - **Dashboard 3**: Upload `dashboards/Suricata_Per_Interface.json`
+     - Select OpenSearch datasource
+     - Click Import
 
 **You should see:**
-- Events flowing in real-time
-- Charts populating with data
-- Interface names (if multiple interfaces)
+- **pfSense Dashboard**: System metrics, network stats, pfBlockerNG blocks
+- **Suricata WAN Dashboard**: Security events, alerts, attack sources
+- **Suricata Per-Interface Dashboard**: Per-VLAN/LAN monitoring with dynamic sections
 
 ---
 

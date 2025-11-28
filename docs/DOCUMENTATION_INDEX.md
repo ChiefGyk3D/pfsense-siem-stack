@@ -17,7 +17,7 @@ This is the central index for the pfSense Knowledge Base, covering SIEM infrastr
 | **Optimize Suricata** | [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) ⭐ | ✅ Stable |
 | **Manage Suricata signatures** | [SID Management](../config/sid/README.md) | 🚧 Testing |
 | **Fix "No Data" in dashboard** | [Dashboard Troubleshooting](DASHBOARD_NO_DATA_FIX.md) | ✅ Stable |
-| **Monitor internal traffic** | [LAN Monitoring Guide](LAN_MONITORING.md) | 🚧 Dashboard Pending |
+| **Monitor internal traffic** | [LAN Monitoring Guide](LAN_MONITORING.md) | ✅ Dashboard Ready |
 | **Configure blocklists** | [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md) | ✅ Stable |
 | **Fix log rotation issues** | [Log Rotation Fix](LOG_ROTATION_FIX.md) | ✅ Solved |
 | **Troubleshoot issues** | [Troubleshooting Guide](TROUBLESHOOTING.md) | ✅ Stable |
@@ -34,7 +34,8 @@ This repository documents:
 - **✅ IDS/IPS Security**: Suricata optimization, SID management, PfBlockerNG (stable, SID testing)
 - **✅ Network Monitoring**: Multi-WAN, VLAN segmentation, interface tracking (stable)
 - **✅ Automation**: Log forwarding, watchdogs, automated recovery (stable)
-- **🚧 Advanced Analytics**: LAN monitoring dashboard, anomaly detection (planned)
+- **✅ LAN Monitoring**: Per-interface dashboard with dynamic VLAN sections (production ready)
+- **🚧 Advanced Analytics**: Anomaly detection, machine learning (planned)
 - **🚧 Multi-Firewall**: Central management of multiple pfSense instances (planned)
 
 ---
