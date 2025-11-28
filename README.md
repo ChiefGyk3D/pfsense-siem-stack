@@ -47,8 +47,14 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ---
 
-![WAN Dashboard Preview](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
-*Live WAN-side monitoring with attack sources, alert signatures, and geographic visualization*
+![pfSense System Dashboard](media/Grafana-pfSense.png)
+*pfSense System and pfBlockerNG monitoring dashboard*
+
+![WAN Dashboard](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
+*WAN-side Suricata IDS/IPS monitoring with attack sources, signatures, and geographic visualization*
+
+![Per-Interface Dashboard](media/Suricata%20Per-Interface%20Dashboard.png)
+*Per-Interface Suricata monitoring - LAN/VLAN monitoring with dynamic interface sections*
 
 ---
 
@@ -133,7 +139,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ### � Dashboards & Alerts
 - **WAN monitoring**: Attack sources, signatures, protocols, top talkers
-- **LAN monitoring**: Internal traffic, RFC1918 flows (🚧 dashboard development)
+- **LAN monitoring**: Per-interface dashboard with dynamic VLAN sections (✅ production ready)
 - **Interface distribution**: Traffic breakdown by interface/VLAN
 - **Alerting**: Grafana alerts + webhook integrations (🚧 refining rules)
 
@@ -208,8 +214,11 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 
 1. Open Grafana: `http://<siem-server>:3000` (admin/admin)
 2. Go to **Dashboards** → **Import**
-3. Upload `dashboards/Suricata IDS_IPS Dashboard.json`
-4. Select your OpenSearch datasource
+3. Upload dashboards (import all three):
+   - **`dashboards/pfsense_pfblockerng_system.json`** - pfSense system metrics and pfBlockerNG stats
+   - **`dashboards/Suricata IDS_IPS Dashboard.json`** - WAN-side security monitoring
+   - **`dashboards/Suricata_Per_Interface.json`** - Per-interface LAN/VLAN monitoring
+4. Select your datasource (InfluxDB for pfSense, OpenSearch for Suricata)
 5. Click **Import**
 
 ---
@@ -386,9 +395,10 @@ pfsense_grafana/
 │
 ├── 📊 Dashboards & Visualization
 │   └── dashboards/
-│       ├── Suricata IDS_IPS Dashboard.json    ★ Main WAN-side security dashboard
-│       ├── telegraf-original.json             Optional system metrics dashboard
-│       └── archive/                           Historical dashboard versions
+│       ├── pfsense_pfblockerng_system.json        ★ pfSense system & pfBlockerNG dashboard
+│       ├── Suricata IDS_IPS Dashboard.json        ★ WAN-side Suricata security dashboard
+│       ├── Suricata_Per_Interface.json            ★ Per-interface LAN/VLAN monitoring
+│       └── archive/                               Historical dashboard versions
 │
 ├── 🔧 Scripts & Automation
 │   └── scripts/
@@ -452,7 +462,10 @@ pfsense_grafana/
 │
 ├── 🖼️ Media & Assets
 │   └── media/
-│       └── Suricata IDS_IPS WAN Dashboard.png Dashboard screenshot
+│       ├── Grafana-pfSense.png                    pfSense system dashboard screenshot
+│       ├── Suricata IDS_IPS WAN Dashboard.png     WAN dashboard screenshot
+│       ├── Suricata Per-Interface Dashboard.png   Per-interface dashboard screenshot
+│       └── streamelements.png                     StreamElements donation icon
 │
 └── 🧪 Testing & Validation
     └── tests/
@@ -476,37 +489,69 @@ pfsense_grafana/
 
 ## 📊 Dashboard Panels
 
-### Current Dashboard: WAN-Side Monitoring
+### Dashboard 1: pfSense System & pfBlockerNG
 
-Focused on external threats and inbound attack analysis.
+**Purpose**: System monitoring, network performance, and pfBlockerNG statistics
+
+#### Hardware & System
+- CPU usage, memory, disk I/O
+- Temperature monitoring
+- System uptime and load
+
+#### Network Statistics
+- Gateway RTT and packet loss
+- Interface status and throughput
+- Per-WAN and per-LAN traffic graphs
+
+#### PfBlockerNG
+- IP blocks (inbound/outbound)
+- DNSBL blocked queries
+- Top blocked sources and destinations
+- Blocked traffic by country (GeoIP)
+
+### Dashboard 2: Suricata WAN Monitoring
+
+**Purpose**: External threat detection and WAN-side attack analysis
 
 #### Statistics
 - **Events & Alerts**: Combined counter with sparklines and color-coded thresholds
 - **Event Type Distribution**: Pie chart showing alert, http, dns, tls, etc.
 - **Protocol Distribution**: TCP, UDP, ICMP breakdown
-- **Interface Distribution**: Traffic by WAN interface
 
 #### Alerts
-- **Top 10 Alert Signatures**: Most triggered IDS rules
+- **Top Alert Signatures**: Most triggered IDS rules
 - **IDS Alert Logs**: Detailed table with time, signature, IPs, ports, countries
-- **Alert Severity Breakdown**: Critical, high, medium, low classification
+- **Alert Severity**: Critical, high, medium, low classification
 
 #### Geographic Visualization
-- **Inbound Attack Sources Map**: Interactive world map with geohash clusters
-- **Top 10 Source Countries**: Donut chart of attack origins
-- **Country Statistics Table**: Detailed breakdown with event counts
+- **Attack Sources Map**: Interactive world map with geohash clusters
+- **Top Source Countries**: Donut chart of attack origins
+- **Country Statistics**: Detailed breakdown with event counts
 
 #### HTTP Traffic Analysis
-- **Top 10 HTTP Hosts**: Most accessed domains
+- **Top HTTP Hosts**: Most accessed domains
 - **HTTP Methods**: GET, POST, etc. distribution
 
-### Upcoming: LAN-Side Dashboard
+### Dashboard 3: Suricata Per-Interface (LAN Monitoring)
 
-A companion dashboard for internal network monitoring (in development):
-- Internal host communication patterns
-- East-West traffic analysis
-- RFC1918 source/destination focus
-- Potential lateral movement detection
+**Purpose**: Per-VLAN/LAN monitoring with dynamically repeating sections
+
+#### Features
+- **Dynamic Interface Sections**: Automatically creates monitoring section for each selected interface
+- **Multi-select Variable**: Monitor one, some, or all interfaces simultaneously
+- **Per-Interface Panels** (repeated for each interface):
+  - Events & Alerts counter with thresholds
+  - Top Alert Signatures
+  - Alerts timeline graph
+  - Top Source IPs
+  - Top Destination IPs
+  - Complete alert logs table
+
+#### Use Cases
+- **East-West Detection**: Monitor lateral movement between VLANs
+- **IoT Monitoring**: Heavy monitoring on untrusted IoT VLANs
+- **Internal Threats**: Detect compromised hosts and insider threats
+- **RFC1918 Traffic**: Focus on internal network communication patterns
 
 ## 🔧 Configuration
 
@@ -737,7 +782,7 @@ If you find this pfSense SIEM Stack useful, consider supporting development:
   <table>
     <tr>
       <td align="center"><a href="https://patreon.com/chiefgyk3d?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink" title="Patreon"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/patreon.svg" width="32" height="32" alt="Patreon"/></a></td>
-      <td align="center"><a href="https://streamelements.com/chiefgyk3d/tip" title="StreamElements"><img src="https://raw.githubusercontent.com/ChiefGyk3D/solarstorm_scout/main/media/streamelements.png" width="32" height="32" alt="StreamElements"/></a></td>
+      <td align="center"><a href="https://streamelements.com/chiefgyk3d/tip" title="StreamElements"><img src="media/streamelements.png" width="32" height="32" alt="StreamElements"/></a></td>
     </tr>
     <tr>
       <td align="center">Patreon</td>
