@@ -87,8 +87,6 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ---
 
----
-
 ## 📊 Project Status
 
 ### ✅ Production Ready
@@ -250,6 +248,25 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 4. Select your datasource (InfluxDB for pfSense, OpenSearch for Suricata)
 5. Click **Import**
 
+### Verify Installation
+
+Check everything is working:
+
+```bash
+./scripts/status.sh
+```
+
+This will verify:
+- ✅ OpenSearch is running and configured correctly
+- ✅ Logstash is listening for events
+- ✅ Forwarder is running on pfSense
+- ✅ Data is flowing and recent
+- ✅ Watchdog is installed
+- ✅ Suricata is generating events
+
+**Green checkmarks** = everything is working!  
+**Red X's** = see the error messages and suggested fixes
+
 ---
 
 ## 📚 Documentation
@@ -382,30 +399,7 @@ See: [UniFi Poller Installation](https://unpoller.com/docs/install/installation)
 - **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
 - **Documentation**: [docs/](docs/)
 
----
-
-**Built with ❤️ for the pfSense and open-source security community**
-
-### 5. Verify Installation
-
-Check everything is working:
-
-```bash
-./scripts/status.sh
-```
-
-This will verify:
-- ✅ OpenSearch is running and configured correctly
-- ✅ Logstash is listening for events
-- ✅ Forwarder is running on pfSense
-- ✅ Data is flowing and recent
-- ✅ Watchdog is installed
-- ✅ Suricata is generating events
-
-**Green checkmarks** = everything is working!  
-**Red X's** = see the error messages and suggested fixes
-
-## 📁 Project Structure
+### Verify Installation
 
 ```
 pfsense_grafana/
