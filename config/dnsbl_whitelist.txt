@@ -1107,6 +1107,16 @@ pornhub.com
 www.pornhub.com
 .pornhub.com
 .phncdn.com
+cdn1-img.phncdn.com
+cdn1-vid.phncdn.com
+di.phncdn.com
+ei.phncdn.com
+cv.phncdn.com
+.modelhub.com
+modelhub.com
+# Note: trafficjunky.com is the ad network - intentionally NOT whitelisted
+# If you want to remove ALL ads (may break some features), keep it blocked.
+# If player breaks, you may need to whitelist specific domains from browser console.
 xvideos.com
 www.xvideos.com
 .xvideos.com
