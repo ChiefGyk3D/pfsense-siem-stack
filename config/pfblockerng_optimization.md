@@ -1,5 +1,5 @@
 # pfBlockerNG Recommended Configuration Guide
-**Updated:** November 2025  
+**Updated:** December 2025  
 **Purpose:** Production-tested pfBlockerNG configuration for comprehensive threat blocking  
 **Author:** ChiefGyk3D
 
@@ -14,7 +14,8 @@
 4. [Pre-Configured Feeds](#pre-configured-feeds-from-pfblockerng)
 5. [Performance Tuning](#performance-tuning)
 6. [Whitelisting Guide](#whitelisting-guide)
-7. [Common Issues](#common-issues)
+7. [Privacy & Security Considerations](#privacy--security-considerations)
+8. [Common Issues](#common-issues)
 
 ---
 
@@ -342,6 +343,94 @@ pfctl -vvss | grep "table-entries"
 
 ## Whitelisting Guide
 
+### **Comprehensive Whitelist File**
+
+We provide a comprehensive, curated whitelist file that you can import directly into pfBlockerNG:
+
+📁 **File Location:** [`config/dnsbl_whitelist.txt`](dnsbl_whitelist.txt)
+
+**Format:** The file uses standard pfBlockerNG whitelist format:
+- One domain per line
+- Comments start with `#` (ignored by pfBlockerNG)
+- Section headers use `##` for organization
+- Wildcard subdomains use `.domain.com` syntax
+
+**To Import:**
+1. Navigate to `Firewall > pfBlockerNG > DNSBL > DNSBL Groups`
+2. Create a new group with **List Action: Whitelist**
+3. Copy/paste the contents of `dnsbl_whitelist.txt` into the custom list
+4. Or use a URL if hosting the file (e.g., raw GitHub URL)
+5. Save and force update
+
+### **Whitelist Categories (62 Sections)**
+
+The whitelist is organized into logical categories:
+
+#### **Core Infrastructure**
+| Category | Purpose |
+|----------|---------|
+| Identity / Login / Certificates | SSO, OAuth, OCSP, certificate validation |
+| Apple Services | iCloud, iTunes, App Store, developer tools |
+| Google Core | Search, APIs, authentication |
+
+#### **Streaming & Media**
+| Category | Purpose |
+|----------|---------|
+| Streaming Platforms — Live & Video | YouTube, Twitch, Kick |
+| TikTok (multiple sections) | Core app, livestream, CDN, APIs |
+| Media Streaming / Music / TV | Spotify, Netflix, Prime Video, etc. |
+| Plex / Jellyfin / Emby | Personal media server connectivity |
+
+#### **Gaming**
+| Category | Purpose |
+|----------|---------|
+| Gaming / Consoles | Xbox, PlayStation, Nintendo, Steam |
+| PC Gaming Platforms | Epic, GOG, EA, Ubisoft launchers |
+| Anti-Cheat / Multiplayer | EasyAntiCheat, BattlEye, Riot Vanguard |
+| Gaming Social | Discord, Guilded |
+
+#### **Social Media & Messaging**
+| Category | Purpose |
+|----------|---------|
+| LinkedIn, Reddit, X/Twitter | Professional and general social |
+| Facebook/Meta, Instagram, Threads | Meta platforms (core only, no tracking) |
+| Bluesky, Mastodon | Decentralized/federated social |
+| Snapchat, Pinterest, Tumblr | Visual social platforms |
+| WhatsApp, Telegram | Messaging apps |
+
+#### **Creator & Content Platforms**
+| Category | Purpose |
+|----------|---------|
+| Patreon, Ko-fi | Creator monetization |
+| Substack, Medium, Quora | Publishing and knowledge |
+| DeviantArt, Behance, Dribbble | Art and design communities |
+| Letterboxd, Goodreads, Last.fm | Entertainment social |
+
+#### **Productivity & Work**
+| Category | Purpose |
+|----------|---------|
+| Productivity / Work Essentials | Notion, Slack, Zoom, Figma, Trello |
+| Cloud Storage | Dropbox, Google Drive, OneDrive, iCloud |
+| Developer Platforms | GitHub, GitLab, npm, Docker Hub |
+| AI / LLM Tools | OpenAI, Claude, Gemini, Copilot |
+
+#### **Utilities**
+| Category | Purpose |
+|----------|---------|
+| CDN / Static Assets | Cloudflare, Akamai, Fastly, jsDelivr |
+| Privacy & Secure Communications | Signal, ProtonMail, Bitwarden, Mullvad |
+| Search Engines (Privacy-Focused) | DuckDuckGo, Startpage, Brave Search |
+| E-commerce / Shopping | Amazon, eBay, Etsy, PayPal |
+| News & Publications | Major news outlets |
+| Weather, Maps, Smart Home | Utility services |
+
+#### **Adult Content (18+ Only)**
+| Category | Purpose |
+|----------|---------|
+| Adult Content | Major adult entertainment sites (Pornhub, XVideos, OnlyFans, Fansly, etc.) |
+
+> **⚠️ Warning:** The Adult Content section is included for users who choose to allow such content. It includes privacy warnings about tracking. **Remove this section entirely** from your whitelist if you want adult content to remain blocked (default behavior with most DNSBL lists like OISD).
+
 ### **Critical Services to Whitelist:**
 
 #### **CDN & Cloud Services** (Create "CDN" Permit group):
@@ -446,6 +535,133 @@ googleusercontent.com
 - **IoT Devices**: Cloud connectivity checks
 - **Banking Apps**: Ad network SDKs embedded in apps
 - **News Sites**: Heavy ad/tracker usage
+
+---
+
+## Privacy & Security Considerations
+
+The comprehensive whitelist includes many services that have known privacy or security concerns. These are included because users may legitimately need them, but you should understand the risks.
+
+> **⚠️ Important:** Review the whitelist and remove any services you don't use. The more you whitelist, the larger your attack surface.
+
+### **Services with Privacy Concerns**
+
+The whitelist file includes `# PRIVACY NOTICE` comments for services with significant concerns. Here's a summary:
+
+#### **Chinese-Owned Services**
+
+| Service | Owner | Concerns |
+|---------|-------|----------|
+| **TikTok** | ByteDance (China) | Potential government data access under Chinese national security laws; extensive data collection (device info, location, browsing, biometrics); algorithm manipulation concerns; banned on government devices in multiple countries; pending US legislation for ban/sale |
+
+**Recommendation:** Only whitelist if actively used and you accept the risks. Consider blocking on work/sensitive networks.
+
+#### **Meta Platforms (Facebook, Instagram, WhatsApp, Threads)**
+
+| Concern | Details |
+|---------|---------|
+| Cross-platform tracking | Unified tracking across all Meta properties |
+| Privacy violations | $5B FTC fine (2019), Cambridge Analytica scandal |
+| Behavioral profiling | Extensive data harvesting for targeted advertising |
+| WhatsApp metadata | Even with E2E encryption, metadata is collected and shared |
+
+**Recommendation:** Core domains are whitelisted; tracking domains remain blocked. Consider Signal for private messaging.
+
+#### **Messaging Apps — Encryption Concerns**
+
+| Service | E2E Encrypted? | Concerns |
+|---------|----------------|----------|
+| **WhatsApp** | Yes (messages) | Metadata collected by Meta |
+| **Telegram** | ❌ Not by default | Only "Secret Chats" are E2E; regular chats stored on servers |
+| **Discord** | ❌ No | All messages readable by Discord; provided to law enforcement |
+| **Zoom** | Partial | Improved since 2020 controversy; still not fully E2E |
+
+**Recommendation:** Use Signal for sensitive communications. Discord/Telegram are fine for non-sensitive use.
+
+#### **VPNs with Questionable Ownership**
+
+The whitelist **comments out** (blocks) these VPNs with warnings:
+
+| VPN | Owner | Concerns | Reference |
+|-----|-------|----------|-----------|
+| **ExpressVPN** | Kape Technologies | Former Crossrider (adware platform); CIO involved in UAE surveillance ops | [CyberInsider](https://cyberinsider.com/kape-technologies-owns-expressvpn-cyberghost-pia-zenmate-vpn-review-sites/) |
+| **CyberGhost** | Kape Technologies | Same ownership as ExpressVPN | |
+| **Private Internet Access** | Kape Technologies | Acquired 2019; same concerns | |
+| **Zenmate** | Kape Technologies | Part of Kape portfolio | |
+| **NordVPN** | Nord Security | 2019 breach not disclosed for 1+ year; Tesonet data mining ties | |
+
+**Recommended VPNs (whitelisted):** Mullvad, ProtonVPN, IVPN
+
+#### **Password Managers**
+
+| Service | Status | Concerns |
+|---------|--------|----------|
+| **LastPass** | ⚠️ Commented out | Multiple breaches (2022-2023); encrypted vaults stolen |
+| **Bitwarden** | ✅ Whitelisted | Open source, audited, recommended |
+| **1Password** | ✅ Whitelisted | Strong track record |
+| **KeePassXC** | ✅ Whitelisted | Local/offline, open source |
+
+#### **AI/LLM Services**
+
+| Concern | Details |
+|---------|---------|
+| Data retention | Conversations may be logged for 30+ days |
+| Training data | Some providers use conversations for model training |
+| Confidentiality | Don't share sensitive/proprietary information |
+
+**Recommendation:** Check each provider's data retention policy. Opt out of training data where possible.
+
+#### **Smart Home / IoT**
+
+| Service | Concerns |
+|---------|----------|
+| Amazon Ring | Partners with law enforcement; shares footage |
+| Google Nest | Data collection for advertising profiles |
+| Smart TVs | Viewing habit collection; built-in microphones |
+| Voice assistants | Voice data recorded and analyzed |
+
+**Recommendation:** Home Assistant and Homebridge are privacy-focused local alternatives (whitelisted).
+
+#### **Other Considerations**
+
+| Service | Concern |
+|---------|---------|
+| **LinkedIn** | Extensive tracking; data scraping for AI training; multiple breaches |
+| **Snapchat** | Location tracking via Snap Map |
+| **Pinterest** | Extensive tracking and profiling |
+
+#### **Adult Content**
+
+The whitelist includes an optional Adult Content section with major adult entertainment sites. 
+
+| Concern | Details |
+|---------|---------|
+| **Tracking** | Adult sites often have extensive third-party tracking |
+| **Privacy** | ISPs may log DNS queries; use encrypted DNS (DoH/DoT) |
+| **Malvertising** | Higher risk of malicious ads on adult sites |
+
+**Recommendations:**
+- Remove the Adult Content section entirely if you want content blocked
+- Use a privacy-focused browser with strict tracking protection
+- Consider using Firefox containers or a separate browser profile
+- Ensure encrypted DNS is enabled to prevent ISP logging
+
+### **Your Threat Model**
+
+Before importing the whitelist, consider:
+
+1. **What do you actually use?** Remove services you don't need
+2. **Is this a work network?** Consider stricter policies
+3. **Do you have children?** Consider blocking social media entirely
+4. **Are you in a high-risk profession?** Journalists, activists should use minimal whitelisting
+
+### **Recommended Whitelist Strategy**
+
+1. **Start with infrastructure only**: Identity, CDN, certificates
+2. **Add work tools**: Productivity, cloud storage, video conferencing
+3. **Add personal services selectively**: Only what you actively use
+4. **Review monthly**: Remove services you've stopped using
+5. **Keep tracking blocked**: The whitelist excludes tracking domains intentionally
 
 ---
 
@@ -605,11 +821,11 @@ If running Suricata alongside pfBlockerNG:
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** November 2025  
+**Version:** 1.1  
+**Last Updated:** December 2025  
 **Tested On:** pfSense 2.8.x with pfBlockerNG-devel 3.x  
-**License:** CC BY-SA 4.0
+**License:** Mozilla Public License 2.0
 
 ---
 
-> **Disclaimer:** This configuration is provided as-is based on production testing. Your mileage may vary depending on your specific environment, hardware, and usage patterns. Always test changes in stages and maintain proper backups. The author is not responsible for any network disruptions or false positives.
+> **Disclaimer:** This configuration is provided as-is based on production testing. Your mileage may vary depending on your specific environment, hardware, and usage patterns. Always test changes in stages and maintain proper backups. The author is not responsible for any network disruptions or false positives. Privacy/security assessments are based on publicly available information and should be independently verified for your threat model.
