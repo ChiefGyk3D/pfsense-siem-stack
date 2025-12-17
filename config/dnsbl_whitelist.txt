@@ -69,7 +69,8 @@ duosecurity.com
 .duosecurity.com
 duo.com
 .duo.com
-api-*.duosecurity.com
+api.duosecurity.com
+api-2fa.duosecurity.com
 
 ## Apple Services (Core)
 apple.com
@@ -917,7 +918,6 @@ www.qwant.com
 .qwant.com
 searx.me
 searxng.org
-brave.com/search
 search.brave.com
 kagi.com
 .kagi.com
@@ -1532,32 +1532,342 @@ bluepcu.com # Blue Federal Credit Union (WY)
 # nomura.com # Nomura Bank
 
 ## COMMENTED OUT — Ads / Trackers / Telemetry / Over-broad (Reference Only)
+# ============================================================================
+# These domains are intentionally NOT whitelisted. They are listed here as a
+# reference for what pfBlockerNG DNSBL lists typically block. If you find
+# something breaking, check if it's one of these before whitelisting.
+# 
+# WARNING: Uncommenting these will significantly reduce your privacy protection.
+# Only uncomment specific domains if absolutely required for functionality.
+# ============================================================================
+
+# --- Google Advertising & Analytics ---
 # googlesyndication.com
+# .googlesyndication.com
 # doubleclick.net
+# .doubleclick.net
 # pubads.g.doubleclick.net
-# trafficjunky.com
-# ads.trafficjunky.net
-# cdn.mxpnl.com
-# api.amplitude.com
-# scorecardresearch.com
-# imrworldwide.com
-# kochava.com
-# nr-data.net
-# app-measurement.com
+# googleadservices.com
+# .googleadservices.com
+# pagead2.googlesyndication.com
+# adservice.google.com
+# google-analytics.com
+# .google-analytics.com
+# www.google-analytics.com
+# ssl.google-analytics.com
 # googletagmanager.com
+# .googletagmanager.com
+# googletagservices.com
+# .googletagservices.com
+# googlesyndication.com
+# adwords.google.com
+# adsense.google.com
+
+# --- Google Telemetry ---
+# beacons.gcp.gvt2.com
+# beacons.gvt2.com
+# beacons5.gvt3.com
+# clientservices.googleapis.com
+# update.googleapis.com
+# clients4.google.com  # Sometimes needed, sometimes telemetry
+# play.googleapis.com  # Play Store telemetry
+
+# --- Microsoft Telemetry (Windows) ---
 # v10.vortex-win.data.microsoft.com
-# v20.events.data.microsoft.com
+# v20.vortex-win.data.microsoft.com
 # v10.events.data.microsoft.com
+# v20.events.data.microsoft.com
 # watson.telemetry.microsoft.com
+# watson.microsoft.com
 # web.vortex.data.microsoft.com
 # settings-win.data.microsoft.com
+# telemetry.microsoft.com
+# .telemetry.microsoft.com
+# vortex.data.microsoft.com
+# vortex-win.data.microsoft.com
+# oca.telemetry.microsoft.com
+# sqm.telemetry.microsoft.com
+# redir.metaservices.microsoft.com
+# choice.microsoft.com
+# df.telemetry.microsoft.com
+# reports.wes.df.telemetry.microsoft.com
+# wes.df.telemetry.microsoft.com
+# services.wes.df.telemetry.microsoft.com
+# sqm.df.telemetry.microsoft.com
+# telemetry.appex.bing.net
+# telemetry.urs.microsoft.com
+# telemetry.appex.search.prod.ms.akadns.net
+# cs1.wpc.v0cdn.net
+# statsfe1.ws.microsoft.com
+# statsfe2.ws.microsoft.com
+# statsfe2.update.microsoft.com.akadns.net
+# survey.watson.microsoft.com
+# i1.services.social.microsoft.com
+# i1.services.social.microsoft.com.nsatc.net
+# feedback.windows.com
+# feedback.microsoft-hohm.com
+# diagnostics.support.microsoft.com
+# corp.sts.microsoft.com
+# statsfe1-df.ws.microsoft.com
+# pre.footprintpredict.com
+# i-bl6p-wpc.wpc.azureedge.net
+
+# --- Microsoft Office Telemetry ---
+# officeclient.microsoft.com  # May break some Office features
+# nexusrules.officeapps.live.com
+# mobile.pipe.aria.microsoft.com
+# browser.pipe.aria.microsoft.com
+
+# --- Apple Telemetry ---
+# metrics.apple.com
+# metrics.icloud.com
+# api.smoot.apple.com
+# pancake.apple.com
+# xp.apple.com
+# supportmetrics.apple.com
+# radarsubmissions.apple.com
+# feedbackws.icloud.com
+# books-analytics-events.apple.com
+# notes-analytics-events.apple.com
+# weather-analytics-events.apple.com
+
+# --- Facebook/Meta Tracking ---
 # connect.facebook.net
+# .connect.facebook.net
+# pixel.facebook.com
+# .pixel.facebook.com
+# an.facebook.com
+# .an.facebook.com
 # graph.instagram.com
-# beacons5.gvt3.com
+# ads.facebook.com
+# .ads.facebook.com
+# web.facebook.com  # Can break some features
+# tr.facebook.com
+# rupload.facebook.com
+# edge-chat.facebook.com
+# mqtt.facebook.com
+# mqtt-mini.facebook.com
+
+# --- TikTok Telemetry/Analytics ---
 # analytics-ipv6.tiktokw.us
-# byteoversea.com
+# analytics.tiktok.com
+# log.byteoversea.com
+# .log.tiktokv.com
+# mon.byteoversea.com
+# .sgsnssdk.com
+# abtest-va-tiktok.byteoversea.com
+# p16-tiktokcdn-com.akamaized.net
+
+# --- Amazon/AWS Advertising ---
+# aax.amazon.com
+# .aax.amazon.com
+# aan.amazon.com
+# mads.amazon.com
+# device-metrics-us.amazon.com
+# device-metrics-us-2.amazon.com
+# unagi.amazon.com
+# unagi-na.amazon.com
+
+# --- General Analytics Platforms ---
+# cdn.mxpnl.com  # Mixpanel
+# .mxpnl.com
+# api.mixpanel.com
+# .mixpanel.com
+# api.amplitude.com  # Amplitude
+# .amplitude.com
+# cdn.amplitude.com
+# api.segment.io  # Segment
+# cdn.segment.com
+# .segment.io
+# scorecardresearch.com  # ComScore
+# .scorecardresearch.com
+# imrworldwide.com  # Nielsen
+# .imrworldwide.com
+# secure-us.imrworldwide.com
+# kochava.com  # Mobile attribution
+# .kochava.com
+# nr-data.net  # New Relic
+# .nr-data.net
+# js-agent.newrelic.com
+# bam.nr-data.net
+# app-measurement.com  # Firebase Analytics
+# .app-measurement.com
+# firebase-settings.crashlytics.com
+# crashlytics.com
+# .crashlytics.com
+# fabric.io
+# .fabric.io
+# flurry.com  # Yahoo Flurry
+# .flurry.com
+# data.flurry.com
+# quantserve.com  # Quantcast
+# .quantserve.com
+# pixel.quantserve.com
+# smetrics.com  # Adobe Analytics
+# .smetrics.com
+# omtrdc.net  # Adobe Analytics
+# .omtrdc.net
+# demdex.net  # Adobe Audience Manager
+# .demdex.net
+# .2o7.net  # Adobe/Omniture legacy
+# hotjar.com  # Hotjar (session recording)
+# .hotjar.com
+# static.hotjar.com
+# script.hotjar.com
+# fullstory.com  # FullStory (session recording)
+# .fullstory.com
+# rs.fullstory.com
+# clarity.ms  # Microsoft Clarity (session recording)
+# .clarity.ms
+# luckyorange.com  # Lucky Orange
+# .luckyorange.com
+# mouseflow.com  # Mouseflow
+# .mouseflow.com
+# crazyegg.com  # Crazy Egg
+# .crazyegg.com
+# heap.io  # Heap Analytics
+# .heap.io
+# heapanalytics.com
+# .heapanalytics.com
+# kissmetrics.com  # Kissmetrics
+# .kissmetrics.com
+# optimizely.com  # A/B testing (may break some sites)
+# .optimizely.com
+# cdn.optimizely.com
+# logx.optimizely.com
+
+# --- Advertising Networks ---
+# trafficjunky.com
+# .trafficjunky.com
+# ads.trafficjunky.net
+# adnxs.com  # AppNexus
+# .adnxs.com
+# ib.adnxs.com
+# secure.adnxs.com
+# rubiconproject.com
+# .rubiconproject.com
+# fastclick.net  # Rubicon
+# .fastclick.net
+# pubmatic.com
+# .pubmatic.com
+# openx.net
+# .openx.net
+# criteo.com
+# .criteo.com
+# static.criteo.net
+# bidswitch.net
+# .bidswitch.net
+# casalemedia.com
+# .casalemedia.com
+# advertising.com
+# .advertising.com
+# taboola.com
+# .taboola.com
+# cdn.taboola.com
+# outbrain.com
+# .outbrain.com
+# zedo.com
+# .zedo.com
+# moatads.com
+# .moatads.com
+# yieldmanager.com
+# .yieldmanager.com
+# contextweb.com
+# .contextweb.com
+# mediamath.com
+# .mediamath.com
+# tradedoubler.com
+# .tradedoubler.com
+# adsrvr.org  # The Trade Desk
+# .adsrvr.org
+# sharethrough.com
+# .sharethrough.com
+# triplelift.com
+# .triplelift.com
+
+# --- URL Shorteners (Often used for tracking) ---
 # adf.ly
+# .adf.ly
 # j.mp
-# amazonaws.com
-# cloudfront.net
+# sh.st
+# adfoc.us
+# bc.vc
+# ouo.io
+# za.gl
+# soo.gd
+# clk.sh
+
+# --- Over-broad CDNs (May break sites if blocked) ---
+# Note: These are NOT recommended to block, but listed for awareness
+# amazonaws.com  # Used by many legitimate services
+# .amazonaws.com
+# cloudfront.net  # AWS CDN - breaks many sites
+# .cloudfront.net
 # s3.amazonaws.com
+# .s3.amazonaws.com
+# azureedge.net  # Azure CDN
+# .azureedge.net
+# akamaihd.net  # Akamai
+# .akamaihd.net
+
+# --- Smart TV / Streaming Device Telemetry ---
+# samsungacr.com  # Samsung TV ACR (content recognition)
+# .samsungacr.com
+# samsungads.com
+# .samsungads.com
+# lgsmartad.com  # LG TV ads
+# .lgsmartad.com
+# lgtvsdp.com  # LG TV telemetry
+# .lgtvsdp.com
+# samsungotn.net  # Samsung TV telemetry
+# .samsungotn.net
+# vizio.com  # Vizio TV (some domains are telemetry)
+# inscape.vizio.com  # Vizio content recognition
+# ads.roku.com  # Roku ads
+# scribe.logs.roku.com  # Roku telemetry
+# cooper.logs.roku.com
+
+# --- Gaming Telemetry ---
+# gameanalytics.com
+# .gameanalytics.com
+# redshell.io  # Red Shell (controversial game analytics)
+# .redshell.io
+# treasuredata.com  # Used by some games
+# .treasuredata.com
+
+# --- Social Media Trackers ---
+# platform.twitter.com  # May break embedded tweets
+# syndication.twitter.com
+# cdn.syndication.twimg.com
+# platform.linkedin.com  # May break embedded LinkedIn
+# badges.linkedin.com
+# snap-dev.net  # Snapchat
+# tr.snapchat.com
+
+# --- Email Tracking Pixels ---
+# pixel.app.returnpath.net
+# .mailchimp.com  # May break email campaigns
+# .sendgrid.net
+# .sparkpostmail.com
+# track.hubspot.com
+# t.hsmsdd.com
+# trk.klclick.com  # Klaviyo
+# p.typekit.net  # Adobe Fonts tracking
+
+# --- Push Notification Services (May break notifications) ---
+# onesignal.com  # OneSignal
+# .onesignal.com
+# pushwoosh.com
+# .pushwoosh.com
+# airship.com  # Urban Airship
+# .airship.com
+
+# --- Fingerprinting / Bot Detection ---
+# fingerprintjs.com  # May break anti-fraud systems
+# .fingerprintjs.com
+# perfdrive.com
+# .perfdrive.com
+
+# ============================================================================
+# END OF TELEMETRY/TRACKING REFERENCE LIST
+# ============================================================================
