@@ -1,19 +1,53 @@
+# ============================================================================
+# pfBlockerNG DNSBL Whitelist - pfSense SIEM Stack
+# ============================================================================
+# This whitelist is designed to prevent false positives for legitimate services.
+# 
+# PRIVACY & SECURITY DISCLAIMERS:
+# Many services listed here have known privacy concerns. They are included
+# because users may need them to function, but you should be aware of the risks.
+# Services with significant concerns are marked with # PRIVACY NOTICE comments.
+# 
+# Consider your threat model before enabling services from:
+# - Social media platforms (data harvesting, behavioral tracking)
+# - Chinese-owned services (potential government access)
+# - Messaging apps (metadata collection, encryption concerns)
+# - VPNs with questionable ownership (see Kape Technologies section)
+# 
+# This list intentionally EXCLUDES tracking/telemetry domains which remain
+# blocked. See the commented section at the bottom for those.
+# ============================================================================
+
 ## Identity / Login / Certificates (Foundation)
 login.microsoftonline.com
 login.live.com
 login.windows.net
+graph.microsoft.com
+.graph.microsoft.com
 accounts.google.com
 accounts.googleusercontent.com
 oauthaccountmanager.googleapis.com
 myaccount.google.com
 ssl.gstatic.com
 ocsp.apple.com
+ocsp.digicert.com
+ocsp.globalsign.com
+ocsp.pki.goog
+ocsp.sectigo.com
+ocsp.comodoca.com
 digicert.com
+.digicert.com
 symcd.com
 symcb.com
 verisign.com
+.verisign.com
+letsencrypt.org
+.letsencrypt.org
+acme-v02.api.letsencrypt.org
 msftncsi.com
 dns.msftncsi.com
+msftconnecttest.com
+www.msftconnecttest.com
 appleid.apple.com
 idmsa.apple.com
 clientconfig.passport.net
@@ -21,6 +55,41 @@ login.msa.akadns6.net
 ipv4.login.msa.akadns6.net
 a.privatelink.msidentity.com
 prda.aadg.msidentity.com
+auth0.com
+.auth0.com
+okta.com
+.okta.com
+onelogin.com
+.onelogin.com
+jumpcloud.com
+.jumpcloud.com
+api.jumpcloud.com
+console.jumpcloud.com
+duosecurity.com
+.duosecurity.com
+duo.com
+.duo.com
+api.duosecurity.com
+api-2fa.duosecurity.com
+
+## Apple Services (Core)
+apple.com
+.apple.com
+www.apple.com
+icloud.com
+.icloud.com
+itunes.apple.com
+apps.apple.com
+appstoreconnect.apple.com
+support.apple.com
+developer.apple.com
+gsa.apple.com
+gspe1-ssl.ls.apple.com
+configuration.apple.com
+.cdn-apple.com
+.mzstatic.com
+is1-ssl.mzstatic.com
+is2-ssl.mzstatic.com
 
 ## Google Core (Search & APIs)
 google.com
@@ -76,6 +145,16 @@ gql.twitch.tv
 irc-ws.chat.twitch.tv
 
 ## TikTok (Core + Livestream)
+# ============================================================================
+# PRIVACY NOTICE: TikTok is owned by ByteDance, a Chinese company.
+# Concerns include:
+# - Potential data access by Chinese government under national security laws
+# - Extensive data collection (device info, location, browsing, biometrics)
+# - Algorithm manipulation concerns and content moderation practices
+# - Multiple countries have banned TikTok on government devices
+# - US legislation pending that could ban or force sale of TikTok
+# Only whitelist if you actively use and accept these risks.
+# ============================================================================
 tiktok.com
 www.tiktok.com
 .tiktok.com
@@ -109,31 +188,107 @@ tiktokcdn.com
 
 ## Creator Tooling / Streaming Overlays
 obsproject.com
+www.obsproject.com
 streamlabs.com
+.streamlabs.com
+cdn.streamlabs.com
 streamelements.com
+.streamelements.com
+cdn.streamelements.com
+restream.io
+.restream.io
+lightstream.com
+.lightstream.com
+prism.live
+.prism.live
+vdo.ninja
+.vdo.ninja
+streamyard.com
+.streamyard.com
+epiphan.com
+.epiphan.com
+elgato.com
+.elgato.com
 
-## Chat Aggregation
+## Chat Aggregation / Multi-stream
 socialstream.ninja
 www.socialstream.ninja
 
 ## Media Streaming / Music / TV
 netflix.com
+.netflix.com
 api-global.netflix.com
 ichnaea.netflix.com
 appboot.netflix.com
 secure.netflix.com
+nflxvideo.net
+.nflxvideo.net
 spotify.com
+.spotify.com
 spclient.wg.spotify.com
 mobile-ap.spotify.com
 apresolve.spotify.com
 upgrade.scdn.com
 market.spotify.com
 audio-ake.spotify.com.edgesuite.net
+i.scdn.co
+open.spotify.com
 ws.audioscrobbler.com
 hulu.com
+.hulu.com
+assetshuluimcom-a.akamaihd.net
 paramountplus.com
+.paramountplus.com
 cbs.com
+.cbs.com
 cbsi.com
+disneyplus.com
+.disneyplus.com
+dssott.com
+.dssott.com
+starplus.com
+hbomax.com
+.hbomax.com
+max.com
+.max.com
+peacocktv.com
+.peacocktv.com
+appletvplus.apple.com
+tv.apple.com
+amp-api.podcasts.apple.com
+music.apple.com
+prime-video.com
+.primevideo.com
+aiv-cdn.net
+.aiv-cdn.net
+amazonvideo.com
+crunchyroll.com
+.crunchyroll.com
+vrv.co
+.vrv.co
+funimation.com
+.funimation.com
+pluto.tv
+.pluto.tv
+tubi.tv
+.tubi.tv
+roku.com
+.roku.com
+vudu.com
+.vudu.com
+pandora.com
+.pandora.com
+applemusic.apple.com
+tidal.com
+.tidal.com
+deezer.com
+.deezer.com
+soundcloud.com
+.soundcloud.com
+bandcamp.com
+.bandcamp.com
+audible.com
+.audible.com
 
 ## Plex / Personal Media Servers
 plex.tv
@@ -146,9 +301,20 @@ meta.plex.bz
 my.plexapp.com
 o1.email.plex.tv
 status.plex.tv
+pubsub.plex.tv
+resources-cdn.plex.tv
+
+## Jellyfin / Emby (Self-Hosted Media)
+jellyfin.org
+.jellyfin.org
+repo.jellyfin.org
+emby.media
+.emby.media
+app.emby.media
 
 ## Gaming / Consoles
 xboxlive.com
+.xboxlive.com
 attestation.xboxlive.com
 cert.mgt.xboxlive.com
 device.auth.xboxlive.com
@@ -157,100 +323,763 @@ title.mgt.xboxlive.com
 xsts.auth.xboxlive.com
 licensing.xboxlive.com
 eds.xboxlive.com
-battle.net
-blizzard.com
+xbox.com
+.xbox.com
+login.live.com
+account.xbox.com
+playstation.com
+.playstation.com
+playstation.net
+.playstation.net
 sonyentertainmentnetwork.com
+.sonyentertainmentnetwork.com
+store.playstation.com
+psn.playstation.net
+nintendo.com
+.nintendo.com
+nintendo.net
+.nintendo.net
+accounts.nintendo.com
+conntest.nintendowifi.net
+battle.net
+.battle.net
+blizzard.com
+.blizzard.com
+blzstatic.cn
+us.blizzard.com
 
 ## PC Gaming Platforms (Launchers / Stores)
-steamcommunity.com
-.steampipe.steamcontent.com
-store.steampowered.com
-api.steampowered.com
-.steamcontent.com
-.steamstatic.com
+steampowered.com
 .steampowered.com
+store.steampowered.com
+steamcommunity.com
+.steamcommunity.com
+api.steampowered.com
+cdn.akamai.steamstatic.com
+.steamcontent.com
+.steampipe.steamcontent.com
+.steamstatic.com
+steamcdn-a.akamaihd.net
 epicgames.com
 .epicgames.com
+www.epicgames.com
+launcher-public-service-prod.ol.epicgames.com
 epicgamesusercontent.com
+.unrealengine.com
+unrealengine.com
 gog.com
 .gog.com
+www.gog.com
 gogcdn.net
+.gogcdn.net
+galaxyapi.gog.com
+images.gog.com
 ubisoft.com
 .ubisoft.com
+connect.ubisoft.com
 uplayconnect.com
+.uplayconnect.com
+uplaypc-s-ubisoft.ubi.com
 ea.com
 .ea.com
+www.ea.com
 origin.com
+.origin.com
+accounts.ea.com
+riot.com
+.riot.com
+riotgames.com
+.riotgames.com
+leagueoflegends.com
+.leagueoflegends.com
+valorant.com
+.valorant.com
+humble.com
+.humble.com
+humblebundle.com
+.humblebundle.com
+itch.io
+.itch.io
 
 ## Anti-Cheat / Multiplayer Services
 easyanticheat.net
 battleye.com
 
-## Communication / Social
+## Communication / Messaging
+# PRIVACY NOTICE: Discord messages are NOT end-to-end encrypted.
+# All messages are readable by Discord and can be provided to law
+# enforcement. Discord collects extensive telemetry and usage data.
+# Do not use Discord for sensitive communications.
 .discordapp.com
 discord.com
 media.discordapp.net
 cdn.discordapp.com
-reddit.com
-twitter.com
-twimg.com
+gateway.discord.gg
+discordapp.net
+# PRIVACY NOTICE: Zoom has had multiple security issues including
+# "Zoombombing", misleading E2E encryption claims (2020), and routing
+# calls through China. They've improved, but consider alternatives like
+# Jitsi Meet for sensitive meetings.
 zoom.us
+.zoom.us
+zoomgov.com
+
+## Social Media — LinkedIn (Professional Networking)
+# PRIVACY NOTICE: LinkedIn (Microsoft) extensively tracks user behavior,
+# scrapes data for AI training, and has had multiple data breaches.
+# Consider limiting profile information and using privacy settings.
+linkedin.com
+www.linkedin.com
+.linkedin.com
+.licdn.com
+static.licdn.com
+media.licdn.com
+platform.linkedin.com
+api.linkedin.com
+
+## Social Media — Reddit
+reddit.com
+www.reddit.com
+.reddit.com
+.redd.it
+i.redd.it
+v.redd.it
+external-preview.redd.it
+preview.redd.it
+.redditmedia.com
+.redditstatic.com
+styles.redditmedia.com
+
+## Social Media — X/Twitter
+twitter.com
+www.twitter.com
+.twitter.com
+x.com
+www.x.com
+.x.com
+twimg.com
+.twimg.com
 pbs.twimg.com
+abs.twimg.com
+api.twitter.com
+api.x.com
+t.co
+
+## Social Media — Facebook/Meta (Core Only - No Tracking)
+# ============================================================================
+# PRIVACY NOTICE: Meta (Facebook, Instagram, WhatsApp, Threads) concerns:
+# - Extensive cross-platform tracking and data harvesting
+# - Multiple FTC fines and privacy violations ($5B in 2019)
+# - Cambridge Analytica scandal and ongoing data sharing practices
+# - Behavioral profiling for targeted advertising
+# - Metadata collection even with E2E encryption (WhatsApp)
+# Core domains are whitelisted; tracking domains remain blocked.
+# ============================================================================
+facebook.com
+www.facebook.com
+.facebook.com
+.fbcdn.net
+static.xx.fbcdn.net
+scontent.xx.fbcdn.net
+.fbsbx.com
+messenger.com
+www.messenger.com
+
+## Social Media — Instagram
+instagram.com
+www.instagram.com
+.instagram.com
+.cdninstagram.com
+scontent.cdninstagram.com
+
+## Social Media — Threads
+threads.net
+www.threads.net
+.threads.net
+
+## Social Media — Bluesky (Decentralized)
+bsky.app
+.bsky.app
+bsky.social
+.bsky.social
+api.bsky.app
+cdn.bsky.app
+
+## Social Media — Mastodon (Fediverse)
+mastodon.social
+.mastodon.social
+mastodon.online
+.mastodon.online
+joinmastodon.org
+
+## Social Media — Snapchat
+snapchat.com
+www.snapchat.com
+.snapchat.com
+.snapchat.map.fastly.net
+.sc-cdn.net
+app.snapchat.com
+
+## Social Media — Pinterest
+pinterest.com
+www.pinterest.com
+.pinterest.com
+.pinimg.com
+i.pinimg.com
+s.pinimg.com
+api.pinterest.com
+
+## Social Media — Tumblr
+tumblr.com
+www.tumblr.com
+.tumblr.com
+assets.tumblr.com
+media.tumblr.com
+
+## Social Media — YouTube Shorts/Community (Supplement)
 s.ytimg.com
 yt3.ggpht.com
-x.com
+
+## Messaging Apps — WhatsApp
+# PRIVACY NOTICE: Owned by Meta. While messages are E2E encrypted,
+# metadata (who you talk to, when, how often) is collected and shared
+# with Facebook. Consider Signal for more private messaging.
+whatsapp.com
+www.whatsapp.com
+.whatsapp.com
+web.whatsapp.com
+.whatsapp.net
+static.whatsapp.net
+mmg.whatsapp.net
+
+## Messaging Apps — Telegram
+# PRIVACY NOTICE: Telegram is NOT end-to-end encrypted by default.
+# Only "Secret Chats" use E2E encryption. Regular chats, groups, and
+# channels are stored on Telegram servers and can be accessed.
+# Telegram is based in Dubai with Russian origins. Consider Signal
+# if you need guaranteed E2E encryption for all messages.
+telegram.org
+www.telegram.org
+.telegram.org
+web.telegram.org
+t.me
+.t.me
+telegram.me
+core.telegram.org
+
+## Creator Platforms — Patreon
+patreon.com
+www.patreon.com
+.patreon.com
+c3.patreon.com
+cdn.patreon.com
+
+## Creator Platforms — Ko-fi
+ko-fi.com
+www.ko-fi.com
+.ko-fi.com
+cdn.ko-fi.com
+storage.ko-fi.com
+
+## Creator Platforms — Substack
+substack.com
+www.substack.com
+.substack.com
+substackcdn.com
+.substackcdn.com
+
+## Creator Platforms — Medium
+medium.com
+www.medium.com
+.medium.com
+cdn-images-1.medium.com
+glyph.medium.com
+
+## Content / Knowledge Platforms — Quora
+quora.com
+www.quora.com
+.quora.com
+qph.cf2.quoracdn.net
+.quoracdn.net
+
+## Content / Knowledge Platforms — Nextdoor
+nextdoor.com
+www.nextdoor.com
+.nextdoor.com
+
+## Entertainment Social — Letterboxd (Film)
+letterboxd.com
+www.letterboxd.com
+.letterboxd.com
+a.ltrbxd.com
+s.ltrbxd.com
+
+## Entertainment Social — Goodreads (Books)
+goodreads.com
+www.goodreads.com
+.goodreads.com
+images.gr-assets.com
+s.gr-assets.com
+
+## Entertainment Social — Last.fm (Music)
+last.fm
+www.last.fm
+.last.fm
+ws.audioscrobbler.com
+lastfm.freetls.fastly.net
+
+## Fitness Social — Strava
+strava.com
+www.strava.com
+.strava.com
+d3nn82uez8jyqy.cloudfront.net
+
+## Art/Design Communities — DeviantArt
+deviantart.com
+www.deviantart.com
+.deviantart.com
+.deviantart.net
+images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com
+wixmp.com
+
+## Art/Design Communities — Behance (Adobe)
+behance.net
+www.behance.net
+.behance.net
+mir-s3-cdn-cf.behance.net
+
+## Art/Design Communities — Dribbble
+dribbble.com
+www.dribbble.com
+.dribbble.com
+cdn.dribbble.com
+
+## Gaming Social — Guilded
+guilded.gg
+www.guilded.gg
+.guilded.gg
+media.guilded.gg
+cdn.guilded.gg
+api.guilded.gg
 
 ## Productivity / Work / Web Essentials
 box.com
+.box.com
+app.box.com
 canva.com
+.canva.com
+www.canva.com
 stackoverflow.com
+.stackoverflow.com
+cdn.sstatic.net
 wikipedia.org
+.wikipedia.org
+upload.wikimedia.org
+.wikimedia.org
+notion.so
+.notion.so
+www.notion.so
+notion.com
+trello.com
+.trello.com
+trello-attachments.s3.amazonaws.com
+airtable.com
+.airtable.com
+figma.com
+.figma.com
+www.figma.com
+miro.com
+.miro.com
+slack.com
+.slack.com
+slack-edge.com
+.slack-edge.com
+files.slack.com
+asana.com
+.asana.com
+app.asana.com
+clickup.com
+.clickup.com
+app.clickup.com
+monday.com
+.monday.com
+
+## Cloud Storage Services
+dropbox.com
+.dropbox.com
+www.dropbox.com
+dropboxusercontent.com
+.dropboxusercontent.com
+drive.google.com
+docs.google.com
+sheets.google.com
+slides.google.com
+onedrive.live.com
+.onedrive.com
+spod.sharepoint.com
+.sharepoint.com
+icloud.com
+.icloud.com
+.icloud-content.com
 
 ## Developer Platforms / CDN (Scoped & Safe)
-.githubusercontent.com
 github.com
+www.github.com
+.github.com
 github.io
+.github.io
+raw.githubusercontent.com
+.githubusercontent.com
+objects.githubusercontent.com
+avatars.githubusercontent.com
 gitlab.com
+.gitlab.com
+gitlab.io
+bitbucket.org
+.bitbucket.org
+bitbucket.io
+npm.io
+npmjs.com
+.npmjs.com
+registry.npmjs.org
+pypi.org
+.pypi.org
+files.pythonhosted.org
+packagist.org
+crates.io
+dockerhub.com
+hub.docker.com
+registry.docker.io
+ghcr.io
+.ghcr.io
+
+## AI / LLM Tools (As Needed)
+# ============================================================================
+# PRIVACY NOTICE: AI/LLM services may log and use your conversations
+# for training purposes unless you opt out. Be cautious about:
+# - Sharing sensitive/confidential information in prompts
+# - Uploading proprietary code or documents
+# - Some services retain data for 30+ days
+# Check each provider's data retention and training policies.
+# OpenAI, Google, and Microsoft may use data differently than Anthropic.
+# ============================================================================
+openai.com
+.openai.com
+api.openai.com
+chat.openai.com
+platform.openai.com
+cdn.openai.com
+claude.ai
+.claude.ai
+api.anthropic.com
+anthropic.com
+.anthropic.com
+gemini.google.com
+bard.google.com
+ai.google
+.ai.google
+generativelanguage.googleapis.com
+copilot.microsoft.com
+copilot.github.com
+.copilot.github.com
+huggingface.co
+.huggingface.co
+cdn-lfs.huggingface.co
+perplexity.ai
+.perplexity.ai
+www.perplexity.ai
+ollama.ai
+.ollama.ai
+mistral.ai
+.mistral.ai
+groq.com
+.groq.com
+together.ai
+.together.ai
+replicate.com
+.replicate.com
+
+## CDN / Static Assets (Scoped & Safe)
 cdnjs.cloudflare.com
 jsdelivr.net
+.jsdelivr.net
+cdn.jsdelivr.net
+unpkg.com
 fonts.googleapis.com
 fonts.gstatic.com
 gstatic.com
-raw.githubusercontent.com
+.gstatic.com
 storage.googleapis.com
 imgix.net
+.imgix.net
 res.cloudinary.com
+.cloudinary.com
+fastly.net
+.fastly.net
+fastlylb.net
+cloudflare.com
+.cloudflare.com
+www.cloudflare.com
+one.one.one.one
+cloudflare-dns.com
+api.cloudflare.com
+dash.cloudflare.com
+radar.cloudflare.com
+workers.dev
+.workers.dev
+pages.dev
+.pages.dev
+cdnjs.com
+.cdnjs.com
 
 ## Privacy & Secure Communications
 signal.org
 .signal.org
 desktop.signal.org
+updates.signal.org
+api.signal.org
 proton.me
-.protonmail.com
 .proton.me
+protonmail.com
 .protonmail.com
+mail.proton.me
+account.proton.me
+protonvpn.com
+.protonvpn.com
 brave.com
+.brave.com
+brave.software
+bitwarden.com
+.bitwarden.com
+vault.bitwarden.com
+1password.com
+.1password.com
+my.1password.com
+keepassxc.org
+.keepassxc.org
+mullvad.net
+.mullvad.net
+ivpn.net
+.ivpn.net
+
+# ============================================================================
+# CAUTION: Kape Technologies (formerly Crossrider) owned VPNs
+# These VPNs are owned by Kape Technologies, a company with a controversial history:
+# - Formerly known as Crossrider, associated with adware/malware distribution platform
+# - Leadership ties to Israeli intelligence (Unit 8200) and state surveillance
+# - ExpressVPN CIO was involved in UAE surveillance operations (Reuters)
+# - Kape also owns VPN "review" sites that rank their own VPNs at the top
+# - Company went private in 2024, reducing transparency
+# Reference: https://cyberinsider.com/kape-technologies-owns-expressvpn-cyberghost-pia-zenmate-vpn-review-sites/
+# Uncomment at your own risk if you need these services.
+# ============================================================================
+# expressvpn.com
+# .expressvpn.com
+# cyberghost.com
+# .cyberghost.com
+# privateinternetaccess.com
+# .privateinternetaccess.com
+# zenmate.com
+# .zenmate.com
+
+# ============================================================================
+# CAUTION: NordVPN - Privacy concerns
+# While NOT owned by Kape, NordVPN (Nord Security) has had its own controversies:
+# - 2019 server breach that was not disclosed for over a year
+# - Aggressive marketing and affiliate practices
+# - Owned by Tesonet, a Lithuanian company with data mining ties
+# Uncomment if you trust the service.
+# ============================================================================
+# nordvpn.com
+# .nordvpn.com
+
+# ============================================================================
+# CAUTION: LastPass - Security concerns
+# LastPass has had multiple security breaches (2022-2023) resulting in
+# encrypted vault data being stolen. Consider alternatives like Bitwarden,
+# 1Password, or KeePassXC.
+# ============================================================================
+# lastpass.com
+# .lastpass.com
 
 ## Search Engines (Privacy-Focused)
 duckduckgo.com
 www.duckduckgo.com
-duckduckgo.org
+.duckduckgo.com
 links.duckduckgo.com
 api.duckduckgo.com
 external-content.duckduckgo.com
+spread.duckduckgo.com
+startpage.com
+www.startpage.com
+.startpage.com
+qwant.com
+www.qwant.com
+.qwant.com
+searx.me
+searxng.org
+search.brave.com
+kagi.com
+.kagi.com
 
 ## Link Aggregators / Shorteners
 beacons.ai
 www.beacons.ai
 cdn.beacons.ai
+linktr.ee
+.linktr.ee
+www.linktr.ee
+bio.link
+.bio.link
+carrd.co
+.carrd.co
+linkin.bio
+.linkin.bio
+campsite.bio
+.campsite.bio
 bit.ly
 www.bit.ly
+.bitly.com
 t.co
 tinyurl.com
+.tinyurl.com
 ow.ly
 www.ow.ly
 goo.gl
+is.gd
 amzn.to
+youtu.be
+
+## E-commerce / Shopping (Core Only)
+amazon.com
+.amazon.com
+www.amazon.com
+images-na.ssl-images-amazon.com
+m.media-amazon.com
+fls-na.amazon.com
+ebay.com
+.ebay.com
+www.ebay.com
+pics.ebay.com
+etsy.com
+.etsy.com
+www.etsy.com
+etsystatic.com
+.etsystatic.com
+paypal.com
+.paypal.com
+www.paypal.com
+venmo.com
+.venmo.com
+stripe.com
+.stripe.com
+js.stripe.com
+shopify.com
+.shopify.com
+cdn.shopify.com
+newegg.com
+.newegg.com
+www.newegg.com
+bestbuy.com
+.bestbuy.com
+www.bestbuy.com
+walmart.com
+.walmart.com
+www.walmart.com
+target.com
+.target.com
+www.target.com
+
+## News & Publications (Mainstream)
+nytimes.com
+.nytimes.com
+www.nytimes.com
+washingtonpost.com
+.washingtonpost.com
+www.washingtonpost.com
+bbc.com
+.bbc.com
+www.bbc.com
+bbc.co.uk
+.bbc.co.uk
+cnn.com
+.cnn.com
+www.cnn.com
+reuters.com
+.reuters.com
+www.reuters.com
+apnews.com
+.apnews.com
+www.apnews.com
+theguardian.com
+.theguardian.com
+www.theguardian.com
+npr.org
+.npr.org
+www.npr.org
+arstechnica.com
+.arstechnica.com
+www.arstechnica.com
+theverge.com
+.theverge.com
+www.theverge.com
+wired.com
+.wired.com
+www.wired.com
+techcrunch.com
+.techcrunch.com
+www.techcrunch.com
+hackaday.com
+.hackaday.com
+www.hackaday.com
+
+## Weather Services
+weather.com
+.weather.com
+www.weather.com
+weather.gov
+.weather.gov
+www.weather.gov
+accuweather.com
+.accuweather.com
+www.accuweather.com
+openweathermap.org
+.openweathermap.org
+api.openweathermap.org
+
+## Maps & Navigation
+maps.google.com
+.maps.google.com
+maps.googleapis.com
+.maps.googleapis.com
+mts0.google.com
+mts1.google.com
+khms0.google.com
+khms1.google.com
+openstreetmap.org
+.openstreetmap.org
+tile.openstreetmap.org
+mapbox.com
+.mapbox.com
+api.mapbox.com
+
+## Smart Home / IoT (Core Only - Be Selective)
+# ============================================================================
+# PRIVACY NOTICE: Smart Home devices often have significant privacy concerns:
+# - Amazon Ring: Partners with law enforcement, shares footage
+# - Google Nest: Data collection for advertising profiles
+# - Smart TVs: Many collect viewing habits and have microphones
+# - Voice assistants: Record and analyze voice data
+# Home Assistant and Homebridge are local/privacy-focused alternatives.
+# Only whitelist cloud IoT services you explicitly trust.
+# ============================================================================
+home-assistant.io
+.home-assistant.io
+my.home-assistant.io
+nabucasa.com
+.nabucasa.com
+homebridge.io
+.homebridge.io
 
 ## Security / Analysis Tools
 urlscan.io
@@ -259,6 +1088,64 @@ api.ipify.org
 zeustracker.abuse.ch
 .osint.bambenekconsulting.com
 v.firebog.net
+
+## Adult Content (18+ Only)
+# ============================================================================
+# WARNING: This section contains adult entertainment websites.
+# Only enable if you are of legal age in your jurisdiction and choose to
+# allow adult content on your network. These sites may be blocked by default
+# in many DNSBL lists (especially family-friendly lists like OISD Full).
+# 
+# PRIVACY NOTICE: Adult sites often have extensive tracking. Consider:
+# - Using a privacy-focused browser (Brave, Firefox with containers)
+# - Enabling strict tracker blocking
+# - Being aware that ISPs may log DNS queries unless using encrypted DNS
+# 
+# Remove this entire section if you want adult content blocked.
+# ============================================================================
+pornhub.com
+www.pornhub.com
+.pornhub.com
+.phncdn.com
+cdn1-img.phncdn.com
+cdn1-vid.phncdn.com
+di.phncdn.com
+ei.phncdn.com
+cv.phncdn.com
+.modelhub.com
+modelhub.com
+# Note: trafficjunky.com is the ad network - intentionally NOT whitelisted
+# If you want to remove ALL ads (may break some features), keep it blocked.
+# If player breaks, you may need to whitelist specific domains from browser console.
+xvideos.com
+www.xvideos.com
+.xvideos.com
+.xvideos-cdn.com
+xnxx.com
+www.xnxx.com
+.xnxx.com
+.xnxx-cdn.com
+xhamster.com
+www.xhamster.com
+.xhamster.com
+redtube.com
+www.redtube.com
+.redtube.com
+youporn.com
+www.youporn.com
+.youporn.com
+spankbang.com
+www.spankbang.com
+.spankbang.com
+eporner.com
+www.eporner.com
+.eporner.com
+onlyfans.com
+www.onlyfans.com
+.onlyfans.com
+fansly.com
+www.fansly.com
+.fansly.com
 
 # Banking - US National Banks
 .bankofamerica.com # Bank of America
@@ -655,32 +1542,342 @@ bluepcu.com # Blue Federal Credit Union (WY)
 # nomura.com # Nomura Bank
 
 ## COMMENTED OUT — Ads / Trackers / Telemetry / Over-broad (Reference Only)
+# ============================================================================
+# These domains are intentionally NOT whitelisted. They are listed here as a
+# reference for what pfBlockerNG DNSBL lists typically block. If you find
+# something breaking, check if it's one of these before whitelisting.
+# 
+# WARNING: Uncommenting these will significantly reduce your privacy protection.
+# Only uncomment specific domains if absolutely required for functionality.
+# ============================================================================
+
+# --- Google Advertising & Analytics ---
 # googlesyndication.com
+# .googlesyndication.com
 # doubleclick.net
+# .doubleclick.net
 # pubads.g.doubleclick.net
-# trafficjunky.com
-# ads.trafficjunky.net
-# cdn.mxpnl.com
-# api.amplitude.com
-# scorecardresearch.com
-# imrworldwide.com
-# kochava.com
-# nr-data.net
-# app-measurement.com
+# googleadservices.com
+# .googleadservices.com
+# pagead2.googlesyndication.com
+# adservice.google.com
+# google-analytics.com
+# .google-analytics.com
+# www.google-analytics.com
+# ssl.google-analytics.com
 # googletagmanager.com
+# .googletagmanager.com
+# googletagservices.com
+# .googletagservices.com
+# googlesyndication.com
+# adwords.google.com
+# adsense.google.com
+
+# --- Google Telemetry ---
+# beacons.gcp.gvt2.com
+# beacons.gvt2.com
+# beacons5.gvt3.com
+# clientservices.googleapis.com
+# update.googleapis.com
+# clients4.google.com  # Sometimes needed, sometimes telemetry
+# play.googleapis.com  # Play Store telemetry
+
+# --- Microsoft Telemetry (Windows) ---
 # v10.vortex-win.data.microsoft.com
-# v20.events.data.microsoft.com
+# v20.vortex-win.data.microsoft.com
 # v10.events.data.microsoft.com
+# v20.events.data.microsoft.com
 # watson.telemetry.microsoft.com
+# watson.microsoft.com
 # web.vortex.data.microsoft.com
 # settings-win.data.microsoft.com
+# telemetry.microsoft.com
+# .telemetry.microsoft.com
+# vortex.data.microsoft.com
+# vortex-win.data.microsoft.com
+# oca.telemetry.microsoft.com
+# sqm.telemetry.microsoft.com
+# redir.metaservices.microsoft.com
+# choice.microsoft.com
+# df.telemetry.microsoft.com
+# reports.wes.df.telemetry.microsoft.com
+# wes.df.telemetry.microsoft.com
+# services.wes.df.telemetry.microsoft.com
+# sqm.df.telemetry.microsoft.com
+# telemetry.appex.bing.net
+# telemetry.urs.microsoft.com
+# telemetry.appex.search.prod.ms.akadns.net
+# cs1.wpc.v0cdn.net
+# statsfe1.ws.microsoft.com
+# statsfe2.ws.microsoft.com
+# statsfe2.update.microsoft.com.akadns.net
+# survey.watson.microsoft.com
+# i1.services.social.microsoft.com
+# i1.services.social.microsoft.com.nsatc.net
+# feedback.windows.com
+# feedback.microsoft-hohm.com
+# diagnostics.support.microsoft.com
+# corp.sts.microsoft.com
+# statsfe1-df.ws.microsoft.com
+# pre.footprintpredict.com
+# i-bl6p-wpc.wpc.azureedge.net
+
+# --- Microsoft Office Telemetry ---
+# officeclient.microsoft.com  # May break some Office features
+# nexusrules.officeapps.live.com
+# mobile.pipe.aria.microsoft.com
+# browser.pipe.aria.microsoft.com
+
+# --- Apple Telemetry ---
+# metrics.apple.com
+# metrics.icloud.com
+# api.smoot.apple.com
+# pancake.apple.com
+# xp.apple.com
+# supportmetrics.apple.com
+# radarsubmissions.apple.com
+# feedbackws.icloud.com
+# books-analytics-events.apple.com
+# notes-analytics-events.apple.com
+# weather-analytics-events.apple.com
+
+# --- Facebook/Meta Tracking ---
 # connect.facebook.net
+# .connect.facebook.net
+# pixel.facebook.com
+# .pixel.facebook.com
+# an.facebook.com
+# .an.facebook.com
 # graph.instagram.com
-# beacons5.gvt3.com
+# ads.facebook.com
+# .ads.facebook.com
+# web.facebook.com  # Can break some features
+# tr.facebook.com
+# rupload.facebook.com
+# edge-chat.facebook.com
+# mqtt.facebook.com
+# mqtt-mini.facebook.com
+
+# --- TikTok Telemetry/Analytics ---
 # analytics-ipv6.tiktokw.us
-# byteoversea.com
+# analytics.tiktok.com
+# log.byteoversea.com
+# .log.tiktokv.com
+# mon.byteoversea.com
+# .sgsnssdk.com
+# abtest-va-tiktok.byteoversea.com
+# p16-tiktokcdn-com.akamaized.net
+
+# --- Amazon/AWS Advertising ---
+# aax.amazon.com
+# .aax.amazon.com
+# aan.amazon.com
+# mads.amazon.com
+# device-metrics-us.amazon.com
+# device-metrics-us-2.amazon.com
+# unagi.amazon.com
+# unagi-na.amazon.com
+
+# --- General Analytics Platforms ---
+# cdn.mxpnl.com  # Mixpanel
+# .mxpnl.com
+# api.mixpanel.com
+# .mixpanel.com
+# api.amplitude.com  # Amplitude
+# .amplitude.com
+# cdn.amplitude.com
+# api.segment.io  # Segment
+# cdn.segment.com
+# .segment.io
+# scorecardresearch.com  # ComScore
+# .scorecardresearch.com
+# imrworldwide.com  # Nielsen
+# .imrworldwide.com
+# secure-us.imrworldwide.com
+# kochava.com  # Mobile attribution
+# .kochava.com
+# nr-data.net  # New Relic
+# .nr-data.net
+# js-agent.newrelic.com
+# bam.nr-data.net
+# app-measurement.com  # Firebase Analytics
+# .app-measurement.com
+# firebase-settings.crashlytics.com
+# crashlytics.com
+# .crashlytics.com
+# fabric.io
+# .fabric.io
+# flurry.com  # Yahoo Flurry
+# .flurry.com
+# data.flurry.com
+# quantserve.com  # Quantcast
+# .quantserve.com
+# pixel.quantserve.com
+# smetrics.com  # Adobe Analytics
+# .smetrics.com
+# omtrdc.net  # Adobe Analytics
+# .omtrdc.net
+# demdex.net  # Adobe Audience Manager
+# .demdex.net
+# .2o7.net  # Adobe/Omniture legacy
+# hotjar.com  # Hotjar (session recording)
+# .hotjar.com
+# static.hotjar.com
+# script.hotjar.com
+# fullstory.com  # FullStory (session recording)
+# .fullstory.com
+# rs.fullstory.com
+# clarity.ms  # Microsoft Clarity (session recording)
+# .clarity.ms
+# luckyorange.com  # Lucky Orange
+# .luckyorange.com
+# mouseflow.com  # Mouseflow
+# .mouseflow.com
+# crazyegg.com  # Crazy Egg
+# .crazyegg.com
+# heap.io  # Heap Analytics
+# .heap.io
+# heapanalytics.com
+# .heapanalytics.com
+# kissmetrics.com  # Kissmetrics
+# .kissmetrics.com
+# optimizely.com  # A/B testing (may break some sites)
+# .optimizely.com
+# cdn.optimizely.com
+# logx.optimizely.com
+
+# --- Advertising Networks ---
+# trafficjunky.com
+# .trafficjunky.com
+# ads.trafficjunky.net
+# adnxs.com  # AppNexus
+# .adnxs.com
+# ib.adnxs.com
+# secure.adnxs.com
+# rubiconproject.com
+# .rubiconproject.com
+# fastclick.net  # Rubicon
+# .fastclick.net
+# pubmatic.com
+# .pubmatic.com
+# openx.net
+# .openx.net
+# criteo.com
+# .criteo.com
+# static.criteo.net
+# bidswitch.net
+# .bidswitch.net
+# casalemedia.com
+# .casalemedia.com
+# advertising.com
+# .advertising.com
+# taboola.com
+# .taboola.com
+# cdn.taboola.com
+# outbrain.com
+# .outbrain.com
+# zedo.com
+# .zedo.com
+# moatads.com
+# .moatads.com
+# yieldmanager.com
+# .yieldmanager.com
+# contextweb.com
+# .contextweb.com
+# mediamath.com
+# .mediamath.com
+# tradedoubler.com
+# .tradedoubler.com
+# adsrvr.org  # The Trade Desk
+# .adsrvr.org
+# sharethrough.com
+# .sharethrough.com
+# triplelift.com
+# .triplelift.com
+
+# --- URL Shorteners (Often used for tracking) ---
 # adf.ly
+# .adf.ly
 # j.mp
-# amazonaws.com
-# cloudfront.net
+# sh.st
+# adfoc.us
+# bc.vc
+# ouo.io
+# za.gl
+# soo.gd
+# clk.sh
+
+# --- Over-broad CDNs (May break sites if blocked) ---
+# Note: These are NOT recommended to block, but listed for awareness
+# amazonaws.com  # Used by many legitimate services
+# .amazonaws.com
+# cloudfront.net  # AWS CDN - breaks many sites
+# .cloudfront.net
 # s3.amazonaws.com
+# .s3.amazonaws.com
+# azureedge.net  # Azure CDN
+# .azureedge.net
+# akamaihd.net  # Akamai
+# .akamaihd.net
+
+# --- Smart TV / Streaming Device Telemetry ---
+# samsungacr.com  # Samsung TV ACR (content recognition)
+# .samsungacr.com
+# samsungads.com
+# .samsungads.com
+# lgsmartad.com  # LG TV ads
+# .lgsmartad.com
+# lgtvsdp.com  # LG TV telemetry
+# .lgtvsdp.com
+# samsungotn.net  # Samsung TV telemetry
+# .samsungotn.net
+# vizio.com  # Vizio TV (some domains are telemetry)
+# inscape.vizio.com  # Vizio content recognition
+# ads.roku.com  # Roku ads
+# scribe.logs.roku.com  # Roku telemetry
+# cooper.logs.roku.com
+
+# --- Gaming Telemetry ---
+# gameanalytics.com
+# .gameanalytics.com
+# redshell.io  # Red Shell (controversial game analytics)
+# .redshell.io
+# treasuredata.com  # Used by some games
+# .treasuredata.com
+
+# --- Social Media Trackers ---
+# platform.twitter.com  # May break embedded tweets
+# syndication.twitter.com
+# cdn.syndication.twimg.com
+# platform.linkedin.com  # May break embedded LinkedIn
+# badges.linkedin.com
+# snap-dev.net  # Snapchat
+# tr.snapchat.com
+
+# --- Email Tracking Pixels ---
+# pixel.app.returnpath.net
+# .mailchimp.com  # May break email campaigns
+# .sendgrid.net
+# .sparkpostmail.com
+# track.hubspot.com
+# t.hsmsdd.com
+# trk.klclick.com  # Klaviyo
+# p.typekit.net  # Adobe Fonts tracking
+
+# --- Push Notification Services (May break notifications) ---
+# onesignal.com  # OneSignal
+# .onesignal.com
+# pushwoosh.com
+# .pushwoosh.com
+# airship.com  # Urban Airship
+# .airship.com
+
+# --- Fingerprinting / Bot Detection ---
+# fingerprintjs.com  # May break anti-fraud systems
+# .fingerprintjs.com
+# perfdrive.com
+# .perfdrive.com
+
+# ============================================================================
+# END OF TELEMETRY/TRACKING REFERENCE LIST
+# ============================================================================
