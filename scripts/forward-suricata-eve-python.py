@@ -2,7 +2,7 @@
 """
 Reliable Suricata EVE JSON forwarder for pfSense with GeoIP enrichment
 Forwards Suricata EVE JSON events via UDP to Logstash
-Adds GeoIP information using MaxMind GeoLite2 databases
+Adds GeoIP information using MaxMind GeoLite2 databases (via maxminddb)
 """
 import socket
 import sys
@@ -12,6 +12,7 @@ import glob
 import json
 import os
 import threading
+import ipaddress
 
 # Configuration - can be overridden via environment variables or during deployment
 GRAYLOG_SERVER = os.getenv("SIEM_HOST", "192.168.210.10")
@@ -40,6 +41,7 @@ GEOIP_DB_PATHS = [
 
 # Initialize GeoIP reader
 geoip_reader = None
+geoip_db_path = None
 debug_file = None
 
 def debug_log(message):
@@ -54,17 +56,25 @@ def debug_log(message):
     except:
         pass
 
+def is_private_ip(ip_str):
+    """Check if an IP address is private/reserved"""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        return ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return True  # Invalid IP, treat as private
+
 try:
-    import geoip2.database
-    import geoip2.errors
+    import maxminddb
     
-    debug_log("=== GeoIP Forwarder Starting ===")
+    debug_log("=== GeoIP Forwarder Starting (using maxminddb) ===")
     
     for db_path in GEOIP_DB_PATHS:
         debug_log(f"Checking for GeoIP database at: {db_path}")
         if os.path.exists(db_path):
             try:
-                geoip_reader = geoip2.database.Reader(db_path)
+                geoip_reader = maxminddb.open_database(db_path)
+                geoip_db_path = db_path
                 msg = f"suricata-forwarder: Loaded GeoIP database from {db_path}"
                 syslog.syslog(syslog.LOG_INFO, msg)
                 debug_log(f"SUCCESS: {msg}")
@@ -81,12 +91,12 @@ try:
     else:
         debug_log(f"GeoIP reader initialized successfully")
 except ImportError as e:
-    msg = f"suricata-forwarder: geoip2 module not installed: {e}"
+    msg = f"suricata-forwarder: maxminddb module not installed: {e}"
     syslog.syslog(syslog.LOG_WARNING, msg)
     debug_log(f"IMPORT ERROR: {msg}")
 
 def enrich_geoip(event):
-    """Add GeoIP information to src_ip and dest_ip"""
+    """Add GeoIP information to src_ip and dest_ip using maxminddb"""
     if not geoip_reader:
         debug_log("GeoIP enrichment skipped: no reader available")
         return event
@@ -94,66 +104,78 @@ def enrich_geoip(event):
     enriched = False
     try:
         # Enrich source IP
-        if "src_ip" in event:
+        if "src_ip" in event and not is_private_ip(event["src_ip"]):
             try:
-                # Try city method first, fall back to country if that fails
-                try:
-                    response = geoip_reader.city(event["src_ip"])
-                except (AttributeError, TypeError):
-                    # Country database doesn't have city() method
-                    response = geoip_reader.country(event["src_ip"])
-                event["geoip_src"] = {
-                    "country_code": response.country.iso_code,
-                    "country_name": response.country.name,
-                    "continent_code": response.continent.code
-                }
-                # Add city data if available (City database)
-                if hasattr(response, 'city') and response.city.name:
-                    event["geoip_src"]["city_name"] = response.city.name
-                if hasattr(response, 'location') and response.location.latitude:
-                    # Use GeoJSON format [lon, lat] for proper geo_point mapping
-                    event["geoip_src"]["location"] = [
-                        response.location.longitude,
-                        response.location.latitude
-                    ]
-                if hasattr(response, 'subdivisions') and response.subdivisions.most_specific.name:
-                    event["geoip_src"]["region_name"] = response.subdivisions.most_specific.name
-                enriched = True
-                debug_log(f"Enriched src_ip {event['src_ip']} -> {event['geoip_src'].get('country_code')}")
-            except (geoip2.errors.AddressNotFoundError, ValueError, AttributeError) as e:
-                debug_log(f"Failed to enrich src_ip {event['src_ip']}: {type(e).__name__}")
-                pass  # Private/local IP or lookup failed
+                response = geoip_reader.get(event["src_ip"])
+                if response:
+                    geoip_data = {}
+                    # Country data
+                    if "country" in response:
+                        if "iso_code" in response["country"]:
+                            geoip_data["country_code"] = response["country"]["iso_code"]
+                        if "names" in response["country"] and "en" in response["country"]["names"]:
+                            geoip_data["country_name"] = response["country"]["names"]["en"]
+                    # Continent data
+                    if "continent" in response and "code" in response["continent"]:
+                        geoip_data["continent_code"] = response["continent"]["code"]
+                    # City data (if City database)
+                    if "city" in response and "names" in response["city"] and "en" in response["city"]["names"]:
+                        geoip_data["city_name"] = response["city"]["names"]["en"]
+                    # Location data (if City database)
+                    if "location" in response:
+                        loc = response["location"]
+                        if "latitude" in loc and "longitude" in loc:
+                            # Use GeoJSON format [lon, lat] for proper geo_point mapping
+                            geoip_data["location"] = [loc["longitude"], loc["latitude"]]
+                    # Region/subdivision data
+                    if "subdivisions" in response and len(response["subdivisions"]) > 0:
+                        subdiv = response["subdivisions"][0]
+                        if "names" in subdiv and "en" in subdiv["names"]:
+                            geoip_data["region_name"] = subdiv["names"]["en"]
+                    
+                    if geoip_data:
+                        event["geoip_src"] = geoip_data
+                        enriched = True
+                        debug_log(f"Enriched src_ip {event['src_ip']} -> {geoip_data.get('country_code')}")
+            except Exception as e:
+                debug_log(f"Failed to enrich src_ip {event['src_ip']}: {type(e).__name__}: {e}")
         
         # Enrich destination IP
-        if "dest_ip" in event:
+        if "dest_ip" in event and not is_private_ip(event["dest_ip"]):
             try:
-                # Try city method first, fall back to country if that fails
-                try:
-                    response = geoip_reader.city(event["dest_ip"])
-                except (AttributeError, TypeError):
-                    # Country database doesn't have city() method
-                    response = geoip_reader.country(event["dest_ip"])
-                event["geoip_dest"] = {
-                    "country_code": response.country.iso_code,
-                    "country_name": response.country.name,
-                    "continent_code": response.continent.code
-                }
-                # Add city data if available (City database)
-                if hasattr(response, 'city') and response.city.name:
-                    event["geoip_dest"]["city_name"] = response.city.name
-                if hasattr(response, 'location') and response.location.latitude:
-                    # Use GeoJSON format [lon, lat] for proper geo_point mapping
-                    event["geoip_dest"]["location"] = [
-                        response.location.longitude,
-                        response.location.latitude
-                    ]
-                if hasattr(response, 'subdivisions') and response.subdivisions.most_specific.name:
-                    event["geoip_dest"]["region_name"] = response.subdivisions.most_specific.name
-                enriched = True
-                debug_log(f"Enriched dest_ip {event['dest_ip']} -> {event['geoip_dest'].get('country_code')}")
-            except (geoip2.errors.AddressNotFoundError, ValueError, AttributeError) as e:
-                debug_log(f"Failed to enrich dest_ip {event['dest_ip']}: {type(e).__name__}")
-                pass  # Private/local IP or lookup failed
+                response = geoip_reader.get(event["dest_ip"])
+                if response:
+                    geoip_data = {}
+                    # Country data
+                    if "country" in response:
+                        if "iso_code" in response["country"]:
+                            geoip_data["country_code"] = response["country"]["iso_code"]
+                        if "names" in response["country"] and "en" in response["country"]["names"]:
+                            geoip_data["country_name"] = response["country"]["names"]["en"]
+                    # Continent data
+                    if "continent" in response and "code" in response["continent"]:
+                        geoip_data["continent_code"] = response["continent"]["code"]
+                    # City data (if City database)
+                    if "city" in response and "names" in response["city"] and "en" in response["city"]["names"]:
+                        geoip_data["city_name"] = response["city"]["names"]["en"]
+                    # Location data (if City database)
+                    if "location" in response:
+                        loc = response["location"]
+                        if "latitude" in loc and "longitude" in loc:
+                            # Use GeoJSON format [lon, lat] for proper geo_point mapping
+                            geoip_data["location"] = [loc["longitude"], loc["latitude"]]
+                    # Region/subdivision data
+                    if "subdivisions" in response and len(response["subdivisions"]) > 0:
+                        subdiv = response["subdivisions"][0]
+                        if "names" in subdiv and "en" in subdiv["names"]:
+                            geoip_data["region_name"] = subdiv["names"]["en"]
+                    
+                    if geoip_data:
+                        event["geoip_dest"] = geoip_data
+                        enriched = True
+                        debug_log(f"Enriched dest_ip {event['dest_ip']} -> {geoip_data.get('country_code')}")
+            except Exception as e:
+                debug_log(f"Failed to enrich dest_ip {event['dest_ip']}: {type(e).__name__}: {e}")
     
     except Exception as e:
         msg = f"suricata-forwarder: GeoIP enrichment error: {e}"

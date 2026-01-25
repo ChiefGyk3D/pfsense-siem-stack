@@ -437,25 +437,35 @@ if new_inode != current_inode:
 
 **GeoIP enrichment:**
 
-Uses MaxMind GeoLite2-City database:
+Uses MaxMind GeoLite2 database via `maxminddb` (pre-installed on pfSense 2.8.1+):
 ```python
-import geoip2.database
+import maxminddb
+import ipaddress
 
-# Enrich source IP
-if 'src_ip' in event:
+# Open database (auto-detects City or Country)
+geoip_reader = maxminddb.open_database('/usr/local/share/GeoIP/GeoLite2-Country.mmdb')
+
+# Enrich source IP (skip private IPs)
+if 'src_ip' in event and not ipaddress.ip_address(event['src_ip']).is_private:
     try:
-        response = reader.city(event['src_ip'])
-        event['geoip_src'] = {
-            'country': response.country.iso_code,
-            'city': response.city.name,
-            'location': {
-                'lat': response.location.latitude,
-                'lon': response.location.longitude
+        response = geoip_reader.get(event['src_ip'])
+        if response:
+            event['geoip_src'] = {
+                'country_code': response.get('country', {}).get('iso_code'),
+                'country_name': response.get('country', {}).get('names', {}).get('en'),
+                'continent_code': response.get('continent', {}).get('code')
             }
-        }
+            # Add location if City database
+            if 'location' in response:
+                event['geoip_src']['location'] = [
+                    response['location']['longitude'],
+                    response['location']['latitude']
+                ]
     except:
-        pass  # Private IP or lookup failure
+        pass  # Lookup failure
 ```
+
+> **Note**: Uses `maxminddb` instead of `geoip2` to avoid C compiler dependencies on pfSense.
 
 **Debug logging:**
 

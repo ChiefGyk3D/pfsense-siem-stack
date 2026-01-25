@@ -46,16 +46,17 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 
 ## 🔄 Forwarder Scripts
 
-### forward-suricata-eve.py
-**Rotation-aware Suricata EVE forwarder** (deployed to pfSense by `setup.sh`)
+### forward-suricata-eve-python.py
+**Production Suricata EVE forwarder with GeoIP enrichment** (deployed to pfSense by `setup.sh`)
 
 **Features:**
-- Tails all Suricata `eve.json` files (auto-discovers interfaces)
-- **Inode-aware**: Automatically handles log rotation without data loss
-- **GeoIP enrichment**: Adds city, country, coordinates to source/dest IPs
+- Tails ALL Suricata `eve.json` files (auto-discovers all interfaces)
+- **Multi-threaded**: One thread per interface for reliable monitoring
+- **GeoIP enrichment**: Adds country, city, coordinates using `maxminddb` (pre-installed on pfSense 2.8.1+)
+- **No pip install required**: Uses only standard pfSense libraries
 - **Interface normalization**: Strips Netmap markers (`^`, `*`, etc.)
 - **UDP transport**: Sends events to Logstash UDP 5140
-- **Debug logging**: `/var/log/suricata_forwarder_debug.log`
+- **Debug logging**: `/var/log/suricata_forwarder_debug.log` (when enabled)
 
 **Deployment:**
 ```bash
@@ -63,21 +64,24 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 ./setup.sh
 
 # Manual
-scp scripts/forward-suricata-eve.py root@<pfsense>:/usr/local/bin/
-ssh root@<pfsense> "chmod +x /usr/local/bin/forward-suricata-eve.py"
+scp scripts/forward-suricata-eve-python.py admin@<pfsense>:/usr/local/bin/
+ssh admin@<pfsense> "chmod +x /usr/local/bin/forward-suricata-eve-python.py"
 ```
 
-**Configuration:** Edit header variables in script
-```python
-GRAYLOG_SERVER = "192.168.210.10"  # Your SIEM IP
-GRAYLOG_PORT = 5140                # Logstash UDP port
-DEBUG_ENABLED = True               # Debug logging
+**Configuration:** Via environment variables (or edit header defaults)
+```bash
+# Environment variables (or edit script defaults)
+SIEM_HOST="192.168.210.10"      # Your SIEM IP
+LOGSTASH_UDP_PORT="5140"        # Logstash UDP port
+DEBUG_ENABLED="true"            # Enable debug logging
 ```
 
-See [docs/LOG_ROTATION_FIX.md](../docs/LOG_ROTATION_FIX.md) for rotation handling details.
+**GeoIP Database Priority:**
+1. `/usr/local/share/ntopng/GeoLite2-City.mmdb` (best for geomaps)
+2. `/usr/local/share/suricata/GeoLite2/GeoLite2-Country.mmdb` (Suricata default)
+3. `/usr/local/share/GeoIP/GeoLite2-Country.mmdb` (pfBlockerNG)
 
-### forward-suricata-eve-python.py
-**Legacy forwarder** (pre-rotation handling) - superseded by `forward-suricata-eve.py`
+See [docs/GEOIP_SETUP.md](../docs/GEOIP_SETUP.md) for GeoIP details.
 
 ---
 
