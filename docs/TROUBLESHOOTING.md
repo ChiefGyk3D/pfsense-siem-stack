@@ -99,31 +99,35 @@ Should include: `@timestamp`, `suricata`, `host`
 
 **Symptom:** No process found when checking:
 ```bash
-ssh root@YOUR_PFSENSE_IP 'ps aux | grep forward-suricata-eve-python.py | grep -v grep'
+ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
 ```
 
 **Diagnosis:**
 ```bash
 # Check if script exists and is executable
-ssh root@YOUR_PFSENSE_IP 'ls -la /usr/local/bin/forward-suricata-eve-python.py'
+ssh admin@YOUR_PFSENSE_IP 'ls -la /usr/local/bin/forward-suricata-eve-python.py'
 
 # Try running manually to see errors
-ssh root@YOUR_PFSENSE_IP '/usr/local/bin/forward-suricata-eve-python.py'
+ssh admin@YOUR_PFSENSE_IP '/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py'
 
 # Check syslog for errors
-ssh root@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -20'
+ssh admin@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -20'
+
+# Check if maxminddb is available (should be pre-installed)
+ssh admin@YOUR_PFSENSE_IP 'python3.11 -c "import maxminddb; print(\"OK\")"'
 ```
 
 **Solutions:**
 ```bash
 # Start forwarder manually
-ssh root@YOUR_PFSENSE_IP 'nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &'
+ssh admin@YOUR_PFSENSE_IP 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &'
 
 # Verify watchdog is configured
-ssh root@YOUR_PFSENSE_IP 'crontab -l | grep watchdog'
-# Should show: * * * * * /usr/local/bin/suricata-forwarder-watchdog.sh
+ssh admin@YOUR_PFSENSE_IP 'grep watchdog /etc/crontab'
+# Should show: * * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh
 
-# If missing, add via pfSense Web UI: System → Cron
+# If missing, add cron entry
+ssh admin@YOUR_PFSENSE_IP 'echo "* * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh" >> /etc/crontab && service cron restart'
 ```
 
 ### Forwarder Running But No Events
@@ -133,14 +137,14 @@ ssh root@YOUR_PFSENSE_IP 'crontab -l | grep watchdog'
 **Diagnosis:**
 ```bash
 # 1. Check if Suricata is generating events
-ssh root@YOUR_PFSENSE_IP 'tail -5 /var/log/suricata/suricata_*/eve.json'
+ssh admin@YOUR_PFSENSE_IP 'tail -5 /var/log/suricata/suricata_*/eve.json'
 # Should show JSON events
 
 # 2. Test UDP connectivity
-echo '{"test":"event"}' | ssh root@YOUR_PFSENSE_IP "nc -u -w1 YOUR_SIEM_IP 5140"
+echo '{"test":"event"}' | ssh admin@YOUR_PFSENSE_IP "nc -u -w1 YOUR_SIEM_IP 5140"
 
 # 3. Check for network/firewall blocking
-ssh root@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
+ssh admin@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
 
 # 4. Check SIEM firewall allows UDP 5140
 sudo ufw status | grep 5140
@@ -149,10 +153,10 @@ sudo ufw status | grep 5140
 **Solutions:**
 ```bash
 # Restart forwarder
-ssh root@YOUR_PFSENSE_IP 'pkill -f forward-suricata-eve-python.py; nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &'
+ssh admin@YOUR_PFSENSE_IP 'pkill -f forward-suricata-eve-python.py; sleep 1; nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &'
 
-# Check SIEM server IP in forwarder script
-ssh root@YOUR_PFSENSE_IP 'grep GRAYLOG_SERVER /usr/local/bin/forward-suricata-eve-python.py'
+# Check SIEM server IP in forwarder script (or use DEBUG_ENABLED)
+ssh admin@YOUR_PFSENSE_IP 'grep SIEM_HOST /usr/local/bin/forward-suricata-eve-python.py | head -1'
 
 # Allow UDP 5140 on SIEM
 sudo ufw allow 5140/udp

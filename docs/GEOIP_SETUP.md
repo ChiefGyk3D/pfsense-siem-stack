@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Suricata dashboard includes geographic visualization of network events using MaxMind GeoLite2 databases. The Python forwarder enriches events with GeoIP data before sending them to Logstash/OpenSearch.
+The Suricata dashboard includes geographic visualization of network events using MaxMind GeoLite2 databases. The Python forwarder uses the `maxminddb` library (included with pfSense 2.8.1+) to enrich events with GeoIP data before sending them to Logstash/OpenSearch.
+
+> **Note**: The forwarder uses `maxminddb` directly instead of `geoip2` to avoid C compiler dependencies on pfSense. This provides the same functionality with no additional package installation required.
 
 ## Database Requirements
 
@@ -139,3 +141,11 @@ MaxMind GeoLite2 databases are provided under the Creative Commons Attribution-S
 This setup uses GeoIP databases that are already present on pfSense for other purposes (ntopng, Suricata, pfBlockerNG). No additional database downloads or MaxMind accounts are required.
 
 For production deployments or more accurate data, consider MaxMind's commercial GeoIP2 databases.
+
+## Python Dependencies
+
+The forwarder uses only standard pfSense libraries:
+- `maxminddb` - Pre-installed with pfSense 2.8.1+ (via Suricata package)
+- `socket`, `json`, `threading`, `ipaddress` - Python standard library
+
+**No pip installation required** - the forwarder works out of the box on a fresh pfSense 2.8.1+ installation with Suricata.
