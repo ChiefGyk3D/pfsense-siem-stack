@@ -1709,8 +1709,9 @@
               }
             },
             "location": {
-              "geohash": "suricata.eve.geoip_src.location",
-              "mode": "geohash"
+              "gazetteer": "public/gazetteer/countries.json",
+              "lookup": "suricata.eve.geoip_src.country_code",
+              "mode": "lookup"
             },
             "name": "Attack Sources",
             "tooltip": true,
@@ -1735,12 +1736,15 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "suricata.eve.geoip_src.location",
+              "field": "suricata.eve.geoip_src.country_code",
               "id": "2",
               "settings": {
-                "precision": "3"
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "50"
               },
-              "type": "geohash_grid"
+              "type": "terms"
             }
           ],
           "datasource": {
@@ -1753,7 +1757,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.event_type:alert AND _exists_:suricata.eve.geoip_src.location AND suricata.eve.in_iface.keyword:($interface)",
+          "query": "suricata.eve.event_type:alert AND _exists_:suricata.eve.geoip_src.country_code AND suricata.eve.in_iface.keyword:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
