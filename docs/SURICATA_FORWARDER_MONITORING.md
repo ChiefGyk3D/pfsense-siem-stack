@@ -426,7 +426,7 @@ ls -la /usr/local/bin/forward-suricata-eve.py
 
 **Check dependencies:**
 ```bash
-python3.11 -c "import geoip2, socket, syslog, json"
+python3.11 -c "import maxminddb, socket, syslog, json, ipaddress"
 ```
 
 **Run forwarder manually to see errors:**
