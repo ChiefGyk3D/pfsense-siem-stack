@@ -230,7 +230,7 @@ suricata_forwarder_start() {
         return 0
     fi
     echo "Starting ${name}..."
-    /usr/sbin/daemon -f -p "$pidfile" -o "$logfile" "$command"
+    /usr/sbin/daemon -f -p "$pidfile" -o "$logfile" -r "$command"
     echo "${name} started."
 }
 
@@ -249,6 +249,7 @@ suricata_forwarder_status() {
         echo "${name} is running (pid=$(cat $pidfile))"
     else
         echo "${name} is not running."
+        return 1
     fi
 }
 
