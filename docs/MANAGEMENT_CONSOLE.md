@@ -187,10 +187,10 @@ This must be run **before** any Suricata data flows, otherwise you'll need to re
 - Opens dashboard import documentation
 
 **Dashboards:**
-1. **pfsense_pfblockerng_system.json** (InfluxDB)
-   - pfSense system metrics
-   - Network performance
-   - PfBlockerNG statistics
+1. **pfsense_pfblockerng_system.json** (InfluxDB + OpenSearch-pfBlockerNG)
+   - pfSense system metrics (InfluxDB)
+   - Network performance (InfluxDB)
+   - pfBlockerNG statistics (OpenSearch-pfBlockerNG)
 
 2. **Suricata IDS_IPS Dashboard.json** (OpenSearch)
    - WAN-side security

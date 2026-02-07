@@ -19,10 +19,11 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 | `pfsense-siem` ⭐ | Management console | **START HERE** - Interactive menu for everything |
 | `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
 | `setup.sh` | Automated deployment | Run SECOND to deploy to pfSense |
-| `dashboards/pfsense_pfblockerng_system.json` | pfSense system dashboard | Import into Grafana (InfluxDB) |
+| `dashboards/pfsense_pfblockerng_system.json` | pfSense system & pfBlockerNG dashboard | Import into Grafana (InfluxDB + OpenSearch-pfBlockerNG) |
 | `dashboards/Suricata IDS_IPS Dashboard.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
 | `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
-| `config/opensearch-index-template.json` | Index template | Auto-applied by install.sh |
+| `config/opensearch-index-template.json` | Suricata index template | Auto-applied by install.sh |
+| `config/opensearch-pfblockerng-template.json` | pfBlockerNG index template | Auto-applied by install.sh |
 | `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by setup.sh |
 
 ## Directory Structure
@@ -57,7 +58,8 @@ pfsense_grafana/
 │
 ├── ⚙️ config/
 │   ├── logstash-suricata.conf              Logstash pipeline
-│   └── opensearch-index-template.json      Index template (geo_point)
+│   ├── opensearch-index-template.json      Suricata index template (geo_point)
+│   └── opensearch-pfblockerng-template.json pfBlockerNG index template (keyword)
 │
 ├── 📚 docs/
 │   ├── INSTALL_SIEM_STACK.md               SIEM installation guide

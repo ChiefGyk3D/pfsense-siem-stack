@@ -139,12 +139,20 @@ After PfBlockerNG (expect 20-40% reduction):
 
 ### 3. Dashboard Integration
 
-**Create pfBlockerNG panel in Grafana:**
+**pfBlockerNG panels are pre-built in the pfSense System Dashboard:**
 
-If forwarding pfBlockerNG logs to Logstash, add a panel:
-- Query: `_exists_:pfblocker.action`
-- Visualization: Pie chart (top blocked countries)
-- Aggregation: Terms on `pfblocker.list` (which list triggered block)
+The `pfsense_pfblockerng_system.json` dashboard includes 16 pfBlockerNG panels using the **OpenSearch-pfBlockerNG** datasource:
+- IP Block Events Over Time
+- DNSBL Block Events Over Time
+- Top Blocked Source IPs
+- Top Blocked Destination Ports
+- Blocks by Country / Feed / Protocol
+- DNSBL Blocked Domains, Source IPs, and Groups
+- Combined Block Log tables
+
+> **Data Pipeline:** Telegraf `[[outputs.opensearch]]` → OpenSearch `pfblockerng-*` indices → Grafana OpenSearch-pfBlockerNG datasource
+>
+> See [Telegraf pfBlockerNG Setup](TELEGRAF_PFBLOCKER_SETUP.md) for configuration details.
 
 ---
 

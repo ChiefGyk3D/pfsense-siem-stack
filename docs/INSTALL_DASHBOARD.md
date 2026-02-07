@@ -1,6 +1,6 @@
 # Dashboard Installation Guide
 
-Complete guide for setting up the Grafana datasource and importing the Suricata IDS/IPS dashboard.
+Complete guide for setting up Grafana datasources and importing the pre-built dashboards.
 
 ## Prerequisites
 
@@ -8,6 +8,7 @@ Complete guide for setting up the Grafana datasource and importing the Suricata 
 - grafana-opensearch-datasource plugin installed
 - OpenSearch accessible from Grafana server
 - Suricata events flowing into OpenSearch (verify event count > 0)
+- InfluxDB configured with Telegraf metrics (for system dashboard)
 
 ## Installation Steps
 
@@ -24,52 +25,87 @@ Password: admin
 
 Change the password when prompted on first login.
 
-### 2. Add OpenSearch Datasource
+### 2. Add Datasources
 
-1. Click **☰ menu** (hamburger icon) → **Connections** → **Data sources**
-2. Click **Add data source**
-3. Search for **OpenSearch** and select it
-4. Configure the datasource:
+You need **three** datasources: one InfluxDB and two OpenSearch.
 
-**Settings:**
+#### 2a. InfluxDB Datasource (System Metrics)
+
+1. Click **☰ menu** → **Connections** → **Data sources**
+2. Click **Add data source** → Search **InfluxDB**
+3. Configure:
+
+```
+Name: pfsense
+URL: http://localhost:8086
+Database: pfsense
+User: pfsense
+Password: (your InfluxDB password)
+```
+
+4. Click **Save & test** → ✅ **Data source is working**
+
+#### 2b. OpenSearch-Suricata Datasource
+
+1. Click **Add data source** → Search **OpenSearch**
+2. Configure:
+
 ```
 Name: OpenSearch-Suricata
 URL: http://localhost:9200
 Access: Server (default)
-```
-
-**OpenSearch details:**
-```
 Index name: suricata-*
 Time field name: @timestamp
 Version: 2.0+
 ```
 
-**Auth:**
+3. Leave auth unchecked (no basic auth needed)
+4. Click **Save & test** → ✅ **Data source is working**
+
+#### 2c. OpenSearch-pfBlockerNG Datasource
+
+1. Click **Add data source** → Search **OpenSearch**
+2. Configure:
+
 ```
-☐ Basic auth (leave unchecked - we disabled security)
-☐ Skip TLS Verify (not needed for HTTP)
+Name: OpenSearch-pfBlockerNG
+URL: http://localhost:9200
+Access: Server (default)
+Index name: pfblockerng-*
+Time field name: @timestamp
+Version: 2.0+
 ```
 
-5. Click **Save & test**
-   
-   Expected result: ✅ **Data source is working**
+3. Leave auth unchecked
+4. Click **Save & test** → ✅ **Data source is working**
 
-### 3. Import the Dashboard
+### 3. Import Dashboards
 
-#### Option A: Import from File
+#### Dashboard 1: pfSense System & pfBlockerNG
 
-1. Download the dashboard JSON:
-   - From repository: `dashboards/suricata-complete.json`
-   - Or create manually (see Option B below)
+1. Click **☰ menu** → **Dashboards** → **New** → **Import**
+2. Click **Upload JSON file**
+3. Select `dashboards/pfsense_pfblockerng_system.json`
+4. Grafana will prompt for two datasource variables:
+   - **InfluxDB**: Select your `pfsense` InfluxDB datasource (system metrics)
+   - **OpenSearch**: Select your `OpenSearch-pfBlockerNG` datasource (pfBlockerNG panels)
+5. Click **Import**
 
-2. In Grafana:
-   - Click **☰ menu** → **Dashboards**
-   - Click **New** → **Import**
-   - Click **Upload JSON file**
-   - Select `suricata-complete.json`
-   - Select datasource: **OpenSearch-Suricata**
-   - Click **Import**
+> This dashboard uses **both** InfluxDB (CPU, RAM, interfaces, gateways) and OpenSearch-pfBlockerNG (IP blocks, DNSBL blocks, block logs).
+
+#### Dashboard 2: Suricata WAN Monitoring
+
+1. Click **Import** → **Upload JSON file**
+2. Select `dashboards/Suricata IDS_IPS Dashboard.json`
+3. Select datasource: **OpenSearch-Suricata**
+4. Click **Import**
+
+#### Dashboard 3: Suricata Per-Interface (LAN)
+
+1. Click **Import** → **Upload JSON file**
+2. Select `dashboards/Suricata_Per_Interface.json`
+3. Select datasource: **OpenSearch-Suricata**
+4. Click **Import**
 
 #### Option B: Create Dashboard Manually
 

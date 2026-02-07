@@ -133,7 +133,7 @@ This repository documents:
 
 **Telegraf (optional):**
 
-- **[Telegraf Setup](TELEGRAF_PFBLOCKER_SETUP.md)** - pfSense metrics collection
+- **[Telegraf pfBlockerNG Setup](TELEGRAF_PFBLOCKER_SETUP.md)** - pfBlockerNG → OpenSearch pipeline
 - **[Telegraf Restart Procedure](TELEGRAF_RESTART_PROCEDURE.md)** - Troubleshooting
 
 ---

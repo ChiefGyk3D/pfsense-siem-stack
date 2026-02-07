@@ -1,166 +1,114 @@
-# Configuration Files# OpenSearch Configuration
+# Configuration Files
 
+This directory contains all configuration files for the pfSense SIEM stack.
 
+---
 
-This directory contains all configuration files for the pfSense SIEM stack.## Index Template
+## 📋 Core Configuration Files
 
+### logstash-suricata.conf
 
+**Logstash pipeline for Suricata EVE JSON logs**
 
----The `opensearch-index-template.json` file defines the mapping for all `suricata-*` indices.
-
-
-
-## 📋 Core Configuration Files### Apply the template:
-
-```bash
-
-### logstash-suricata.confcurl -XPUT "http://192.168.210.10:9200/_index_template/suricata-template" \
-
-**Logstash pipeline for Suricata EVE JSON logs**  -H 'Content-Type: application/json' \
-
-  -d @opensearch-index-template.json
-
-**Purpose:**```
-
+**Purpose:**
 - Receives Suricata events via UDP from pfSense forwarder
-
-- Parses JSON and nests under `suricata.eve.*` namespace## Auto-Create Index Setting
-
+- Parses JSON and nests under `suricata.eve.*` namespace
 - Indexes to OpenSearch with daily indices (`suricata-YYYY.MM.DD`)
 
-**CRITICAL:** OpenSearch must be configured to auto-create new daily indices.
-
 **Deployment:**
-
-```bashBy default, OpenSearch has `action.auto_create_index` set to `false`, which prevents automatic index creation even when an index template exists. This causes Logstash to fail silently when writing to new daily indices (e.g., `suricata-2025.11.26`).
-
+```bash
 sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/
-
-sudo systemctl restart logstash### Enable auto-create for Suricata indices:
-
-``````bash
-
-curl -XPUT "http://192.168.210.10:9200/_cluster/settings" \
-
-**Configuration options:**  -H 'Content-Type: application/json' \
-
-- `port => 5140` - UDP listen port (must match forwarder)  -d '{
-
-- `hosts => ["http://localhost:9200"]` - OpenSearch endpoint    "persistent": {
-
-- `index => "suricata-%{[@metadata][index_date]}"` - Index naming pattern      "action.auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-
-    }
-
-**See inline comments** in the file for detailed documentation.  }'
-
+sudo systemctl restart logstash
 ```
+
+**Configuration options:**
+- `port => 5140` - UDP listen port (must match forwarder)
+- `hosts => ["http://localhost:9200"]` - OpenSearch endpoint
+- `index => "suricata-%{[@metadata][index_date]}"` - Index naming pattern
+
+**See inline comments** in the file for detailed documentation.
 
 ### opensearch-index-template.json
 
-**OpenSearch index template for suricata-* indices**### Verify the setting:
+**OpenSearch index template for suricata-* indices**
 
-```bash
-
-**Purpose:**curl -s "http://192.168.210.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
-
-- Defines field mappings (geo_point, keyword, nested)```
-
+**Purpose:**
+- Defines field mappings (geo_point, keyword, nested)
 - Configures analyzers and index settings
+- Ensures proper GeoIP mapping for geomap panels
 
-- Ensures proper GeoIP mapping for geomap panelsExpected output:
-
-```json
-
-**Deployment:**{
-
-```bash  "persistent": {
-
-# Automated (recommended)    "action": {
-
-./scripts/install-opensearch-config.sh      "auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-
-    }
-
-# Manual  }
-
-curl -X PUT "http://localhost:9200/_index_template/suricata" \}
-
-  -H 'Content-Type: application/json' \```
-
-  -d @config/opensearch-index-template.json
-
-```## Troubleshooting
-
-
-
-**Key mappings:**### Symptom: Dashboard stops receiving data at midnight UTC
-
-- `suricata.eve.geoip_src.location` - geo_point (for geomap)**Cause:** New daily index not being auto-created
-
-- `suricata.eve.in_iface` - keyword (for aggregations)
-
-- `suricata.eve` - nested object (preserves structure)**Check Logstash errors:**
-
+**Deployment:**
 ```bash
+# Automated (recommended)
+./scripts/install-opensearch-config.sh
 
----ssh chiefgyk3d@192.168.210.10 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
-
+# Manual
+curl -X PUT "http://localhost:9200/_index_template/suricata" \
+  -H 'Content-Type: application/json' \
+  -d @config/opensearch-index-template.json
 ```
+
+**Key mappings:**
+- `suricata.eve.geoip_src.location` - geo_point (for geomap)
+- `suricata.eve.in_iface` - keyword (for aggregations)
+- `suricata.eve` - nested object (preserves structure)
+
+### opensearch-pfblockerng-template.json
+
+**OpenSearch index template for pfblockerng-* indices**
+
+**Purpose:**
+- Maps pfBlockerNG tag fields as `keyword` type for aggregations
+- Uses `dynamic_templates` for `tag.*`, `tail_ip_block_log.*`, and `tail_dnsbl_log.*` fields
+- Ensures proper field types for Grafana dashboard panels
+
+**Deployment:**
+```bash
+# Automated (recommended) — applies both templates
+./scripts/install-opensearch-config.sh
+
+# Manual
+curl -X PUT "http://localhost:9200/_index_template/pfblockerng-template" \
+  -H 'Content-Type: application/json' \
+  -d @config/opensearch-pfblockerng-template.json
+```
+
+**Data pipeline:** Telegraf `[[outputs.opensearch]]` → OpenSearch `pfblockerng-*` indices
+
+> **Important:** Do NOT use `[[outputs.elasticsearch]]` for pfBlockerNG data — it is incompatible with OpenSearch 2.x. Use `[[outputs.opensearch]]` instead.
+
+---
 
 ## 📄 Optional Configuration Files
 
-**Fix:** Manually create the index and verify auto-create setting:
+### dnsbl_whitelist.txt
 
-### dnsbl_whitelist.txt```bash
+**DNS blocklist whitelist** - Domains to exclude from DNSBL blocking
 
-**DNS blocklist whitelist** - Domains to exclude from blocking# Get current date in UTC
+**Usage:** Reference list of domains whitelisted in pfBlockerNG DNSBL suppression to prevent false positives for legitimate services (Microsoft login, Google accounts, certificate authorities, Datadog monitoring, etc.)
 
-date -u
-
-**Usage:** Add legitimate domains that are incorrectly blocked
-
-# Create today's index (adjust date as needed)
-
-**Format:**curl -XPUT "http://192.168.210.10:9200/suricata-2025.11.26" \
-
-```  -H 'Content-Type: application/json' \
-
-example.com  -d '{"settings":{"number_of_shards":1,"number_of_replicas":0}}'
-
+**Format:**
+```
+example.com
 subdomain.example.com
+.example.com    # wildcard
+```
 
-```# Verify auto-create setting is enabled
+**Integration:** Applied in pfBlockerNG → DNSBL → DNSBL Whitelist
 
-curl -s "http://192.168.210.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
-
-**Integration:** Used by pfBlockerNG or custom DNS filtering```
-
-
-
-### pfblockerng_optimization.md## Logstash Configuration
+### pfblockerng_optimization.md
 
 **PfBlockerNG configuration guide** - Moved to main docs
 
-The `logstash-suricata.conf` file configures Logstash to:
+**See:** [docs/PFBLOCKERNG_OPTIMIZATION.md](../docs/PFBLOCKERNG_OPTIMIZATION.md)
 
-**See:** [docs/PFBLOCKERNG_OPTIMIZATION.md](../docs/PFBLOCKERNG_OPTIMIZATION.md)- Listen on UDP port 5140 for Suricata events
+---
 
-- Parse timestamps
+## 🗂️ Subdirectories
 
----- Forward to OpenSearch with daily index pattern `suricata-%{+YYYY.MM.dd}`
+### suricata_inline_drop/
 
-
-
-## 🗂️ SubdirectoriesApply configuration:
-
-```bash
-
-### suricata_inline_drop/sudo cp logstash-suricata.conf /etc/logstash/conf.d/
-
-**Suricata inline IPS drop configuration**sudo systemctl restart logstash
-
-```
+**Suricata inline IPS drop configuration**
 
 **Purpose:** Configuration files for enabling inline mode with drop rules
 
@@ -172,6 +120,85 @@ The `logstash-suricata.conf` file configures Logstash to:
 **Usage:** Apply drop rules dynamically based on alert severity
 
 See subdirectory README for details.
+
+---
+
+## OpenSearch Configuration
+
+### Index Templates
+
+Two index templates are used:
+
+| Template | Index Pattern | Purpose |
+|----------|---------------|---------|
+| `suricata-template` | `suricata-*` | Suricata EVE events (geo_point mapping) |
+| `pfblockerng-template` | `pfblockerng-*` | pfBlockerNG IP block & DNSBL events |
+
+Apply both templates:
+```bash
+./scripts/install-opensearch-config.sh
+```
+
+### Auto-Create Index Setting
+
+**CRITICAL:** OpenSearch must be configured to auto-create new daily indices for both Suricata and pfBlockerNG.
+
+By default, OpenSearch has `action.auto_create_index` set to `false`, which prevents automatic index creation even when an index template exists.
+
+#### Enable auto-create:
+```bash
+curl -XPUT "http://192.168.210.10:9200/_cluster/settings" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "persistent": {
+      "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+    }
+  }'
+```
+
+#### Verify the setting:
+```bash
+curl -s "http://192.168.210.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+```
+
+Expected output:
+```json
+{
+  "persistent": {
+    "action": {
+      "auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+    }
+  }
+}
+```
+
+### Troubleshooting
+
+#### Symptom: Dashboard stops receiving data at midnight UTC
+
+**Cause:** New daily index not being auto-created
+
+**Check Logstash errors:**
+```bash
+ssh chiefgyk3d@192.168.210.10 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
+```
+
+**Fix:** Verify auto-create setting includes both `pfblockerng-*` and `suricata-*`.
+
+---
+
+## Logstash Configuration
+
+The `logstash-suricata.conf` file configures Logstash to:
+- Listen on UDP port 5140 for Suricata events
+- Parse timestamps
+- Forward to OpenSearch with daily index pattern `suricata-%{+YYYY.MM.dd}`
+
+Apply configuration:
+```bash
+sudo cp logstash-suricata.conf /etc/logstash/conf.d/
+sudo systemctl restart logstash
+```
 
 ---
 
@@ -215,16 +242,25 @@ tail -f /var/log/logstash/logstash-plain.log
 
 **OpenSearch:**
 ```bash
-# Apply index template
+# Apply both index templates
+./scripts/install-opensearch-config.sh
+
+# Or manually:
 curl -X PUT "http://localhost:9200/_index_template/suricata" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-index-template.json
 
-# Verify template
+curl -X PUT "http://localhost:9200/_index_template/pfblockerng-template" \
+  -H 'Content-Type: application/json' \
+  -d @config/opensearch-pfblockerng-template.json
+
+# Verify templates
 curl -s "http://localhost:9200/_index_template/suricata" | jq
+curl -s "http://localhost:9200/_index_template/pfblockerng-template" | jq
 
 # Check indices
 curl -s "http://localhost:9200/_cat/indices/suricata-*?v"
+curl -s "http://localhost:9200/_cat/indices/pfblockerng-*?v"
 ```
 
 ---
@@ -233,15 +269,20 @@ curl -s "http://localhost:9200/_cat/indices/suricata-*?v"
 
 ### Test Data Flow
 
+**Suricata:**
 ```bash
 # Send test event to Logstash
 echo '{"timestamp":"2025-11-27T12:00:00.000000-0500","event_type":"test","src_ip":"1.2.3.4","in_iface":"ix0"}' | nc -u localhost 5140
 
-# Check in OpenSearch (wait 2-3 seconds for indexing)
+# Check in OpenSearch (wait 2-3 seconds)
 curl -s "http://localhost:9200/suricata-*/_search?q=event_type:test" | jq '.hits.total.value'
 ```
 
-Expected: `1` (test event found)
+**pfBlockerNG:**
+```bash
+# Check pfBlockerNG events
+curl -s "http://localhost:9200/pfblockerng-*/_count" | jq '.count'
+```
 
 ### Verify Field Mapping
 
@@ -256,19 +297,6 @@ Expected:
   "type": "geo_point"
 }
 ```
-
-### Check Nested Structure
-
-```bash
-# Query nested field
-curl -s "http://localhost:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
-{
-  "query": {"exists": {"field": "suricata.eve.event_type"}},
-  "size": 1
-}' | jq '.hits.hits[0]._source.suricata.eve | keys'
-```
-
-Expected: Array of Suricata fields (timestamp, event_type, src_ip, etc.)
 
 ---
 
@@ -351,14 +379,14 @@ curl -s http://localhost:9200/_cluster/health
 
 **Cause:** New daily index not auto-created
 
-**Fix:** Enable auto-create for suricata-* indices
+**Fix:** Enable auto-create for both index patterns:
 
 ```bash
 curl -XPUT "http://localhost:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{
     "persistent": {
-      "action.auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+      "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
     }
   }'
 ```
@@ -368,12 +396,14 @@ See [docs/OPENSEARCH_AUTO_CREATE.md](../docs/OPENSEARCH_AUTO_CREATE.md) for deta
 ### Index Template Not Applied
 
 ```bash
-# Delete and recreate template
+# Delete and recreate both templates
 curl -X DELETE "http://localhost:9200/_index_template/suricata"
+curl -X DELETE "http://localhost:9200/_index_template/pfblockerng-template"
 ./scripts/install-opensearch-config.sh
 
 # Delete indices to reapply (WARNING: deletes data!)
 curl -X DELETE "http://localhost:9200/suricata-*"
+curl -X DELETE "http://localhost:9200/pfblockerng-*"
 
 # Wait for new indices to be created with correct mapping
 ```
@@ -383,7 +413,9 @@ curl -X DELETE "http://localhost:9200/suricata-*"
 ## 📚 Related Documentation
 
 - **[Logstash Pipeline](logstash-suricata.conf)** - See inline comments for detailed config
-- **[OpenSearch Template](opensearch-index-template.json)** - Field mappings
+- **[Suricata Template](opensearch-index-template.json)** - Suricata field mappings
+- **[pfBlockerNG Template](opensearch-pfblockerng-template.json)** - pfBlockerNG field mappings
+- **[Telegraf pfBlockerNG Setup](../docs/TELEGRAF_PFBLOCKER_SETUP.md)** - OpenSearch output config
 - **[Configuration Guide](../docs/CONFIGURATION.md)** - All config.env options
 - **[SIEM Installation](../docs/INSTALL_SIEM_STACK.md)** - Full setup guide
 - **[OpenSearch Auto-Create](../docs/OPENSEARCH_AUTO_CREATE.md)** - Fix midnight UTC issue

@@ -277,6 +277,7 @@ plugins = /var/lib/grafana/plugins
 
 ### Datasource Configuration (JSON)
 
+**OpenSearch-Suricata:**
 ```json
 {
   "name": "OpenSearch-Suricata",
@@ -287,7 +288,7 @@ plugins = /var/lib/grafana/plugins
   "jsonData": {
     "database": "suricata-*",
     "timeField": "@timestamp",
-    "version": "2.0.0",
+    "version": "2.19.4",
     "flavor": "opensearch",
     "pplEnabled": false,
     "logMessageField": "message",
@@ -295,6 +296,26 @@ plugins = /var/lib/grafana/plugins
   }
 }
 ```
+
+**OpenSearch-pfBlockerNG:**
+```json
+{
+  "name": "OpenSearch-pfBlockerNG",
+  "type": "grafana-opensearch-datasource",
+  "access": "proxy",
+  "url": "http://localhost:9200",
+  "basicAuth": false,
+  "jsonData": {
+    "database": "pfblockerng-*",
+    "timeField": "@timestamp",
+    "version": "2.19.4",
+    "flavor": "opensearch",
+    "pplEnabled": false
+  }
+}
+```
+
+> **Note:** pfBlockerNG data is sent by Telegraf's `[[outputs.opensearch]]` plugin directly to OpenSearch. Do NOT use the `[[outputs.elasticsearch]]` plugin — it is incompatible with OpenSearch 2.x.
 
 ### Dashboard Variables
 
