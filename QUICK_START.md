@@ -156,7 +156,8 @@ bash check-forwarder-status.sh PFSENSE_IP
 3. Import dashboards (import all three):
    - Click ➕ → Import
    - **Dashboard 1**: Upload `dashboards/pfsense_pfblockerng_system.json`
-     - Select InfluxDB datasource
+     - Select InfluxDB datasource (for system metrics panels)
+     - Select OpenSearch-pfBlockerNG datasource (for pfBlockerNG panels)
      - Click Import
    - **Dashboard 2**: Upload `dashboards/Suricata IDS_IPS Dashboard.json`
      - Select OpenSearch datasource

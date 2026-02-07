@@ -753,6 +753,14 @@ registry.docker.io
 ghcr.io
 .ghcr.io
 
+## Monitoring / Observability (Datadog)
+# Required for Datadog agent communication and dashboard access
+datadog.com
+.datadog.com
+datadoghq.com
+.datadoghq.com
+app.datadoghq.com
+
 ## AI / LLM Tools (As Needed)
 # ============================================================================
 # PRIVACY NOTICE: AI/LLM services may log and use your conversations

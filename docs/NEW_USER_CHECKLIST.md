@@ -151,11 +151,11 @@ http://<siem-server-ip>:3000
 - [ ] Grafana login successful
 - [ ] Password changed on first login
 
-#### 7. Configure OpenSearch Data Source
+#### 7. Configure OpenSearch Data Sources
 
 **Navigate:** Configuration (⚙️) → Data Sources → Add data source → OpenSearch
 
-**Settings:**
+**Datasource 1 — Suricata:**
 ```
 Name: OpenSearch-Suricata
 URL: http://localhost:9200
@@ -164,7 +164,19 @@ Time field: @timestamp
 Version: 2.0+
 ```
 
-- [ ] Data source added
+- [ ] Suricata data source added
+- [ ] Test successful (green checkmark)
+
+**Datasource 2 — pfBlockerNG:**
+```
+Name: OpenSearch-pfBlockerNG
+URL: http://localhost:9200
+Index name: pfblockerng-*
+Time field: @timestamp
+Version: 2.0+
+```
+
+- [ ] pfBlockerNG data source added
 - [ ] Test successful (green checkmark)
 
 #### 8. Import Dashboards
@@ -175,9 +187,10 @@ Version: 2.0+
 
 **Dashboard 1: pfSense System & pfBlockerNG**
 - **File:** `dashboards/pfsense_pfblockerng_system.json`
-- **Datasource:** Select your InfluxDB datasource
+- **Datasource:** Select your InfluxDB datasource (system metrics) AND OpenSearch-pfBlockerNG datasource (pfBlockerNG panels)
 - [ ] Dashboard imported successfully
-- [ ] Shows system metrics, network stats, pfBlockerNG blocks
+- [ ] Shows system metrics, network stats (InfluxDB)
+- [ ] Shows pfBlockerNG IP blocks and DNSBL blocks (OpenSearch)
 
 **Dashboard 2: Suricata WAN Monitoring**
 - **File:** `dashboards/Suricata IDS_IPS Dashboard.json`
