@@ -129,9 +129,11 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 - **PfBlockerNG integration** for upstream threat filtering
 
 ### 🛠️ Reliability & Operations (✅ Stable)
+- **Boot persistence**: FreeBSD rc.d service starts forwarder automatically on pfSense boot
+- **Process management**: Uses `daemon(8)` with PID tracking — no orphaned processes
 - **Log rotation handling**: Inode-aware forwarder survives Suricata rotations
-- **Watchdogs**: Auto-restart forwarder and Suricata on failure
-- **Restart hooks**: Ensure proper startup after pfSense upgrades
+- **Watchdogs**: Cron-based health checks restart forwarder on failure via rc.d service
+- **Restart hooks**: Ensure proper startup after pfSense/Suricata upgrades
 - **Debug logging**: Comprehensive troubleshooting with `/var/log/suricata_forwarder_debug.log`
 - **Automated setup**: One-command deployment scripts for entire stack
 
@@ -178,6 +180,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 - **For Suricata IDS/IPS**:
   - **CPU**: Quad-core minimum (more cores = more throughput)
     - Intel Atom C3758 (8-core) handles 15 Suricata instances at 25-35% average load
+    - Intel Xeon D-1518 (8-core, AVX2) provides significant headroom with hardware AES-NI for VPN offload
     - **Expect CPU spikes to 100% for 3-5 minutes during rule reloads**
   - **RAM**: 8-16GB for multi-interface deployments
   - **Stream Memory**: Increase to **1073741824 bytes (1GB)** per interface (default 256MB causes crashes on multicore systems)
@@ -260,7 +263,8 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 **That's it!** The setup script:
 - ✅ Configures OpenSearch index templates
 - ✅ Deploys forwarder to pfSense with GeoIP enrichment
-- ✅ Installs watchdogs for automatic recovery
+- ✅ Installs rc.d service for boot persistence (auto-start on reboot)
+- ✅ Installs watchdogs for automatic crash recovery
 - ✅ Verifies data flow from pfSense → Logstash → OpenSearch
 
 ### Import Dashboards
@@ -348,15 +352,26 @@ See [LAN Monitoring Setup](docs/LAN_MONITORING.md) for configuration.
 
 ### Watchdog & Automation
 
+The forwarder uses a multi-layer reliability architecture to survive reboots, crashes, and upgrades:
+
+**rc.d Service** (`/usr/local/etc/rc.d/suricata_forwarder`):
+- FreeBSD native service for boot persistence — forwarder starts automatically on pfSense boot
+- Uses `daemon(8)` for proper process management with PID tracking (`/var/run/suricata_forwarder.pid`)
+- Enabled via `sysrc suricata_forwarder_enable=YES`
+- Standard service commands: `service suricata_forwarder start|stop|restart|status`
+- Deployed automatically by `setup.sh`
+
 **Forwarder Watchdog** (`suricata-forwarder-watchdog.sh`):
-- Monitors forwarder process health
-- Restarts on failure or stuck state
-- Runs via cron every 5 minutes
+- Monitors forwarder process health via rc.d service status
+- Restarts on failure or stuck state using `service suricata_forwarder restart`
+- Runs via cron every 5 minutes as a safety net
 
 **Restart Hooks** (`suricata-restart-hook.sh`):
 - Ensures forwarder starts after Suricata upgrades
 - Handles log rotation gracefully
 - Integrated with pfSense Suricata package
+
+**Recovery Chain**: rc.d (boot) → watchdog cron (crash recovery) → restart hook (upgrade recovery)
 
 See [scripts/README.md](scripts/README.md) for all helper scripts.
 
@@ -457,7 +472,13 @@ pfsense_grafana/
 │       ├── restart-services.sh                Service management & recovery
 │       ├── configure-retention-policy.sh      Data lifecycle management
 │       ├── suricata-forwarder-watchdog.sh     Monitoring & auto-restart
+│       ├── suricata-restart-hook.sh           Post-upgrade restart hook
 │       └── README.md                          Script documentation
+│
+│   # Deployed to pfSense by setup.sh:
+│   # /usr/local/etc/rc.d/suricata_forwarder  FreeBSD rc.d service (boot persistence)
+│   # /usr/local/bin/forward-suricata-eve.py   Forwarder script
+│   # /usr/local/bin/suricata-forwarder-watchdog.sh  Cron watchdog
 │
 ├── ⚙️ Configuration Files
 │   └── config/
@@ -638,6 +659,39 @@ fetch -o /usr/local/share/ntopng/GeoLite2-City.mmdb \
   https://github.com/PrxyHunter/GeoLite2/raw/master/GeoLite2-City.mmdb
 ```
 
+### Logstash Maintenance
+
+> **⚠️ After Logstash upgrades**, the `logstash-output-opensearch` plugin may be removed. If Logstash enters a crash loop after an upgrade, reinstall the plugin:
+>
+> ```bash
+> sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
+> sudo systemctl restart logstash
+> ```
+>
+> Also check `/usr/share/logstash/data` ownership — it must be owned by `logstash:logstash`, not root. Fix with:
+> ```bash
+> sudo chown -R logstash:logstash /usr/share/logstash/data
+> ```
+>
+> If Logstash reports `Gemfile.lock` errors, sync it:
+> ```bash
+> cd /usr/share/logstash
+> sudo -u logstash bin/logstash-plugin install --no-verify
+> ```
+
+### UDP Receive Buffer
+
+For high-volume deployments, increase the kernel UDP receive buffer on the SIEM server to prevent dropped events:
+
+```bash
+# Check current max
+sysctl net.core.rmem_max
+
+# Set to 32MB (recommended)
+echo 'net.core.rmem_max=33554432' | sudo tee -a /etc/sysctl.d/99-logstash.conf
+sudo sysctl -p /etc/sysctl.d/99-logstash.conf
+```
+
 ## 🔍 Troubleshooting
 
 ### Quick Diagnosis
@@ -688,9 +742,11 @@ This will identify most common problems automatically.
   4. Optional: Reindex old data to match new structure
 
 **4. Forwarder not running**
-- Run `./scripts/status.sh` to check forwarder status
-- Verify: `./setup.sh` was run successfully
-- Check forwarder logs: `ssh root@<pfsense-ip> 'tail -f /var/log/system.log | grep suricata'`
+- Check service status: `ssh admin@<pfsense-ip> 'service suricata_forwarder status'`
+- Restart: `ssh admin@<pfsense-ip> 'service suricata_forwarder restart'`
+- Verify enabled at boot: `ssh admin@<pfsense-ip> 'sysrc suricata_forwarder_enable'`
+- Run `./scripts/status.sh` to check full pipeline status
+- Check forwarder logs: `ssh admin@<pfsense-ip> 'tail -f /var/log/system.log | grep suricata'`
 
 **5. Data stops at midnight UTC**
 - **Cause**: OpenSearch auto-create disabled
@@ -698,8 +754,9 @@ This will identify most common problems automatically.
 - **Details**: See `docs/OPENSEARCH_AUTO_CREATE.md`
 
 **6. Multiple forwarders running**
-- Kill extras: `ssh root@<pfsense-ip> 'pkill -f forward-suricata'`
-- Run `./setup.sh` to start single clean instance
+- Stop all and restart cleanly: `ssh admin@<pfsense-ip> 'pkill -f forward-suricata; service suricata_forwarder start'`
+- The rc.d service uses a PID file to prevent duplicate instances
+- Run `./setup.sh` to redeploy with clean state
 
 **7. Wrong SIEM IP configured**
 - Edit `config.env` with correct SIEM IP
@@ -735,11 +792,10 @@ The forwarder should automatically detect all Suricata instances. If missing int
 
 ```bash
 # Check available eve.json files
-ssh root@pfsense 'ls -la /var/log/suricata/*/eve.json'
+ssh admin@pfsense 'ls -la /var/log/suricata/*/eve.json'
 
-# Restart forwarder
-pkill -f forward-suricata
-nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
+# Restart forwarder (picks up new interfaces automatically)
+ssh admin@pfsense 'service suricata_forwarder restart'
 ```
 
 See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.

@@ -204,12 +204,68 @@ print_info "Installing watchdog cron job..."
 CRON_LINE="* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh"
 ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "(crontab -l 2>/dev/null | grep -v watchdog; echo '${CRON_LINE}') | crontab -"
 
-print_info "Starting forwarder..."
-ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+print_info "Installing rc.d service for boot auto-start..."
+ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'cat > /usr/local/etc/rc.d/suricata_forwarder' << 'RCD_EOF'
+#!/bin/sh
+# PROVIDE: suricata_forwarder
+# REQUIRE: DAEMON
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="suricata_forwarder"
+rcvar="suricata_forwarder_enable"
+command="/usr/local/bin/forward-suricata-eve.py"
+command_interpreter="/usr/local/bin/python3.11"
+pidfile="/var/run/${name}.pid"
+logfile="/var/log/suricata-forwarder.log"
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+status_cmd="${name}_status"
+
+suricata_forwarder_start() {
+    if [ -f "$pidfile" ] && kill -0 $(cat "$pidfile") 2>/dev/null; then
+        echo "${name} already running (pid=$(cat $pidfile))"
+        return 0
+    fi
+    echo "Starting ${name}..."
+    /usr/sbin/daemon -f -p "$pidfile" -o "$logfile" "$command"
+    echo "${name} started."
+}
+
+suricata_forwarder_stop() {
+    if [ -f "$pidfile" ]; then
+        kill $(cat "$pidfile") 2>/dev/null
+        rm -f "$pidfile"
+        echo "${name} stopped."
+    else
+        echo "${name} not running."
+    fi
+}
+
+suricata_forwarder_status() {
+    if [ -f "$pidfile" ] && kill -0 $(cat "$pidfile") 2>/dev/null; then
+        echo "${name} is running (pid=$(cat $pidfile))"
+    else
+        echo "${name} is not running."
+    fi
+}
+
+load_rc_config $name
+: ${suricata_forwarder_enable:="NO"}
+run_rc_command "$1"
+RCD_EOF
+
+ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'chmod 755 /usr/local/etc/rc.d/suricata_forwarder && sysrc suricata_forwarder_enable=YES'
+print_info "✓ rc.d service installed and enabled for boot auto-start"
+
+print_info "Starting forwarder via rc.d service..."
+ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve 2>/dev/null; sleep 1; /usr/local/etc/rc.d/suricata_forwarder start'
 sleep 3
 
 # Verify
-FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve.py' | awk '{print \$2}'" || echo "")
+FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.pid 2>/dev/null || ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}' | head -1" || echo "")
 if [ -z "$FORWARDER_PID" ]; then
     print_error "Forwarder failed to start"
     print_info "Check logs: ssh ${PFSENSE_USER:-root}@${PFSENSE_HOST} 'tail -50 /var/log/system.log | grep suricata'"
