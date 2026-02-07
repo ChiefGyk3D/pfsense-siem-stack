@@ -21,7 +21,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ### 🎯 Current Implementation (OpenSearch - Production Ready ✅)
 
-- **Full SIEM Stack**: OpenSearch for event storage, Logstash for parsing/enrichment, InfluxDB for time-series metrics
+- **Full SIEM Stack**: OpenSearch for event storage and pfBlockerNG analytics, Logstash for parsing/enrichment, InfluxDB for time-series system metrics
 - **Comprehensive IDS/IPS Monitoring**: Real-time Suricata alerts with GeoIP mapping, signature tracking, and attack visualization  
 - **East-West Traffic Detection**: Internal network monitoring to detect lateral movement and insider threats
 - **Resilient Data Pipeline**: Rotation-aware forwarders, watchdogs, restart hooks, and automated recovery
@@ -67,10 +67,11 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 1. **pfSense** runs Suricata on multiple interfaces (WAN inline IPS, VLAN IDS)
 2. **Forwarder** (`forward-suricata-eve.py`) tails eve.json logs, enriches with GeoIP, handles rotation
 3. **Logstash** receives events via UDP, parses/nests under `suricata.eve.*`, forwards to storage
-4. **OpenSearch** indexes events for search and aggregation (geomap, dashboards)
-5. **InfluxDB** stores time-series metrics for rates/counters (optional but recommended)
-6. **Grafana** visualizes everything with dashboards, alerts, and geomaps
-7. **Watchdogs** monitor the pipeline and restart components on failure
+4. **OpenSearch** indexes Suricata events for search and aggregation (geomap, dashboards)
+5. **Telegraf** on pfSense collects system metrics → InfluxDB AND pfBlockerNG logs → OpenSearch
+6. **InfluxDB** stores time-series system metrics (CPU, RAM, interfaces, gateways)
+7. **Grafana** visualizes everything with mixed datasource dashboards (InfluxDB + OpenSearch)
+8. **Watchdogs** monitor the pipeline and restart components on failure
 
 ### Key Components
 
@@ -78,11 +79,12 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 |-----------|---------|----------|
 | **Suricata** | IDS/IPS engine | pfSense (per-interface) |
 | **PfBlockerNG** | Upstream blocklists | pfSense |
-| **Forwarder** | Log shipping + GeoIP | pfSense → SIEM |
-| **Logstash** | Parsing & enrichment | SIEM server |
-| **OpenSearch** | Event storage | SIEM server |
-| **InfluxDB** | Time-series DB | SIEM server |
-| **Grafana** | Visualization | SIEM server |
+| **Forwarder** | Suricata log shipping + GeoIP | pfSense → SIEM |
+| **Telegraf** | System metrics + pfBlockerNG logs | pfSense → InfluxDB/OpenSearch |
+| **Logstash** | Suricata parsing & enrichment | SIEM server |
+| **OpenSearch** | Suricata events + pfBlockerNG data | SIEM server |
+| **InfluxDB** | System metrics (CPU/RAM/interfaces) | SIEM server |
+| **Grafana** | Visualization (mixed datasources) | SIEM server |
 | **Watchdogs** | Pipeline monitoring | pfSense + SIEM |
 
 ---
@@ -196,7 +198,7 @@ These packages enhance functionality and are used/referenced throughout this pro
 | Package | Purpose | Why Recommended | Installation |
 |---------|---------|-----------------|--------------|
 | **pfBlockerNG-devel** | IP/DNS blocklists, GeoIP blocking | Essential for upstream threat filtering. Blocks known bad actors before they reach Suricata. The devel version has latest features and GeoIP updates. Dashboard includes pfBlockerNG statistics panels. | System → Package Manager → Available Packages → Install `pfBlockerNG-devel` |
-| **Telegraf** | Metrics collection agent | Collects system metrics (CPU, memory, interfaces) and sends to InfluxDB for the pfSense system dashboard. Required for hardware monitoring panels. | System → Package Manager → Available Packages → Install `telegraf` |
+| **Telegraf** | Metrics collection agent | Collects system metrics (CPU, memory, interfaces) and sends to InfluxDB. Also collects pfBlockerNG logs and sends directly to OpenSearch via `[[outputs.opensearch]]` plugin. Required for both system monitoring and pfBlockerNG dashboard panels. | System → Package Manager → Available Packages → Install `telegraf` |
 | **ntopng** | Network traffic analysis | Provides GeoIP database updates automatically (GeoLite2-City.mmdb). The forwarder uses this database for IP geolocation enrichment. Also useful for deep packet inspection and flow analysis. | System → Package Manager → Available Packages → Install `ntopng` |
 | **Service_Watchdog** | Service monitoring | Monitors critical services (Suricata, Unbound, etc.) and auto-restarts on failure. Complements our forwarder watchdog for complete pipeline reliability. | System → Package Manager → Available Packages → Install `Service_Watchdog` |
 | **nut** | UPS monitoring | Network UPS Tools for power monitoring. Telegraf can collect UPS metrics for dashboard display. Critical for graceful shutdowns during power events. | System → Package Manager → Available Packages → Install `nut` (if using UPS) |
@@ -261,10 +263,11 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 ```
 
 **That's it!** The setup script:
-- ✅ Configures OpenSearch index templates
+- ✅ Configures OpenSearch index templates (Suricata + pfBlockerNG)
 - ✅ Deploys forwarder to pfSense with GeoIP enrichment
 - ✅ Installs rc.d service for boot persistence (auto-start on reboot)
 - ✅ Installs watchdogs for automatic crash recovery
+- ✅ Creates Grafana OpenSearch-pfBlockerNG datasource
 - ✅ Verifies data flow from pfSense → Logstash → OpenSearch
 
 ### Import Dashboards
@@ -272,10 +275,13 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 1. Open Grafana: `http://<siem-server>:3000` (admin/admin)
 2. Go to **Dashboards** → **Import**
 3. Upload dashboards (import all three):
-   - **`dashboards/pfsense_pfblockerng_system.json`** - pfSense system metrics and pfBlockerNG stats
-   - **`dashboards/Suricata IDS_IPS Dashboard.json`** - WAN-side security monitoring
-   - **`dashboards/Suricata_Per_Interface.json`** - Per-interface LAN/VLAN monitoring
-4. Select your datasource (InfluxDB for pfSense, OpenSearch for Suricata)
+   - **`dashboards/pfsense_pfblockerng_system.json`** - pfSense system metrics (InfluxDB) and pfBlockerNG stats (OpenSearch)
+   - **`dashboards/Suricata IDS_IPS Dashboard.json`** - WAN-side security monitoring (OpenSearch)
+   - **`dashboards/Suricata_Per_Interface.json`** - Per-interface LAN/VLAN monitoring (OpenSearch)
+4. Select your datasources:
+   - **InfluxDB** (`pfsense` database) for system metrics panels
+   - **OpenSearch-pfBlockerNG** (`pfblockerng-*` index) for pfBlockerNG panels  
+   - **OpenSearch** (`suricata-*` index) for Suricata panels
 5. Click **Import**
 
 ### Verify Installation
@@ -483,7 +489,8 @@ pfsense_grafana/
 ├── ⚙️ Configuration Files
 │   └── config/
 │       ├── logstash-suricata.conf             ★ Logstash pipeline (parsing & enrichment)
-│       ├── opensearch-index-template.json     Index template with geo_point mapping
+│       ├── opensearch-index-template.json     Suricata index template with geo_point mapping
+│       ├── opensearch-pfblockerng-template.json  pfBlockerNG index template with keyword mapping
 │       ├── dnsbl_whitelist.txt                PfBlockerNG whitelist
 │       ├── pfblockerng_optimization.md        Blocklist configuration guide
 │       └── sid/                               Suricata signature management
@@ -573,11 +580,15 @@ pfsense_grafana/
 - Interface status and throughput
 - Per-WAN and per-LAN traffic graphs
 
-#### PfBlockerNG
+#### PfBlockerNG (via OpenSearch)
 - IP blocks (inbound/outbound)
 - DNSBL blocked queries
 - Top blocked sources and destinations
 - Blocked traffic by country (GeoIP)
+- Feed performance statistics
+- Protocol and port distribution
+
+> **Note**: pfBlockerNG panels use the OpenSearch-pfBlockerNG datasource (`pfblockerng-*` index), while system metrics panels use InfluxDB. This mixed-datasource approach avoids InfluxDB cardinality issues with high-cardinality fields like IP addresses.
 
 ### Dashboard 2: Suricata WAN Monitoring
 
@@ -802,9 +813,23 @@ See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.
 
 ### pfBlocker Panels Show No Data
 
-If the Telegraf dashboard's pfBlocker panels are empty, this is usually caused by pfSense's filterlog daemon not properly handling log rotation.
+pfBlockerNG data now flows through **OpenSearch** (not InfluxDB). Common causes:
 
-**Quick Fix:**
+1. **Telegraf opensearch output not configured**: The pfSense Telegraf package needs `[[outputs.opensearch]]` configured to send pfBlockerNG data to OpenSearch. See [Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md).
+
+2. **OpenSearch index template not applied**: Fields may be mapped as `text` instead of `keyword`, preventing aggregation. Re-apply the template:
+   ```bash
+   ./scripts/install-opensearch-config.sh
+   ```
+
+3. **auto_create_index missing pfblockerng-***: Check cluster settings:
+   ```bash
+   curl -s "http://localhost:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+   ```
+
+4. **Grafana datasource not created**: The dashboard expects an `OpenSearch-pfBlockerNG` datasource pointing to `pfblockerng-*`. Run `./setup.sh` to create it automatically.
+
+5. **pfBlockerNG filterlog rotation issue**:
 ```bash
 # Via SSH to pfSense
 ssh root@pfsense

@@ -1,0 +1,164 @@
+{
+  "index_patterns": ["pfblockerng-*"],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "5s"
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "tags_as_keyword": {
+            "path_match": "tag.*",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        },
+        {
+          "ip_block_fields_as_keyword": {
+            "path_match": "tail_ip_block_log.*",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        },
+        {
+          "dnsbl_fields_as_keyword": {
+            "path_match": "tail_dnsbl_log.*",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "measurement_name": {
+          "type": "keyword"
+        },
+        "tag": {
+          "properties": {
+            "src_ip": {
+              "type": "keyword"
+            },
+            "dest_port": {
+              "type": "keyword"
+            },
+            "feed_name": {
+              "type": "keyword"
+            },
+            "blocklist": {
+              "type": "keyword"
+            },
+            "tld": {
+              "type": "keyword"
+            },
+            "geoip_code": {
+              "type": "keyword"
+            },
+            "protocol": {
+              "type": "keyword"
+            },
+            "host": {
+              "type": "keyword"
+            },
+            "path": {
+              "type": "keyword"
+            }
+          }
+        },
+        "tail_ip_block_log": {
+          "properties": {
+            "dest_ip": {
+              "type": "keyword"
+            },
+            "src_port": {
+              "type": "keyword"
+            },
+            "action": {
+              "type": "keyword"
+            },
+            "direction": {
+              "type": "keyword"
+            },
+            "interface": {
+              "type": "keyword"
+            },
+            "friendlyname": {
+              "type": "keyword"
+            },
+            "ip_version": {
+              "type": "keyword"
+            },
+            "protocolid": {
+              "type": "keyword"
+            },
+            "ip_alias_name": {
+              "type": "keyword"
+            },
+            "ip_evaluated": {
+              "type": "keyword"
+            },
+            "rulenum": {
+              "type": "keyword"
+            },
+            "resolvedhostname": {
+              "type": "keyword"
+            },
+            "clienthostname": {
+              "type": "keyword"
+            },
+            "ASN": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                }
+              }
+            },
+            "duplicateeventstatus": {
+              "type": "keyword"
+            }
+          }
+        },
+        "tail_dnsbl_log": {
+          "properties": {
+            "domain": {
+              "type": "keyword"
+            },
+            "blocktype": {
+              "type": "keyword"
+            },
+            "blocksubtype": {
+              "type": "keyword"
+            },
+            "blockmethod": {
+              "type": "keyword"
+            },
+            "req_agent": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                }
+              }
+            },
+            "duplicateeventstatus": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}

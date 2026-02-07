@@ -1,7 +1,8 @@
 #!/bin/bash
-# OpenSearch Configuration Installer for Suricata IDS/IPS Dashboard
+# OpenSearch Configuration Installer for pfSense SIEM Stack
 # This script configures OpenSearch with proper index templates and cluster settings
-# for automatic daily index creation with geo_point mappings
+# for automatic daily index creation with geo_point mappings (Suricata)
+# and keyword mappings (pfBlockerNG via Telegraf)
 
 set -e
 
@@ -59,12 +60,40 @@ apply_index_template() {
     BODY=$(echo "$RESPONSE" | sed '$d')
     
     if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
-        print_info "Index template applied successfully"
+        print_info "Suricata index template applied successfully"
         echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
     else
-        print_error "Failed to apply index template (HTTP $HTTP_CODE)"
+        print_error "Failed to apply Suricata index template (HTTP $HTTP_CODE)"
         echo "$BODY"
         exit 1
+    fi
+}
+
+# Function to apply pfBlockerNG index template
+apply_pfblockerng_template() {
+    print_info "Applying pfBlockerNG index template..."
+    
+    if [ ! -f "${CONFIG_DIR}/opensearch-pfblockerng-template.json" ]; then
+        print_warning "pfBlockerNG template not found: ${CONFIG_DIR}/opensearch-pfblockerng-template.json"
+        print_warning "Skipping pfBlockerNG template (optional - only needed if using Telegraf pfBlockerNG integration)"
+        return 0
+    fi
+    
+    RESPONSE=$(curl -s -w "\n%{http_code}" -XPUT "${OPENSEARCH_URL}/_index_template/pfblockerng" \
+        -H 'Content-Type: application/json' \
+        -d @"${CONFIG_DIR}/opensearch-pfblockerng-template.json")
+    
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+    BODY=$(echo "$RESPONSE" | sed '$d')
+    
+    if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+        print_info "pfBlockerNG index template applied successfully"
+        echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
+    else
+        print_error "Failed to apply pfBlockerNG index template (HTTP $HTTP_CODE)"
+        echo "$BODY"
+        # Non-fatal - pfBlockerNG is optional
+        return 1
     fi
 }
 
@@ -74,12 +103,13 @@ configure_auto_create() {
     
     # This is CRITICAL for automatic daily index creation
     # Without this, OpenSearch will NOT create new indices at midnight UTC
-    # and Logstash will silently drop all events
+    # and Logstash/Telegraf will silently drop all events
+    # Includes suricata-* (Logstash) and pfblockerng-* (Telegraf opensearch output)
     RESPONSE=$(curl -s -w "\n%{http_code}" -XPUT "${OPENSEARCH_URL}/_cluster/settings" \
         -H 'Content-Type: application/json' \
         -d '{
             "persistent": {
-                "action.auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+                "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
             }
         }')
     
@@ -119,12 +149,19 @@ verify_configuration() {
     
     if [[ "$AUTO_CREATE" == *"suricata-"* ]]; then
         print_info "✓ Auto-create enabled for suricata-* indices"
-        print_info "  Value: $AUTO_CREATE"
     else
-        print_error "✗ Auto-create not properly configured"
+        print_error "✗ Auto-create not configured for suricata-*"
         print_error "  Current value: $AUTO_CREATE"
         return 1
     fi
+    
+    if [[ "$AUTO_CREATE" == *"pfblockerng-"* ]]; then
+        print_info "✓ Auto-create enabled for pfblockerng-* indices"
+    else
+        print_warning "⚠ Auto-create not configured for pfblockerng-* (optional)"
+    fi
+    
+    print_info "  Value: $AUTO_CREATE"
     
     # Create a test index to verify template application
     print_info "Testing index creation with template..."
@@ -194,8 +231,8 @@ create_initial_index() {
 main() {
     echo "========================================"
     echo "OpenSearch Configuration Installer"
-    echo "Suricata IDS/IPS Dashboard"
-    echo "========================================"
+    echo "pfSense SIEM Stack"
+    echo "========================================
     echo ""
     
     print_info "Target OpenSearch: ${OPENSEARCH_URL}"
@@ -205,6 +242,9 @@ main() {
     echo ""
     
     apply_index_template
+    echo ""
+    
+    apply_pfblockerng_template
     echo ""
     
     configure_auto_create
