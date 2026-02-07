@@ -753,13 +753,95 @@ registry.docker.io
 ghcr.io
 .ghcr.io
 
-## Monitoring / Observability (Datadog)
-# Required for Datadog agent communication and dashboard access
-datadog.com
-.datadog.com
-datadoghq.com
-.datadoghq.com
-app.datadoghq.com
+## Monitoring / Observability
+# APM, error tracking, alerting, and log aggregation platforms
+# Note: nr-data.net excluded (telemetry/analytics — see reference section)
+newrelic.com
+.newrelic.com
+pagerduty.com
+.pagerduty.com
+opsgenie.com
+.opsgenie.com
+sentry.io
+.sentry.io
+bugsnag.com
+.bugsnag.com
+splunk.com
+.splunk.com
+sumologic.com
+.sumologic.com
+
+## CI/CD / DevOps Platforms
+circleci.com
+.circleci.com
+travis-ci.com
+.travis-ci.com
+jenkins.io
+hashicorp.com
+.hashicorp.com
+terraform.io
+.terraform.io
+vercel.com
+.vercel.com
+netlify.com
+.netlify.com
+heroku.com
+.heroku.com
+
+## Collaboration / Productivity (Additional Work Tools)
+# Note: notion, asana, monday, clickup, figma, miro already in Productivity section
+lucid.co
+.lucid.co
+calendly.com
+.calendly.com
+docusign.com
+.docusign.com
+docusign.net
+.docusign.net
+
+## Cloud Provider Consoles (Scoped)
+# Note: .amazonaws.com and .azure.com excluded (over-broad — see reference section)
+aws.amazon.com
+console.cloud.google.com
+portal.azure.com
+digitalocean.com
+.digitalocean.com
+linode.com
+.linode.com
+
+## SSO / Identity Providers (Additional)
+# Note: okta, auth0, onelogin, duo already in Identity section
+.oktacdn.com
+
+## Business Communication (Video/Voice)
+webex.com
+.webex.com
+.wbx2.com
+gotomeeting.com
+.gotomeeting.com
+ringcentral.com
+.ringcentral.com
+vonage.com
+.vonage.com
+
+## HR / Business SaaS
+workday.com
+.workday.com
+bamboohr.com
+.bamboohr.com
+gusto.com
+.gusto.com
+adp.com
+.adp.com
+zendesk.com
+.zendesk.com
+freshdesk.com
+.freshdesk.com
+hubspot.com
+.hubspot.com
+salesforce.com
+.salesforce.com
+.force.com
 
 ## AI / LLM Tools (As Needed)
 # ============================================================================
