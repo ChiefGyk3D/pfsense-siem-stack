@@ -2463,7 +2463,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 33
       },
       "id": 1005,
       "panels": [],
@@ -2564,7 +2564,7 @@
         "h": 9,
         "w": 6,
         "x": 0,
-        "y": 24
+        "y": 34
       },
       "id": 1059,
       "options": {
@@ -2705,7 +2705,7 @@
         "h": 9,
         "w": 4,
         "x": 6,
-        "y": 24
+        "y": 34
       },
       "id": 1051,
       "options": {
@@ -2823,7 +2823,7 @@
         "h": 9,
         "w": 4,
         "x": 10,
-        "y": 24
+        "y": 34
       },
       "id": 1066,
       "options": {
@@ -2953,7 +2953,7 @@
         "h": 9,
         "w": 4,
         "x": 14,
-        "y": 24
+        "y": 34
       },
       "id": 1055,
       "options": {
@@ -3108,7 +3108,7 @@
         "h": 9,
         "w": 6,
         "x": 18,
-        "y": 24
+        "y": 34
       },
       "id": 1063,
       "options": {
@@ -3274,7 +3274,7 @@
         "h": 9,
         "w": 7,
         "x": 0,
-        "y": 33
+        "y": 43
       },
       "id": 1061,
       "options": {
@@ -3416,7 +3416,7 @@
         "h": 9,
         "w": 5,
         "x": 7,
-        "y": 33
+        "y": 43
       },
       "id": 1053,
       "options": {
@@ -3547,7 +3547,7 @@
         "h": 9,
         "w": 5,
         "x": 12,
-        "y": 33
+        "y": 43
       },
       "id": 1057,
       "options": {
@@ -3702,7 +3702,7 @@
         "h": 9,
         "w": 7,
         "x": 17,
-        "y": 33
+        "y": 43
       },
       "id": 1065,
       "options": {
@@ -3780,7 +3780,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 52
       },
       "id": 143,
       "panels": [],
@@ -3853,7 +3853,7 @@
         "h": 8,
         "w": 11,
         "x": 0,
-        "y": 43
+        "y": 53
       },
       "id": 4,
       "options": {
@@ -4029,7 +4029,7 @@
         "h": 8,
         "w": 13,
         "x": 11,
-        "y": 43
+        "y": 53
       },
       "id": 194,
       "options": {
@@ -4243,7 +4243,7 @@
         "h": 8,
         "w": 11,
         "x": 0,
-        "y": 51
+        "y": 61
       },
       "id": 487,
       "options": {
@@ -4424,7 +4424,7 @@
         "h": 8,
         "w": 13,
         "x": 11,
-        "y": 51
+        "y": 61
       },
       "id": 961,
       "options": {
@@ -4578,7 +4578,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 69
       },
       "id": 14,
       "panels": [
@@ -4666,7 +4666,7 @@
             "h": 3,
             "w": 24,
             "x": 0,
-            "y": 60
+            "y": 70
           },
           "id": 603,
           "options": {
@@ -4811,7 +4811,7 @@
             "h": 8,
             "w": 9,
             "x": 0,
-            "y": 63
+            "y": 73
           },
           "id": 2,
           "options": {
@@ -4964,7 +4964,7 @@
             "h": 8,
             "w": 3,
             "x": 9,
-            "y": 63
+            "y": 73
           },
           "id": 247,
           "options": {
@@ -5128,7 +5128,7 @@
             "h": 8,
             "w": 3,
             "x": 12,
-            "y": 63
+            "y": 73
           },
           "id": 296,
           "options": {
@@ -5173,7 +5173,7 @@
             "h": 8,
             "w": 9,
             "x": 15,
-            "y": 63
+            "y": 73
           },
           "id": 322,
           "options": {
@@ -5405,7 +5405,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 72
       },
       "id": 43,
       "panels": [
@@ -5493,7 +5493,7 @@
             "h": 3,
             "w": 24,
             "x": 0,
-            "y": 81
+            "y": 91
           },
           "id": 604,
           "options": {
@@ -5638,7 +5638,7 @@
             "h": 7,
             "w": 9,
             "x": 0,
-            "y": 84
+            "y": 94
           },
           "id": 38,
           "options": {
@@ -5792,7 +5792,7 @@
             "h": 7,
             "w": 3,
             "x": 9,
-            "y": 84
+            "y": 94
           },
           "id": 248,
           "options": {
@@ -5959,7 +5959,7 @@
             "h": 7,
             "w": 3,
             "x": 12,
-            "y": 84
+            "y": 94
           },
           "hideTimeOverride": true,
           "id": 297,
@@ -6091,7 +6091,7 @@
             "h": 7,
             "w": 9,
             "x": 15,
-            "y": 84
+            "y": 94
           },
           "id": 347,
           "options": {
@@ -6213,6 +6213,164 @@
       "repeat": "LAN_Interfaces",
       "title": "LAN Interface - $LAN_Interfaces",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "cfcj8rx9l04jka"
+      },
+      "description": "Geographic distribution of IP block sources by country code",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 200
+              },
+              {
+                "color": "dark-red",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 1067,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "fixed": "dark-red"
+                },
+                "opacity": 0.6,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 20,
+                  "min": 3
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "gazetteer": "public/gazetteer/countries.json",
+              "lookup": "tag.geoip_code",
+              "mode": "lookup"
+            },
+            "name": "Blocked Sources",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "zero",
+          "lat": 20,
+          "lon": 0,
+          "noRepeat": false,
+          "zoom": 2
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "tag.geoip_code",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "50"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "cfcj8rx9l04jka"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "_exists_:tag.geoip_code",
+          "refId": "A",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "pfBlockerNG - Blocked Sources by Country (GeoMap)",
+      "type": "geomap"
     }
   ],
   "preload": false,
@@ -6231,13 +6389,13 @@
           "value": "InfluxDB"
         },
         "includeAll": false,
+        "label": "InfluxDB",
         "name": "dataSource",
         "options": [],
         "query": "influxdb",
         "refresh": 1,
         "regex": "",
-        "type": "datasource",
-        "label": "InfluxDB"
+        "type": "datasource"
       },
       {
         "current": {
@@ -6359,6 +6517,6 @@
   "timezone": "",
   "title": "pfSense System Dashboard",
   "uid": "GflT1CsMz_v2",
-  "version": 5,
+  "version": 8,
   "weekStart": ""
 }
