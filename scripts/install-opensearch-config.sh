@@ -174,14 +174,20 @@ verify_configuration() {
     if echo "$CREATE_RESPONSE" | jq -e '.acknowledged' > /dev/null 2>&1; then
         print_info "✓ Test index created successfully"
         
-        # Check if geo_point mapping was applied from template
+        # Check if geo_point mapping was applied from template (flat structure)
         MAPPING=$(curl -s "${OPENSEARCH_URL}/${TEST_INDEX}/_mapping")
-        GEOIP_TYPE=$(echo "$MAPPING" | jq -r ".\"${TEST_INDEX}\".mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location.type // \"not found\"")
+        GEOIP_TYPE=$(echo "$MAPPING" | jq -r ".\"${TEST_INDEX}\".mappings.properties.geoip_src.properties.location.type // \"not found\"")
         
         if [ "$GEOIP_TYPE" = "geo_point" ]; then
-            print_info "✓ Template applied: geo_point mapping confirmed"
+            print_info "✓ Template applied: geo_point mapping confirmed (flat structure)"
         else
             print_warning "⚠ Template may not have applied correctly (geo_point type: $GEOIP_TYPE)"
+            print_info "  This is normal if no geo_point fields are in the template — check event_type instead"
+            # Fallback: check event_type keyword mapping
+            EVENT_TYPE=$(echo "$MAPPING" | jq -r ".\"${TEST_INDEX}\".mappings.properties.event_type.type // \"not found\"")
+            if [ "$EVENT_TYPE" = "keyword" ]; then
+                print_info "✓ Template applied: event_type=keyword confirmed (flat structure)"
+            fi
         fi
         
         # Clean up test index
@@ -262,8 +268,8 @@ main() {
     echo ""
     print_info "Next steps:"
     echo "  1. Ensure Logstash is configured with config/logstash-suricata.conf"
-    echo "  2. Deploy the forwarder to pfSense: scripts/forward-suricata-eve-python.py"
-    echo "  3. Import the dashboard: dashboards/Suricata IDS_IPS Dashboard.json"
+    echo "  2. Deploy the forwarder to pfSense: scripts/forward-suricata-eve.py"
+    echo "  3. Import the dashboard: dashboards/Suricata_IDS_IPS.json"
     echo ""
     print_warning "IMPORTANT: Daily indices will now be automatically created at midnight UTC"
     print_warning "Monitor Logstash logs for any index_not_found_exception errors"

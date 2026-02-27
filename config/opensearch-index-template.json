@@ -12,126 +12,204 @@
         "@timestamp": {
           "type": "date"
         },
-        "suricata": {
+        "timestamp": {
+          "type": "date"
+        },
+        "event_type": {
+          "type": "keyword"
+        },
+        "src_ip": {
+          "type": "ip"
+        },
+        "dest_ip": {
+          "type": "ip"
+        },
+        "src_port": {
+          "type": "integer"
+        },
+        "dest_port": {
+          "type": "integer"
+        },
+        "proto": {
+          "type": "keyword"
+        },
+        "in_iface": {
+          "type": "keyword"
+        },
+        "geoip_src": {
           "properties": {
-            "eve": {
-              "properties": {
-                "timestamp": {
-                  "type": "date"
-                },
-                "event_type": {
+            "location": {
+              "type": "geo_point"
+            },
+            "country_code": {
+              "type": "keyword"
+            },
+            "country_name": {
+              "type": "keyword"
+            },
+            "city_name": {
+              "type": "keyword"
+            },
+            "region_name": {
+              "type": "keyword"
+            },
+            "continent_code": {
+              "type": "keyword"
+            }
+          }
+        },
+        "geoip_dest": {
+          "properties": {
+            "location": {
+              "type": "geo_point"
+            },
+            "country_code": {
+              "type": "keyword"
+            },
+            "country_name": {
+              "type": "keyword"
+            },
+            "city_name": {
+              "type": "keyword"
+            },
+            "region_name": {
+              "type": "keyword"
+            },
+            "continent_code": {
+              "type": "keyword"
+            }
+          }
+        },
+        "alert": {
+          "properties": {
+            "signature": {
+              "type": "text",
+              "fields": {
+                "keyword": {
                   "type": "keyword"
-                },
-                "src_ip": {
-                  "type": "ip"
-                },
-                "dest_ip": {
-                  "type": "ip"
-                },
-                "proto": {
-                  "type": "keyword"
-                },
-                "geoip_src": {
-                  "properties": {
-                    "location": {
-                      "type": "geo_point"
-                    },
-                    "country_code": {
-                      "type": "keyword"
-                    },
-                    "country_name": {
-                      "type": "keyword"
-                    },
-                    "city_name": {
-                      "type": "keyword"
-                    },
-                    "region_name": {
-                      "type": "keyword"
-                    },
-                    "continent_code": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "geoip_dest": {
-                  "properties": {
-                    "location": {
-                      "type": "geo_point"
-                    },
-                    "country_code": {
-                      "type": "keyword"
-                    },
-                    "country_name": {
-                      "type": "keyword"
-                    },
-                    "city_name": {
-                      "type": "keyword"
-                    },
-                    "region_name": {
-                      "type": "keyword"
-                    },
-                    "continent_code": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "alert": {
-                  "properties": {
-                    "signature": {
-                      "type": "text",
-                      "fields": {
-                        "keyword": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "category": {
-                      "type": "keyword"
-                    },
-                    "severity": {
-                      "type": "integer"
-                    },
-                    "action": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "http": {
-                  "properties": {
-                    "hostname": {
-                      "type": "keyword"
-                    },
-                    "url": {
-                      "type": "text"
-                    },
-                    "http_method": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "dns": {
-                  "properties": {
-                    "query": {
-                      "type": "keyword"
-                    },
-                    "type": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "tls": {
-                  "properties": {
-                    "sni": {
-                      "type": "keyword"
-                    },
-                    "version": {
-                      "type": "keyword"
-                    }
-                  }
+                }
+              }
+            },
+            "category": {
+              "type": "keyword"
+            },
+            "severity": {
+              "type": "integer"
+            },
+            "action": {
+              "type": "keyword"
+            },
+            "signature_id": {
+              "type": "integer"
+            },
+            "rev": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            }
+          }
+        },
+        "http": {
+          "properties": {
+            "hostname": {
+              "type": "keyword"
+            },
+            "url": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                }
+              }
+            },
+            "http_method": {
+              "type": "keyword"
+            },
+            "http_content_type": {
+              "type": "keyword"
+            },
+            "status": {
+              "type": "integer"
+            },
+            "length": {
+              "type": "long"
+            },
+            "http_user_agent": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 512
                 }
               }
             }
           }
+        },
+        "dns": {
+          "properties": {
+            "query": {
+              "type": "keyword"
+            },
+            "rrname": {
+              "type": "keyword"
+            },
+            "rrtype": {
+              "type": "keyword"
+            },
+            "rcode": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "tls": {
+          "properties": {
+            "sni": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "subject": {
+              "type": "keyword"
+            },
+            "issuerdn": {
+              "type": "keyword"
+            },
+            "ja3": {
+              "properties": {
+                "hash": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "flow": {
+          "properties": {
+            "pkts_toserver": {
+              "type": "long"
+            },
+            "pkts_toclient": {
+              "type": "long"
+            },
+            "bytes_toserver": {
+              "type": "long"
+            },
+            "bytes_toclient": {
+              "type": "long"
+            }
+          }
+        },
+        "app_proto": {
+          "type": "keyword"
+        },
+        "flow_id": {
+          "type": "long"
         }
       }
     }

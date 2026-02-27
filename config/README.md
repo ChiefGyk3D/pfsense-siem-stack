@@ -313,7 +313,7 @@ input {
 
 **Also update forwarder** on pfSense:
 ```python
-GRAYLOG_PORT = 5140  # Match Logstash port
+LOGSTASH_PORT = 5140  # Match Logstash port
 ```
 
 ### Add Authentication to OpenSearch

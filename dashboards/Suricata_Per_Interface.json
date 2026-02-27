@@ -198,7 +198,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -226,7 +226,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -316,7 +316,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -427,7 +427,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -515,7 +515,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "src_ip.keyword",
+              "field": "src_ip",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -536,7 +536,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -624,7 +624,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "dest_ip.keyword",
+              "field": "dest_ip",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -645,7 +645,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -728,7 +728,7 @@
               "type": "logs"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:\"$interface\"",
+          "query": "event_type:alert AND in_iface:\"$interface\"",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -865,14 +865,14 @@
           "value": "$__all"
         },
         "datasource": "$DS_OPENSEARCH",
-        "definition": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
+        "definition": "{\"find\": \"terms\", \"field\": \"in_iface\"}",
         "hide": 0,
         "includeAll": true,
         "label": "Interface",
         "multi": true,
         "name": "interface",
         "options": [],
-        "query": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
+        "query": "{\"find\": \"terms\", \"field\": \"in_iface\"}",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,

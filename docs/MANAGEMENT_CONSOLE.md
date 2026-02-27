@@ -192,7 +192,7 @@ This must be run **before** any Suricata data flows, otherwise you'll need to re
    - Network performance (InfluxDB)
    - pfBlockerNG statistics (OpenSearch-pfBlockerNG)
 
-2. **Suricata IDS_IPS Dashboard.json** (OpenSearch)
+2. **Suricata_IDS_IPS.json** (OpenSearch)
    - WAN-side security
    - Attack visualization
    - Geographic mapping

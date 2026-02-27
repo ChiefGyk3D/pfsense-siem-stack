@@ -96,7 +96,7 @@ Version: 2.0+
 #### Dashboard 2: Suricata WAN Monitoring
 
 1. Click **Import** → **Upload JSON file**
-2. Select `dashboards/Suricata IDS_IPS Dashboard.json`
+2. Select `dashboards/Suricata_IDS_IPS.json`
 3. Select datasource: **OpenSearch-Suricata**
 4. Click **Import**
 

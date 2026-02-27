@@ -20,11 +20,11 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 | `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
 | `setup.sh` | Automated deployment | Run SECOND to deploy to pfSense |
 | `dashboards/pfsense_pfblockerng_system.json` | pfSense system & pfBlockerNG dashboard | Import into Grafana (InfluxDB + OpenSearch-pfBlockerNG) |
-| `dashboards/Suricata IDS_IPS Dashboard.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
+| `dashboards/Suricata_IDS_IPS.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
 | `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
 | `config/opensearch-index-template.json` | Suricata index template | Auto-applied by install.sh |
 | `config/opensearch-pfblockerng-template.json` | pfBlockerNG index template | Auto-applied by install.sh |
-| `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by setup.sh |
+| `scripts/forward-suricata-eve.py` | Forwarder code | Auto-deployed by setup.sh |
 
 ## Directory Structure
 
@@ -41,12 +41,12 @@ pfsense_grafana/
 │
 ├── 📊 dashboards/
 │   ├── pfsense_pfblockerng_system.json     ★ pfSense system & pfBlockerNG
-│   ├── Suricata IDS_IPS Dashboard.json     ★ WAN-side security monitoring
+│   ├── Suricata_IDS_IPS.json     ★ WAN-side security monitoring
 │   ├── Suricata_Per_Interface.json         ★ Per-interface LAN monitoring
 │   └── archive/                            Old versions (reference only)
 │
 ├── 🔧 scripts/
-│   ├── forward-suricata-eve-python.py      ★ Multi-interface forwarder
+│   ├── forward-suricata-eve.py      ★ Multi-interface forwarder
 │   ├── check-forwarder-status.sh           Status monitoring
 │   ├── check-system-health.sh              System diagnostics
 │   ├── restart-services.sh                 Service management
