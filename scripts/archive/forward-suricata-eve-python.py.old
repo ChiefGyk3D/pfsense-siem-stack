@@ -192,8 +192,21 @@ def find_eve_logs():
     matches = glob.glob("/var/log/suricata/*/eve.json")
     return sorted(matches)  # Return sorted list for consistent order
 
+def _get_inode(path):
+    """Get inode number of a file, or None if it doesn't exist"""
+    try:
+        return os.stat(path).st_ino
+    except OSError:
+        return None
+
 def tail_log_file(eve_log, sock):
-    """Tail a single EVE log file and forward events"""
+    """Tail a single EVE log file and forward events.
+    
+    Handles log rotation by detecting:
+    1. File inode change (file was replaced/rotated)
+    2. File size shrink (file was truncated)
+    3. File disappearance and reappearance
+    """
     interface = eve_log.split('/')[-2]  # Extract interface directory name
     geoip_status = "enabled" if geoip_reader else "disabled"
     msg = f"suricata-forwarder: Thread monitoring {interface} ({eve_log}) - GeoIP: {geoip_status}"
@@ -201,48 +214,92 @@ def tail_log_file(eve_log, sock):
     debug_log(msg)
     
     event_count = 0
-    try:
-        with open(eve_log, 'r') as f:
-            # Seek to end of file (tail -f behavior)
-            f.seek(0, 2)
-            debug_log(f"[{interface}] Monitoring, waiting for events...")
+    idle_count = 0
+    ROTATION_CHECK_INTERVAL = 50  # Check for rotation every N idle cycles (~5 seconds)
+    
+    while True:
+        try:
+            # Wait for the file to exist
+            while not os.path.exists(eve_log):
+                debug_log(f"[{interface}] Waiting for {eve_log} to appear...")
+                time.sleep(5)
             
-            while True:
-                line = f.readline()
-                if line:
-                    # Process non-empty lines
-                    line = line.strip()
+            original_inode = _get_inode(eve_log)
+            with open(eve_log, 'r') as f:
+                # Seek to end of file (tail -f behavior)
+                f.seek(0, 2)
+                last_pos = f.tell()
+                debug_log(f"[{interface}] Monitoring (inode={original_inode}, pos={last_pos}), waiting for events...")
+                
+                while True:
+                    line = f.readline()
                     if line:
-                        try:
-                            # Parse JSON
-                            event = json.loads(line)
+                        idle_count = 0
+                        # Process non-empty lines
+                        line = line.strip()
+                        if line:
+                            try:
+                                # Parse JSON
+                                event = json.loads(line)
+                                
+                                # Add GeoIP enrichment if available
+                                if geoip_reader:
+                                    event = enrich_geoip(event)
+                                
+                                # Convert back to JSON and send
+                                enriched_line = json.dumps(event)
+                                sock.sendto(enriched_line.encode('utf-8'), (GRAYLOG_SERVER, GRAYLOG_PORT))
+                                
+                                event_count += 1
+                                if event_count % 100 == 0:
+                                    debug_log(f"[{interface}] Processed {event_count} events")
+                            except json.JSONDecodeError as e:
+                                # If not valid JSON, send as-is
+                                debug_log(f"[{interface}] JSON decode error, sending raw: {str(e)[:50]}")
+                                sock.sendto(line.encode('utf-8'), (GRAYLOG_SERVER, GRAYLOG_PORT))
+                            except Exception as e:
+                                msg = f"suricata-forwarder [{interface}]: Processing error: {e}"
+                                syslog.syslog(syslog.LOG_WARNING, msg)
+                                debug_log(f"[{interface}] ERROR: {msg}")
+                    else:
+                        # No new data, sleep briefly
+                        idle_count += 1
+                        time.sleep(0.1)
+                        
+                        # Periodically check for log rotation
+                        if idle_count >= ROTATION_CHECK_INTERVAL:
+                            idle_count = 0
+                            current_inode = _get_inode(eve_log)
+                            current_pos = f.tell()
                             
-                            # Add GeoIP enrichment if available
-                            if geoip_reader:
-                                event = enrich_geoip(event)
+                            # File was replaced (different inode) or deleted
+                            if current_inode is None or current_inode != original_inode:
+                                msg = f"suricata-forwarder [{interface}]: Log rotation detected (inode {original_inode} -> {current_inode}), reopening"
+                                syslog.syslog(syslog.LOG_INFO, msg)
+                                debug_log(f"[{interface}] {msg}")
+                                break  # Exit inner loop to reopen file
                             
-                            # Convert back to JSON and send
-                            enriched_line = json.dumps(event)
-                            sock.sendto(enriched_line.encode('utf-8'), (GRAYLOG_SERVER, GRAYLOG_PORT))
-                            
-                            event_count += 1
-                            if event_count % 100 == 0:
-                                debug_log(f"[{interface}] Processed {event_count} events")
-                        except json.JSONDecodeError as e:
-                            # If not valid JSON, send as-is
-                            debug_log(f"[{interface}] JSON decode error, sending raw: {str(e)[:50]}")
-                            sock.sendto(line.encode('utf-8'), (GRAYLOG_SERVER, GRAYLOG_PORT))
-                        except Exception as e:
-                            msg = f"suricata-forwarder [{interface}]: Processing error: {e}"
-                            syslog.syslog(syslog.LOG_WARNING, msg)
-                            debug_log(f"[{interface}] ERROR: {msg}")
-                else:
-                    # No new data, sleep briefly
-                    time.sleep(0.1)
-    except Exception as e:
-        msg = f"suricata-forwarder [{interface}]: Fatal error in thread: {e}"
-        syslog.syslog(syslog.LOG_ERR, msg)
-        debug_log(f"[{interface}] FATAL: {msg}")
+                            # File was truncated (position beyond file size)
+                            try:
+                                file_size = os.path.getsize(eve_log)
+                                if current_pos > file_size:
+                                    msg = f"suricata-forwarder [{interface}]: File truncated (pos={current_pos}, size={file_size}), seeking to start"
+                                    syslog.syslog(syslog.LOG_INFO, msg)
+                                    debug_log(f"[{interface}] {msg}")
+                                    f.seek(0, 2)  # Seek to new end
+                            except OSError:
+                                break  # File gone, reopen
+        
+        except FileNotFoundError:
+            msg = f"suricata-forwarder [{interface}]: File {eve_log} not found, waiting for it to reappear"
+            syslog.syslog(syslog.LOG_WARNING, msg)
+            debug_log(f"[{interface}] {msg}")
+            time.sleep(5)
+        except Exception as e:
+            msg = f"suricata-forwarder [{interface}]: Error: {e}, restarting monitor in 5s"
+            syslog.syslog(syslog.LOG_ERR, msg)
+            debug_log(f"[{interface}] FATAL: {msg}")
+            time.sleep(5)
 
 def main():
     eve_logs = find_eve_logs()

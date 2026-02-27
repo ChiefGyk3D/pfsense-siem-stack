@@ -327,12 +327,12 @@ Multi-value: false
 
 ### Python Forwarder
 
-**File:** `/usr/local/bin/forward-suricata-eve-python.py`
+**File:** `/usr/local/bin/forward-suricata-eve.py`
 
 **Configuration Variables:**
 ```python
-GRAYLOG_SERVER = "192.168.210.10"  # SIEM server IP
-GRAYLOG_PORT = 5140                # Logstash UDP port
+SIEM_HOST = "192.168.210.10"  # SIEM server IP
+LOGSTASH_PORT = 5140                # Logstash UDP port
 ```
 
 **EVE JSON Path Detection:**
@@ -361,7 +361,7 @@ sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
 **Configuration:**
 ```bash
 FORWARDER_SCRIPT="/usr/local/bin/forward-suricata-eve.sh"
-PYTHON_SCRIPT="/usr/local/bin/forward-suricata-eve-python.py"
+PYTHON_SCRIPT="/usr/local/bin/forward-suricata-eve.py"
 LOG_TAG="suricata-forwarder-watchdog"
 ```
 
@@ -563,7 +563,7 @@ tar -czf config-backup.tar.gz \
   /etc/opensearch/opensearch.yml \
   /etc/logstash/conf.d/ \
   /etc/grafana/grafana.ini \
-  /usr/local/bin/forward-suricata-eve-python.py
+  /usr/local/bin/forward-suricata-eve.py
 ```
 
 ## See Also

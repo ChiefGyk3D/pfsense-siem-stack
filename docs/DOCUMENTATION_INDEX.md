@@ -572,7 +572,7 @@ Located in `docs/archive/`:
 ### "Where is..."
 - **...the config file?** → `config.env` (create from `config.env.example`)
 - **...the dashboard JSON?** → `dashboards/Suricata IDS_IPS Dashboard.json`
-- **...the forwarder script?** → `scripts/forward-suricata-eve-python.py`
+- **...the forwarder script?** → `scripts/forward-suricata-eve.py`
 - **...the Logstash config?** → `config/logstash-suricata.conf`
 - **...the setup script?** → `./setup.sh` (project root)
 - **...the status check?** → `./scripts/status.sh`

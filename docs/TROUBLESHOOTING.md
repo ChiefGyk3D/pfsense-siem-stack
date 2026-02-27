@@ -24,10 +24,10 @@ sudo systemctl status opensearch logstash grafana-server
 curl -s http://localhost:9200/suricata-*/_count | jq .count
 
 # Check latest event
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source | {timestamp: ."@timestamp", event_type: .suricata.eve.event_type, src: .suricata.eve.src_ip}'
+curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source | {timestamp: ."@timestamp", event_type: .event_type, src: .src_ip}'
 
 # Check forwarder on pfSense
-ssh root@YOUR_PFSENSE_IP 'ps aux | grep forward-suricata-eve-python.py | grep -v grep'
+ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata-eve'
 
 # Check Logstash is listening
 sudo netstat -ulnp | grep 5140
@@ -65,7 +65,7 @@ curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" |
 curl -s "http://localhost:9200/suricata-*/_search?size=1" | jq '.hits.hits[0]._source | keys'
 ```
 
-Should include: `@timestamp`, `suricata`, `host`
+Should include: `@timestamp`, `event_type`, `src_ip`, `dest_ip`
 
 **4. Check datasource configuration:**
 - Grafana → Connections → Data sources → OpenSearch-Suricata
@@ -105,10 +105,10 @@ ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
 **Diagnosis:**
 ```bash
 # Check if script exists and is executable
-ssh admin@YOUR_PFSENSE_IP 'ls -la /usr/local/bin/forward-suricata-eve-python.py'
+ssh admin@YOUR_PFSENSE_IP 'ls -la /usr/local/bin/forward-suricata-eve.py'
 
 # Try running manually to see errors
-ssh admin@YOUR_PFSENSE_IP '/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py'
+ssh admin@YOUR_PFSENSE_IP '/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py'
 
 # Check syslog for errors
 ssh admin@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -20'
@@ -120,7 +120,7 @@ ssh admin@YOUR_PFSENSE_IP 'python3.11 -c "import maxminddb; print(\"OK\")"'
 **Solutions:**
 ```bash
 # Start forwarder manually
-ssh admin@YOUR_PFSENSE_IP 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &'
+ssh admin@YOUR_PFSENSE_IP 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
 
 # Verify watchdog is configured
 ssh admin@YOUR_PFSENSE_IP 'grep watchdog /etc/crontab'
@@ -153,10 +153,10 @@ sudo ufw status | grep 5140
 **Solutions:**
 ```bash
 # Restart forwarder
-ssh admin@YOUR_PFSENSE_IP 'pkill -f forward-suricata-eve-python.py; sleep 1; nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &'
+ssh admin@YOUR_PFSENSE_IP 'pkill -f forward-suricata-eve.py; sleep 1; nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
 
 # Check SIEM server IP in forwarder script (or use DEBUG_ENABLED)
-ssh admin@YOUR_PFSENSE_IP 'grep SIEM_HOST /usr/local/bin/forward-suricata-eve-python.py | head -1'
+ssh admin@YOUR_PFSENSE_IP 'grep SIEM_HOST /usr/local/bin/forward-suricata-eve.py | head -1'
 
 # Allow UDP 5140 on SIEM
 sudo ufw allow 5140/udp
@@ -507,8 +507,8 @@ sudo ufw allow 3000/tcp
 **Diagnosis:**
 ```bash
 # From pfSense, test connectivity
-ssh root@YOUR_PFSENSE_IP 'ping -c 3 YOUR_SIEM_IP'
-ssh root@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
+ssh admin@YOUR_PFSENSE_IP 'ping -c 3 YOUR_SIEM_IP'
+ssh admin@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
 ```
 
 **Solutions:**
@@ -593,10 +593,10 @@ curl -s http://localhost:9200/_cluster/health | jq
 **After pfSense Updates:**
 ```bash
 # Verify forwarder still running
-ssh root@YOUR_PFSENSE_IP 'ps aux | grep forward-suricata-eve-python.py'
+ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata-eve'
 
 # Check cron job still exists (System → Cron in pfSense UI)
 
 # Check syslog for forwarder messages
-ssh root@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -10'
+ssh admin@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -10'
 ```

@@ -46,7 +46,7 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 
 ## 🔄 Forwarder Scripts
 
-### forward-suricata-eve-python.py
+### forward-suricata-eve.py
 **Production Suricata EVE forwarder with GeoIP enrichment** (deployed to pfSense by `setup.sh`)
 
 **Features:**
@@ -64,8 +64,8 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 ./setup.sh
 
 # Manual
-scp scripts/forward-suricata-eve-python.py admin@<pfsense>:/usr/local/bin/
-ssh admin@<pfsense> "chmod +x /usr/local/bin/forward-suricata-eve-python.py"
+scp scripts/forward-suricata-eve.py admin@<pfsense>:/usr/local/bin/
+ssh admin@<pfsense> "chmod +x /usr/local/bin/forward-suricata-eve.py"
 ```
 
 **Configuration:** Via environment variables (or edit header defaults)

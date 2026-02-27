@@ -52,7 +52,7 @@ Check which interfaces are being monitored:
 Or manually on pfSense:
 ```bash
 # See forwarder process
-ps aux | grep forward-suricata-eve-python.py
+ps aux | grep forward-suricata-eve.py
 
 # Check syslog for startup message
 grep "suricata-forwarder" /var/log/system.log | tail -5
@@ -211,7 +211,7 @@ curl -s http://192.168.210.10:9200/suricata-2024.08.01/_search?size=10000 > old-
 
 ### Python Forwarder Changes
 
-Key improvements in `forward-suricata-eve-python.py`:
+Key improvements in `forward-suricata-eve.py`:
 
 1. **Thread per Interface**: Each EVE JSON file gets its own thread
 2. **Shared Socket**: All threads use same UDP socket (thread-safe)
