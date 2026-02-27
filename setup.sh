@@ -154,6 +154,14 @@ else
     exit 1
 fi
 
+# Display configuration
+echo ""
+echo "  SIEM Server:   ${SIEM_HOST} (OpenSearch :${OPENSEARCH_PORT:-9200}, Logstash UDP :${LOGSTASH_UDP_PORT:-5140}, Grafana :${GRAFANA_PORT:-3000})"
+echo "  pfSense:       ${PFSENSE_HOST} (User: ${PFSENSE_USER}, ${EVE_COUNT} Suricata interfaces)"
+echo "  Indices:       ${INDEX_PREFIX:-suricata}-*, pfblockerng-*"
+echo "  Retention:     ${RETENTION_DAYS:-30} days"
+echo ""
+
 # Detect Python on pfSense (try common paths)
 PFSENSE_PYTHON=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" \
     'for p in /usr/local/bin/python3.11 /usr/local/bin/python3 /usr/bin/python3; do [ -x "$p" ] && echo "$p" && break; done')
@@ -298,25 +306,130 @@ ssh "${PFSENSE_USER}@${PFSENSE_HOST}" '
     (crontab -l 2>/dev/null | grep -v "suricata-forwarder-watchdog" ; echo "$CRON") | crontab -
 '
 
-# Start forwarder
-info "Starting forwarder..."
-ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "nohup ${PFSENSE_PYTHON} /usr/local/bin/forward-suricata-eve.py >/dev/null 2>&1 &"
+# Install rc.d service for boot auto-start
+info "Installing rc.d service for boot persistence..."
+ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'cat > /usr/local/etc/rc.d/suricata_forwarder' << 'RCD_EOF'
+#!/bin/sh
+# PROVIDE: suricata_forwarder
+# REQUIRE: DAEMON
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="suricata_forwarder"
+rcvar="suricata_forwarder_enable"
+command="/usr/local/bin/forward-suricata-eve.py"
+command_interpreter="/usr/local/bin/python3.11"
+pidfile="/var/run/${name}.pid"
+logfile="/var/log/suricata-forwarder.log"
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+status_cmd="${name}_status"
+
+suricata_forwarder_start() {
+    if [ -f "$pidfile" ] && kill -0 $(cat "$pidfile") 2>/dev/null; then
+        echo "${name} already running (pid=$(cat $pidfile))"
+        return 0
+    fi
+    echo "Starting ${name}..."
+    /usr/sbin/daemon -f -p "$pidfile" -o "$logfile" -r "$command"
+    echo "${name} started."
+}
+
+suricata_forwarder_stop() {
+    if [ -f "$pidfile" ]; then
+        kill $(cat "$pidfile") 2>/dev/null
+        rm -f "$pidfile"
+        echo "${name} stopped."
+    else
+        echo "${name} not running."
+    fi
+}
+
+suricata_forwarder_status() {
+    if [ -f "$pidfile" ] && kill -0 $(cat "$pidfile") 2>/dev/null; then
+        echo "${name} is running (pid=$(cat $pidfile))"
+    else
+        echo "${name} is not running."
+        return 1
+    fi
+}
+
+load_rc_config $name
+: ${suricata_forwarder_enable:="NO"}
+run_rc_command "$1"
+RCD_EOF
+
+ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'chmod 755 /usr/local/etc/rc.d/suricata_forwarder && sysrc suricata_forwarder_enable=YES'
+info "rc.d service installed and enabled for boot auto-start"
+
+# Start forwarder via rc.d service
+info "Starting forwarder via rc.d service..."
+ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve 2>/dev/null; sleep 1; /usr/local/etc/rc.d/suricata_forwarder start'
 sleep 3
 
-FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'pgrep -f "forward-suricata-eve.py" | head -1' || echo "")
+FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.pid 2>/dev/null || pgrep -f 'forward-suricata-eve' | head -1" || echo "")
 if [[ -n "$FORWARDER_PID" ]]; then
     info "Forwarder running (PID: ${FORWARDER_PID}, ${EVE_COUNT} interfaces)"
 else
     error "Forwarder failed to start"
-    echo "  Debug manually: ssh ${PFSENSE_USER}@${PFSENSE_HOST} '${PFSENSE_PYTHON} /usr/local/bin/forward-suricata-eve.py'"
+    echo "  Check logs: ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'tail -50 /var/log/system.log | grep suricata'"
     ((ERRORS++))
 fi
 
 # =============================================================================
-# STEP 5: Import Grafana dashboards
+# STEP 5: Configure Grafana Datasources & Import Dashboards
 # =============================================================================
-header "Step 5/${TOTAL_STEPS}: Import Grafana Dashboards"
+header "Step 5/${TOTAL_STEPS}: Grafana Datasources & Dashboards"
 
+if [[ "$GRAFANA_OK" == true ]]; then
+    # Check/install OpenSearch datasource plugin
+    if ! curl -s -u "${GRAFANA_AUTH}" "${GRAFANA_URL}/api/plugins/grafana-opensearch-datasource" | grep -q '"id"' 2>/dev/null; then
+        info "Installing grafana-opensearch-datasource plugin..."
+        if ssh -o BatchMode=yes "${SIEM_SSH_USER:-$(whoami)}@${SIEM_HOST}" 'command -v grafana-cli' &>/dev/null; then
+            ssh "${SIEM_SSH_USER:-$(whoami)}@${SIEM_HOST}" 'sudo grafana-cli plugins install grafana-opensearch-datasource 2>/dev/null && sudo systemctl restart grafana-server' 2>/dev/null || true
+            sleep 5
+        else
+            warn "Could not install grafana-opensearch-datasource plugin automatically"
+            echo "  Install manually: grafana-cli plugins install grafana-opensearch-datasource"
+        fi
+    fi
+
+    # Create OpenSearch-pfBlockerNG datasource if it doesn't exist
+    EXISTING_PFB_DS=$(curl -s -u "${GRAFANA_AUTH}" "${GRAFANA_URL}/api/datasources/name/OpenSearch-pfBlockerNG" 2>/dev/null)
+    if echo "$EXISTING_PFB_DS" | grep -q '"id"' 2>/dev/null; then
+        info "OpenSearch-pfBlockerNG datasource already exists"
+    else
+        info "Creating OpenSearch-pfBlockerNG datasource..."
+        DS_RESPONSE=$(curl -s -u "${GRAFANA_AUTH}" -X POST "${GRAFANA_URL}/api/datasources" \
+            -H 'Content-Type: application/json' \
+            -d "{
+                \"name\": \"OpenSearch-pfBlockerNG\",
+                \"type\": \"grafana-opensearch-datasource\",
+                \"access\": \"proxy\",
+                \"url\": \"http://localhost:9200\",
+                \"database\": \"pfblockerng-*\",
+                \"jsonData\": {
+                    \"database\": \"pfblockerng-*\",
+                    \"flavor\": \"opensearch\",
+                    \"pplEnabled\": true,
+                    \"version\": \"2.19.4\",
+                    \"timeField\": \"@timestamp\",
+                    \"logMessageField\": \"\",
+                    \"logLevelField\": \"\"
+                }
+            }")
+        if echo "$DS_RESPONSE" | grep -q '"datasource"' 2>/dev/null; then
+            info "OpenSearch-pfBlockerNG datasource created"
+        else
+            warn "Could not create pfBlockerNG datasource automatically"
+            echo "  Create manually: Grafana → Data Sources → Add OpenSearch (pfblockerng-*)"
+        fi
+    fi
+fi
+
+# Dashboard auto-import function
 import_dashboard() {
     local json_file="$1"
     local dash_uid="$2"
@@ -333,7 +446,6 @@ import_dashboard() {
         jq -r '[.[] | select(.type == "grafana-opensearch-datasource")][0].uid // empty')
 
     if [[ -z "$DS_UID" ]]; then
-        # Create a datasource
         DS_UID="opensearch-suricata"
         curl -sf -u "${GRAFANA_AUTH}" -X POST "${GRAFANA_URL}/api/datasources" \
             -H 'Content-Type: application/json' -d "{
@@ -349,13 +461,12 @@ import_dashboard() {
                 \"timeField\": \"@timestamp\",
                 \"maxConcurrentShardRequests\": 5
             }
-        }" &>/dev/null && info "Created OpenSearch datasource in Grafana" || true
+        }" &>/dev/null && info "Created OpenSearch-Suricata datasource" || true
     fi
 
     DS_NAME=$(curl -sf -u "${GRAFANA_AUTH}" "${GRAFANA_URL}/api/datasources/uid/${DS_UID}" 2>/dev/null | \
         jq -r '.name // "OpenSearch-Suricata"')
 
-    # Use Python to build the import payload — handles JSON manipulation properly
     local PAYLOAD
     PAYLOAD=$(python3 << PYEOF
 import json, sys
@@ -367,13 +478,11 @@ DS_NAME = "$DS_NAME"
 DS_TYPE = "grafana-opensearch-datasource"
 DS_REF = {"type": DS_TYPE, "uid": DS_UID}
 
-# Remove export-only fields
 for key in ("__inputs", "__elements", "__requires", "id"):
     dash.pop(key, None)
 dash["uid"] = "$dash_uid"
 dash["title"] = "$dash_title"
 
-# Fix template variables
 for tvar in dash.get("templating", {}).get("list", []):
     if tvar.get("name") == "DS_OPENSEARCH":
         tvar["current"] = {"selected": True, "text": DS_NAME, "value": DS_UID}
@@ -384,7 +493,6 @@ for tvar in dash.get("templating", {}).get("list", []):
         tvar["refresh"] = 1
 
 def fix_ds(obj):
-    """Recursively fix all datasource references."""
     if isinstance(obj, dict):
         ds = obj.get("datasource")
         if isinstance(ds, dict):
@@ -431,12 +539,16 @@ if [[ "$GRAFANA_OK" == true ]]; then
         "${SCRIPT_DIR}/dashboards/Suricata_Per_Interface.json" \
         "suricata_per_interface" \
         "Suricata Per-Interface Dashboard" || ((ERRORS++))
+
+    echo ""
+    echo "  Import pfSense system dashboard manually (requires InfluxDB datasource):"
+    echo "    Grafana → Dashboards → Import → dashboards/pfsense_pfblockerng_system.json"
 else
     echo "  Import dashboards manually:"
     echo "    1. Open ${GRAFANA_URL} → Dashboards → Import"
-    echo "    2. Upload dashboards/Suricata_IDS_IPS.json"
-    echo "    3. Upload dashboards/Suricata_Per_Interface.json"
-    echo "    4. Select your OpenSearch datasource when prompted"
+    echo "    2. Upload dashboards/pfsense_pfblockerng_system.json (InfluxDB + OpenSearch)"
+    echo "    3. Upload dashboards/Suricata_IDS_IPS.json (OpenSearch)"
+    echo "    4. Upload dashboards/Suricata_Per_Interface.json (OpenSearch)"
 fi
 
 # =============================================================================
@@ -451,9 +563,8 @@ TODAY=$(date -u +%Y.%m.%d)
 EVENT_COUNT=$(curl -sf "${OPENSEARCH_URL}/${INDEX_PREFIX}-${TODAY}/_count" 2>/dev/null | jq -r '.count // 0' 2>/dev/null || echo "0")
 
 if [[ "$EVENT_COUNT" -gt 0 ]]; then
-    info "Data flowing! ${EVENT_COUNT} events in ${INDEX_PREFIX}-${TODAY}"
+    info "Suricata data flowing! ${EVENT_COUNT} events in ${INDEX_PREFIX}-${TODAY}"
 
-    # Quick data breakdown
     curl -sf "${OPENSEARCH_URL}/${INDEX_PREFIX}-${TODAY}/_search" \
         -H 'Content-Type: application/json' -d '{
         "size": 0,
@@ -472,8 +583,17 @@ try:
 except: pass
 " 2>/dev/null || true
 else
-    warn "No events yet in today's index (may need a minute, or network is quiet)"
+    warn "No Suricata events yet in today's index (may need a minute)"
     echo "    Check manually: curl ${OPENSEARCH_URL}/${INDEX_PREFIX}-*/_count"
+fi
+
+# Check pfBlockerNG data
+PFBLOCK_COUNT=$(curl -s "${OPENSEARCH_URL}/pfblockerng-*/_count" 2>/dev/null | jq -r '.count // 0' 2>/dev/null || echo "0")
+if [[ "$PFBLOCK_COUNT" -gt 0 ]]; then
+    info "pfBlockerNG data flowing! ${PFBLOCK_COUNT} events"
+else
+    warn "No pfBlockerNG events yet (requires Telegraf with opensearch output on pfSense)"
+    echo "    See docs/TELEGRAF_PFBLOCKER_SETUP.md"
 fi
 
 # =============================================================================
@@ -495,5 +615,5 @@ echo ""
 echo "  Useful commands:"
 echo "    ./scripts/status.sh              # Check all component status"
 echo "    ./scripts/diagnose-and-repair.sh # Auto-diagnose problems"
-echo "    ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'ps aux | grep forward-suricata'"
+echo "    ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'service suricata_forwarder status'"
 echo ""

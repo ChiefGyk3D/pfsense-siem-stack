@@ -72,6 +72,19 @@ ssh admin@<pfsense> 'ps aux | grep forward-suricata'
 ssh admin@<pfsense> 'tail -20 /var/log/messages | grep suricata'
 ```
 
+**Access Grafana:**
+1. Open browser: `http://SIEM_IP:3000`
+2. Login: `admin` / (your password)
+3. Import dashboards (import all three):
+   - Click **+** → Import
+   - **Dashboard 1**: Upload `dashboards/pfsense_pfblockerng_system.json`
+     - Select InfluxDB datasource (for system metrics panels)
+     - Select OpenSearch-pfBlockerNG datasource (for pfBlockerNG panels)
+   - **Dashboard 2**: Upload `dashboards/Suricata_IDS_IPS.json`
+     - Select OpenSearch datasource
+   - **Dashboard 3**: Upload `dashboards/Suricata_Per_Interface.json`
+     - Select OpenSearch datasource
+
 ### Set up index retention
 ```bash
 ./scripts/configure-retention-policy.sh

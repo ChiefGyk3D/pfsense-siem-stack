@@ -64,8 +64,13 @@ if curl -s -f "http://${SIEM_HOST}:${OPENSEARCH_PORT}" > /dev/null 2>&1; then
     if [[ "$AUTO_CREATE" == *"${INDEX_PREFIX}"* ]]; then
         echo -e "  ${GREEN}✓${NC} Auto-create enabled for ${INDEX_PREFIX}-*"
     else
-        echo -e "  ${RED}✗${NC} Auto-create NOT enabled (will cause midnight UTC failures!)"
+        echo -e "  ${RED}✗${NC} Auto-create NOT enabled for ${INDEX_PREFIX}-* (will cause midnight UTC failures!)"
         ((ERRORS++))
+    fi
+    if [[ "$AUTO_CREATE" == *"pfblockerng"* ]]; then
+        echo -e "  ${GREEN}✓${NC} Auto-create enabled for pfblockerng-*"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Auto-create NOT enabled for pfblockerng-* (optional, needed for Telegraf)"
     fi
 else
     print_status 1 "OpenSearch is NOT responding"
@@ -115,10 +120,62 @@ if [ "$EVENT_COUNT" -gt 0 ]; then
     fi
 fi
 
-# Check pfBlocker data (if InfluxDB available)
+# Check pfBlocker data via OpenSearch (primary) 
+echo ""
+echo -e "${BLUE}=== pfBlockerNG Data (OpenSearch) ===${NC}"
+
+PFBLOCK_COUNT=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT}/pfblockerng-*/_count" 2>/dev/null | jq -r '.count // 0')
+
+if [ "$PFBLOCK_COUNT" -gt 0 ]; then
+    print_status 0 "pfBlockerNG data in OpenSearch: ${PFBLOCK_COUNT} total events"
+    
+    # Check IP block events
+    IP_BLOCK_COUNT=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT}/pfblockerng-*/_count" \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"term":{"measurement_name":"tail_ip_block_log"}}}' 2>/dev/null | jq -r '.count // 0')
+    echo "  IP block events: $IP_BLOCK_COUNT"
+    
+    # Check DNSBL events
+    DNSBL_COUNT=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT}/pfblockerng-*/_count" \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"term":{"measurement_name":"tail_dnsbl_log"}}}' 2>/dev/null | jq -r '.count // 0')
+    echo "  DNSBL events: $DNSBL_COUNT"
+    
+    # Check latest event
+    LATEST_PFB=$(curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT}/pfblockerng-*/_search" \
+        -H 'Content-Type: application/json' \
+        -d '{"size":1,"sort":[{"@timestamp":"desc"}],"_source":["@timestamp"]}' 2>/dev/null | \
+        jq -r '.hits.hits[0]._source["@timestamp"] // "unknown"')
+    
+    if [ "$LATEST_PFB" != "unknown" ]; then
+        LATEST_PFB_TS=$(date -d "$LATEST_PFB" +%s 2>/dev/null || echo "0")
+        NOW_TS=$(date +%s)
+        PFB_AGE=$((NOW_TS - LATEST_PFB_TS))
+        
+        if [ "$PFB_AGE" -lt 3600 ]; then
+            echo -e "  ${GREEN}✓${NC} Latest event: ${PFB_AGE}s ago"
+        elif [ "$PFB_AGE" -lt 86400 ]; then
+            echo -e "  ${YELLOW}⚠${NC} Latest event: $((PFB_AGE / 3600)) hours ago"
+        else
+            echo -e "  ${RED}✗${NC} Latest event: $((PFB_AGE / 86400)) days ago!"
+            ((ERRORS++))
+        fi
+    fi
+    
+    # Check pfBlockerNG indices
+    echo ""
+    echo "pfBlockerNG indices:"
+    curl -s "http://${SIEM_HOST}:${OPENSEARCH_PORT}/_cat/indices/pfblockerng-*?v&s=index&h=index,docs.count,store.size" 2>/dev/null || echo "  Could not retrieve indices"
+else
+    print_status 0 "No pfBlockerNG data in OpenSearch (normal if Telegraf opensearch output not configured)"
+    echo "  Configure Telegraf with [[outputs.opensearch]] for pfBlockerNG data"
+    echo "  See docs/TELEGRAF_PFBLOCKER_SETUP.md"
+fi
+
+# Also check InfluxDB for pfBlocker data (legacy/system metrics)
 if command -v influx > /dev/null 2>&1; then
     echo ""
-    echo -e "${CYAN}=== pfBlocker Data (InfluxDB) ===${NC}"
+    echo -e "${BLUE}=== pfBlocker Data (InfluxDB - Legacy) ===${NC}"
     
     # Try to check pfBlocker data
     echo -n "pfBlocker IP blocks (last hour)... "
