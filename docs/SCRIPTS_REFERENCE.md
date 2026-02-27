@@ -378,7 +378,7 @@ curl -X DELETE http://localhost:9200/suricata-*
 
 ## pfSense Scripts
 
-### forward-suricata-eve-python.py
+### forward-suricata-eve.py
 
 **Purpose:** Multi-interface Suricata log forwarder with GeoIP enrichment
 
@@ -401,8 +401,8 @@ nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/nu
 **Configuration:**
 Hardcoded in script (set during deployment):
 ```python
-GRAYLOG_SERVER = "192.0.2.10"  # Your SIEM server IP
-GRAYLOG_PORT = 5140                # Logstash UDP port
+SIEM_HOST = "192.0.2.10"  # Your SIEM server IP
+LOGSTASH_PORT = 5140                # Logstash UDP port
 DEBUG_ENABLED = False              # Set True for debug logs
 ```
 
@@ -712,7 +712,7 @@ curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
 **Update forwarder on pfSense:**
 ```bash
 # Make changes to local copy
-nano scripts/forward-suricata-eve-python.py
+nano scripts/forward-suricata-eve.py
 
 # Redeploy
 ./setup.sh

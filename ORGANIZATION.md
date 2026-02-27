@@ -23,7 +23,7 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 | `dashboards/Suricata IDS_IPS Dashboard.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
 | `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
 | `config/opensearch-index-template.json` | Index template | Auto-applied by install.sh |
-| `scripts/forward-suricata-eve-python.py` | Forwarder code | Auto-deployed by setup.sh |
+| `scripts/forward-suricata-eve.py` | Forwarder code | Auto-deployed by setup.sh |
 
 ## Directory Structure
 
@@ -45,7 +45,7 @@ pfsense_grafana/
 │   └── archive/                            Old versions (reference only)
 │
 ├── 🔧 scripts/
-│   ├── forward-suricata-eve-python.py      ★ Multi-interface forwarder
+│   ├── forward-suricata-eve.py      ★ Multi-interface forwarder
 │   ├── check-forwarder-status.sh           Status monitoring
 │   ├── check-system-health.sh              System diagnostics
 │   ├── restart-services.sh                 Service management

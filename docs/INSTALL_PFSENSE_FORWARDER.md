@@ -14,7 +14,7 @@ Complete guide for deploying the Python-based Suricata log forwarder on pfSense 
 ## Overview
 
 The forwarder consists of two components:
-1. **Python Forwarder** (`forward-suricata-eve-python.py`) - Reads Suricata EVE JSON, enriches with GeoIP, sends to Logstash via UDP
+1. **Python Forwarder** (`forward-suricata-eve.py`) - Reads Suricata EVE JSON, enriches with GeoIP, sends to Logstash via UDP
 2. **Watchdog Script** (`suricata-forwarder-watchdog.sh`) - Monitors forwarder and restarts if stopped
 
 ### Features
@@ -32,17 +32,17 @@ The easiest way to install is using the scripts from this repository:
 cd /path/to/pfsense-siem-stack
 
 # Copy forwarder scripts to pfSense
-scp scripts/forward-suricata-eve-python.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
+scp scripts/forward-suricata-eve.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
 scp scripts/suricata-forwarder-watchdog.sh admin@YOUR_PFSENSE_IP:/usr/local/bin/
 
 # Make executable
-ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve-python.py /usr/local/bin/suricata-forwarder-watchdog.sh'
+ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve.py /usr/local/bin/suricata-forwarder-watchdog.sh'
 
 # Add watchdog to cron (runs every minute)
 ssh admin@YOUR_PFSENSE_IP 'grep -q suricata-forwarder-watchdog /etc/crontab || echo "* * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh" >> /etc/crontab'
 
 # Restart cron and start forwarder
-ssh admin@YOUR_PFSENSE_IP 'service cron restart && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &'
+ssh admin@YOUR_PFSENSE_IP 'service cron restart && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
 
 # Verify it's running
 ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
@@ -71,14 +71,14 @@ To change the SIEM server, either:
 **Option 1: Edit the script** (persistent)
 ```bash
 ssh admin@YOUR_PFSENSE_IP
-vi /usr/local/bin/forward-suricata-eve-python.py
-# Change: GRAYLOG_SERVER = os.getenv("SIEM_HOST", "YOUR_NEW_IP")
+vi /usr/local/bin/forward-suricata-eve.py
+# Change: SIEM_HOST = os.getenv("SIEM_HOST", "YOUR_NEW_IP")
 ```
 
 **Option 2: Use environment variables** (for testing)
 ```bash
 ssh admin@YOUR_PFSENSE_IP
-SIEM_HOST=10.0.0.100 /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py
+SIEM_HOST=10.0.0.100 /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py
 ```
 
 ### GeoIP Database Priority
@@ -103,8 +103,8 @@ If you prefer to install step-by-step instead of using the quick install above:
 
 ```bash
 # Copy Python forwarder
-scp scripts/forward-suricata-eve-python.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
-ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve-python.py'
+scp scripts/forward-suricata-eve.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
+ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve.py'
 
 # Copy watchdog script
 scp scripts/suricata-forwarder-watchdog.sh admin@YOUR_PFSENSE_IP:/usr/local/bin/
@@ -118,7 +118,7 @@ ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/suricata-forwarder-watchdog.s
 ssh admin@YOUR_PFSENSE_IP
 
 # Start forwarder in background
-nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &
+nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
 
 # Verify it's running
 pgrep -fl forward-suricata
@@ -170,10 +170,10 @@ grep -i watchdog /var/log/system.log | tail -5
 
 ```bash
 # Kill current forwarder
-pkill -f forward-suricata-eve-python.py
+pkill -f forward-suricata-eve.py
 
 # Start with debug logging
-DEBUG_ENABLED=true nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve-python.py > /dev/null 2>&1 &
+DEBUG_ENABLED=true nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
 
 # View debug log
 tail -f /var/log/suricata_forwarder_debug.log
@@ -237,7 +237,7 @@ which python3.11
 # Should output: /usr/local/bin/python3.11
 
 # Try running manually to see errors
-/usr/local/bin/forward-suricata-eve-python.py
+/usr/local/bin/forward-suricata-eve.py
 
 # Check file permissions
 ls -la /usr/local/bin/forward-suricata-eve*
@@ -252,7 +252,7 @@ tail -f /var/log/suricata/suricata_*/eve.json
 # Should see JSON events appearing
 
 # 2. Check if forwarder is actually running
-ps aux | grep forward-suricata-eve-python.py
+ps aux | grep forward-suricata-eve.py
 
 # 3. Test UDP connectivity from pfSense to SIEM
 echo '{"test":"event"}' | nc -u -w1 YOUR_SIEM_IP 5140
@@ -280,7 +280,7 @@ The Python forwarder should use <1% CPU normally. If higher:
 
 ```bash
 # Check process stats
-ps aux | grep forward-suricata-eve-python.py
+ps aux | grep forward-suricata-eve.py
 
 # Check if Suricata is generating too many events
 wc -l /var/log/suricata/suricata_*/eve.json
@@ -311,7 +311,7 @@ grep watchdog /var/log/system.log | tail -20
 ssh root@YOUR_PFSENSE_IP
 
 # Kill current process
-pkill -f forward-suricata-eve-python.py
+pkill -f forward-suricata-eve.py
 
 # Watchdog will auto-restart within 1 minute
 # Or start manually:
@@ -322,10 +322,10 @@ nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
 
 ```bash
 # Edit Python script to change SIEM IP or port
-vi /usr/local/bin/forward-suricata-eve-python.py
+vi /usr/local/bin/forward-suricata-eve.py
 
 # Restart forwarder
-pkill -f forward-suricata-eve-python.py
+pkill -f forward-suricata-eve.py
 nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
 ```
 
@@ -333,7 +333,7 @@ nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
 
 ```bash
 # Check forwarder resource usage
-ps aux | grep forward-suricata-eve-python.py
+ps aux | grep forward-suricata-eve.py
 
 # Check network traffic
 netstat -s | grep -A 10 "Udp:"
@@ -346,7 +346,7 @@ grep suricata-forwarder-watchdog /var/log/system.log | tail -20
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `forward-suricata-eve-python.py` | `/usr/local/bin/` | Main forwarder (Python) |
+| `forward-suricata-eve.py` | `/usr/local/bin/` | Main forwarder (Python) |
 | `forward-suricata-eve.sh` | `/usr/local/bin/` | Wrapper script |
 | `suricata-forwarder-watchdog.sh` | `/usr/local/bin/` | Monitoring/restart script |
 | Cron job | System > Cron | Runs watchdog every minute |

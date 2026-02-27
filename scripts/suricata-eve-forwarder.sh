@@ -14,7 +14,7 @@
 
 name="suricata_eve_forwarder"
 rcvar="${name}_enable"
-desc="Suricata EVE JSON forwarder to Graylog"
+desc="Suricata EVE JSON forwarder to Logstash/SIEM"
 
 load_rc_config $name
 

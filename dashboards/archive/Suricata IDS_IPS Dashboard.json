@@ -178,7 +178,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -206,7 +206,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:($interface)",
+          "query": "event_type:alert AND in_iface:($interface)",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -317,7 +317,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "event_type.keyword",
+              "field": "event_type",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -347,13 +347,17 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
       ],
       "title": "Events Over Time by Type (Stacked)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "${DS_OPENSEARCH}"
+      }
     },
     {
       "datasource": {
@@ -415,7 +419,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "event_type.keyword",
+              "field": "event_type",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -436,7 +440,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -504,7 +508,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "proto.keyword",
+              "field": "proto",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -525,7 +529,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -594,7 +598,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "suricata.eve.in_iface.keyword",
+              "field": "in_iface",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -615,7 +619,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -675,7 +679,7 @@
         {
           "bucketAggs": [
             {
-              "field": "src_ip.keyword",
+              "field": "src_ip",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -695,7 +699,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -708,12 +712,16 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "src_ip.keyword": "Source IP"
+              "src_ip": "Source IP"
             }
           }
         }
       ],
-      "type": "table"
+      "type": "table",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "${DS_OPENSEARCH}"
+      }
     },
     {
       "fieldConfig": {
@@ -767,7 +775,7 @@
         {
           "bucketAggs": [
             {
-              "field": "dest_ip.keyword",
+              "field": "dest_ip",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -787,7 +795,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -800,12 +808,16 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "dest_ip.keyword": "Destination IP"
+              "dest_ip": "Destination IP"
             }
           }
         }
       ],
-      "type": "table"
+      "type": "table",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "${DS_OPENSEARCH}"
+      }
     },
     {
       "fieldConfig": {
@@ -859,7 +871,7 @@
         {
           "bucketAggs": [
             {
-              "field": "dns.rrname.keyword",
+              "field": "dns.rrname",
               "id": "2",
               "settings": {
                 "order": "desc",
@@ -879,7 +891,7 @@
               "type": "count"
             }
           ],
-          "query": "event_type:dns AND suricata.eve.in_iface.keyword:($interface)",
+          "query": "event_type:dns AND in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -892,12 +904,16 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "dns.rrname.keyword": "DNS Query"
+              "dns.rrname": "DNS Query"
             }
           }
         }
       ],
-      "type": "table"
+      "type": "table",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "${DS_OPENSEARCH}"
+      }
     },
     {
       "datasource": {
@@ -984,7 +1000,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1064,7 +1080,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "http.hostname.keyword",
+              "field": "http.hostname",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1085,7 +1101,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1417,7 +1433,7 @@
               "type": "logs"
             }
           ],
-          "query": "event_type:alert AND suricata.eve.in_iface.keyword:($interface)",
+          "query": "event_type:alert AND in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1582,7 +1598,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "geoip_src.country_code.keyword",
+              "field": "geoip_src.country_code",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1603,7 +1619,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.in_iface.keyword:($interface)",
+          "query": "in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1710,7 +1726,7 @@
             },
             "location": {
               "gazetteer": "public/gazetteer/countries.json",
-              "lookup": "suricata.eve.geoip_src.country_code",
+              "lookup": "geoip_src.country_code",
               "mode": "lookup"
             },
             "name": "Attack Sources",
@@ -1736,7 +1752,7 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "suricata.eve.geoip_src.country_code",
+              "field": "geoip_src.country_code",
               "id": "2",
               "settings": {
                 "min_doc_count": "1",
@@ -1757,7 +1773,7 @@
               "type": "count"
             }
           ],
-          "query": "suricata.eve.event_type:alert AND _exists_:suricata.eve.geoip_src.country_code AND suricata.eve.in_iface.keyword:($interface)",
+          "query": "event_type:alert AND _exists_:geoip_src.country_code AND in_iface:($interface)",
           "refId": "A",
           "timeField": "@timestamp"
         }
@@ -1807,14 +1823,14 @@
           "type": "grafana-opensearch-datasource",
           "uid": "${DS_OPENSEARCH}"
         },
-        "definition": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
+        "definition": "{\"find\": \"terms\", \"field\": \"in_iface\"}",
         "hide": 0,
         "includeAll": true,
         "label": "Interface",
         "multi": true,
         "name": "interface",
         "options": [],
-        "query": "{\"find\": \"terms\", \"field\": \"suricata.eve.in_iface.keyword\"}",
+        "query": "{\"find\": \"terms\", \"field\": \"in_iface\"}",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
