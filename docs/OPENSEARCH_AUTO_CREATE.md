@@ -8,7 +8,7 @@ Dashboard stops receiving new data at exactly **midnight UTC** (7 PM EST). Last 
 ### Root Cause
 OpenSearch has `action.auto_create_index` set to `false` by default. This prevents automatic creation of new daily indices.
 
-When Logstash tries to write events to a non-existent index (e.g., `suricata-2025.11.26`), it fails with:
+When Logstash tries to write events to a non-existent index (e.g., `suricata-2025.11.26`), or Telegraf tries to write pfBlockerNG data to a non-existent index (e.g., `pfblockerng-2025.11.26`), it fails with:
 ```
 index_not_found_exception: no such index [suricata-2025.11.26]
 ```
@@ -18,7 +18,7 @@ index_not_found_exception: no such index [suricata-2025.11.26]
 ### Why This Happens
 1. Logstash uses daily index pattern: `suricata-%{+YYYY.MM.dd}`
 2. At midnight UTC, the date changes (e.g., `2025.11.25` → `2025.11.26`)
-3. Logstash tries to write to the new index
+3. Logstash/Telegraf tries to write to the new index
 4. OpenSearch rejects the write because auto-create is disabled
 5. ALL events are lost until index is manually created
 
@@ -32,10 +32,11 @@ OPENSEARCH_HOST=192.168.210.10 ./scripts/install-opensearch-config.sh
 ```
 
 This script:
-1. ✅ Applies index template with geo_point mappings
-2. ✅ Enables auto-create for `suricata-*` indices
-3. ✅ Verifies configuration works
-4. ✅ Creates initial index
+1. ✅ Applies Suricata index template with geo_point mappings
+2. ✅ Applies pfBlockerNG index template with keyword mappings
+3. ✅ Enables auto-create for `suricata-*` and `pfblockerng-*` indices
+4. ✅ Verifies configuration works
+5. ✅ Creates initial index
 
 ### Manual Fix
 
@@ -45,7 +46,7 @@ curl -XPUT "http://192.168.210.10:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{
     "persistent": {
-      "action.auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+      "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
     }
   }'
 ```
@@ -73,7 +74,7 @@ Expected output:
 {
   "persistent": {
     "action": {
-      "auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+      "auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
     }
   }
 }
@@ -123,7 +124,8 @@ curl -s "http://192.168.210.10:9200/suricata-*/_count" | jq '.count'
 ## Why Use `action.auto_create_index` Pattern?
 
 The setting accepts a comma-separated list of index patterns:
-- `suricata-*` - Our Suricata events
+- `pfblockerng-*` - pfBlockerNG events (via Telegraf opensearch output)
+- `suricata-*` - Our Suricata events (via Logstash)
 - `.monitoring-*` - OpenSearch monitoring indices
 - `.watches` - Alerting watches
 - `.triggered_watches` - Alert triggers
@@ -160,7 +162,7 @@ curl -XPUT "http://192.168.210.10:9200/suricata-${TODAY}" \
 # 2. Enable auto-create
 curl -XPUT "http://192.168.210.10:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
-  -d '{"persistent":{"action.auto_create_index":"suricata-*,.monitoring-*"}}'
+  -d '{"persistent":{"action.auto_create_index":"pfblockerng-*,suricata-*,.monitoring-*"}}'
 
 # 3. Verify data is flowing
 sleep 10

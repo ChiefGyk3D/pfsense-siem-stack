@@ -101,9 +101,17 @@ OpenSearch now automatically deletes indices older than 90 days using Index Stat
 ### Current Configuration
 
 - **Retention Period**: 90 days
-- **Index Pattern**: `suricata-*`
+- **Index Patterns**: `suricata-*` and `pfblockerng-*`
 - **Policy Name**: `delete-after-90d`
 - **Status**: Active on all current indices
+
+> **Note:** The same retention policy should be applied to both `suricata-*` and `pfblockerng-*` indices. If you only applied it to `suricata-*`, extend it:
+> ```bash
+> # Apply retention policy to pfBlockerNG indices
+> curl -s http://192.168.210.10:9200/_plugins/_ism/add/pfblockerng-* \
+>   -H 'Content-Type: application/json' \
+>   -d '{"policy_id": "delete-after-90d"}'
+> ```
 
 ### Verify Retention Policy
 

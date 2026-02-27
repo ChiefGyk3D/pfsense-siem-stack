@@ -268,15 +268,18 @@ ssh root@192.168.1.1 "FILTERLOG_PID=\$(pgrep filterlog) && lsof -p \$FILTERLOG_P
 
 **If no output:** filterlog has no file handle (PROBLEM!)
 
-### Check pfBlocker Data in InfluxDB
+### Check pfBlocker Data in OpenSearch
 
 **From SIEM server:**
 ```bash
-influx -host 192.168.210.10 -database pfsense -execute "SELECT COUNT(*) FROM tail_ip_block_log WHERE time > now() - 1h"
+curl -s "http://192.168.210.10:9200/pfblockerng-*/_count" | jq '.count'
 ```
 
 **Expected:** Should show count > 0 if pfBlocker is blocking traffic  
-**Problem:** Returns empty if no data in last hour
+**Problem:** Returns `0` if no data
+
+> **Note:** pfBlockerNG data is stored in OpenSearch (`pfblockerng-*` indices), not InfluxDB.
+> It flows via Telegraf's `[[outputs.opensearch]]` plugin.
 
 ---
 
@@ -317,9 +320,9 @@ else
     ((ERRORS++))
 fi
 
-# Check recent pfBlocker data
+# Check recent pfBlocker data (now in OpenSearch, not InfluxDB)
 echo -n "pfBlocker data (last hour)... "
-PFBLOCKER_COUNT=$(curl -s "http://${SIEM_HOST}:8086/query?db=pfsense&q=SELECT+COUNT(*)+FROM+tail_ip_block_log+WHERE+time+%3E+now()-1h" | jq -r '.results[0].series[0].values[0][1] // 0' 2>/dev/null)
+PFBLOCKER_COUNT=$(curl -s "http://${SIEM_HOST}:9200/pfblockerng-*/_count" -H 'Content-Type: application/json' -d '{"query":{"range":{"@timestamp":{"gte":"now-1h"}}}}' | jq -r '.count // 0' 2>/dev/null)
 if [ "$PFBLOCKER_COUNT" -gt 0 ]; then
     echo -e "${GREEN}✓${NC} ${PFBLOCKER_COUNT} events"
 else
