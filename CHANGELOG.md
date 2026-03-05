@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **setup.sh: Missing pfBlockerNG index template application** — `setup.sh` Step 2 only applied the Suricata index template, not the pfBlockerNG template. Without the pfBlockerNG template, `tag.*` fields (e.g., `tag.src_ip`, `tag.tld`, `tag.feed_name`) are mapped as `text` instead of `keyword`, causing Grafana aggregation errors: "Text fields are not optimised for operations that require per-document field data like aggregations and sorting". Now applies both templates during setup.
+- **setup.sh: auto-create index missing pfblockerng-*** — The `action.auto_create_index` cluster setting didn't include `pfblockerng-*`, potentially preventing Telegraf from creating daily pfBlockerNG indices. Now includes `pfblockerng-*` in the auto-create whitelist.
+
 ### Added
 - **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
 - **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management

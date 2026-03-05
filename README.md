@@ -821,6 +821,17 @@ pfBlockerNG data now flows through **OpenSearch** (not InfluxDB). Common causes:
    ```bash
    ./scripts/install-opensearch-config.sh
    ```
+   **Important**: Applying the template only affects **new** indices. If existing indices were created without the template, their `tag.*` fields are already mapped as `text` and cannot be changed in-place. You must **reindex** the affected indices:
+   ```bash
+   # For each affected index, reindex through a temp index:
+   curl -XPUT "http://localhost:9200/pfblockerng-YYYY.MM.DD-temp"
+   curl -XPOST "http://localhost:9200/_reindex" -H 'Content-Type: application/json' \
+     -d '{"source":{"index":"pfblockerng-YYYY.MM.DD"},"dest":{"index":"pfblockerng-YYYY.MM.DD-temp"}}'
+   curl -XDELETE "http://localhost:9200/pfblockerng-YYYY.MM.DD"
+   curl -XPOST "http://localhost:9200/_reindex" -H 'Content-Type: application/json' \
+     -d '{"source":{"index":"pfblockerng-YYYY.MM.DD-temp"},"dest":{"index":"pfblockerng-YYYY.MM.DD"}}'
+   curl -XDELETE "http://localhost:9200/pfblockerng-YYYY.MM.DD-temp"
+   ```
 
 3. **auto_create_index missing pfblockerng-***: Check cluster settings:
    ```bash
