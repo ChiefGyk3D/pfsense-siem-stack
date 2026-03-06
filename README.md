@@ -84,6 +84,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 | **Logstash** | Suricata parsing & enrichment | SIEM server |
 | **OpenSearch** | Suricata events + pfBlockerNG data | SIEM server |
 | **InfluxDB** | System metrics (CPU/RAM/interfaces) | SIEM server |
+| **Prometheus** | Metrics scraping (node_exporter, windows_exporter) | SIEM server |
 | **Grafana** | Visualization (mixed datasources) | SIEM server |
 | **Watchdogs** | Pipeline monitoring | pfSense + SIEM |
 
@@ -141,8 +142,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ### � Dashboards & Alerts
 - **WAN monitoring**: Attack sources, signatures, protocols, top talkers
-- **LAN monitoring**: Per-interface dashboard with dynamic VLAN sections (✅ production ready)
-- **Interface distribution**: Traffic breakdown by interface/VLAN
+- **LAN monitoring**: Per-interface dashboard with dynamic VLAN sections (✅ production ready)- **Windows monitoring**: Windows Exporter dashboard — CPU, memory, disk, network, services (✅ Prometheus)- **Interface distribution**: Traffic breakdown by interface/VLAN
 - **Alerting**: Grafana alerts + webhook integrations (🚧 refining rules)
 
 ---
@@ -223,8 +223,8 @@ These packages enhance functionality and are used/referenced throughout this pro
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
-cd pfsense_grafana
+git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
+cd pfsense_siem_stack
 
 # 2. Run management console
 ./pfsense-siem
@@ -250,8 +250,8 @@ cd pfsense_grafana
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
-cd pfsense_grafana
+git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
+cd pfsense_siem_stack
 
 # 2. Install SIEM stack (OpenSearch, Logstash, Grafana)
 sudo ./install.sh
@@ -274,14 +274,16 @@ nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 
 1. Open Grafana: `http://<siem-server>:3000` (admin/admin)
 2. Go to **Dashboards** → **Import**
-3. Upload dashboards (import all three):
+3. Upload dashboards:
    - **`dashboards/pfsense_pfblockerng_system.json`** - pfSense system metrics (InfluxDB) and pfBlockerNG stats (OpenSearch)
    - **`dashboards/Suricata_IDS_IPS.json`** - WAN-side security monitoring (OpenSearch)
    - **`dashboards/Suricata_Per_Interface.json`** - Per-interface LAN/VLAN monitoring (OpenSearch)
+   - **`dashboards/windows_exporter.json`** - Windows host monitoring via Prometheus (CPU, memory, disk, network, services)
 4. Select your datasources:
    - **InfluxDB** (`pfsense` database) for system metrics panels
    - **OpenSearch-pfBlockerNG** (`pfblockerng-*` index) for pfBlockerNG panels  
    - **OpenSearch** (`suricata-*` index) for Suricata panels
+   - **Prometheus** for Windows Exporter and node_exporter panels
 5. Click **Import**
 
 ### Verify Installation
@@ -442,14 +444,14 @@ See: [UniFi Poller Installation](https://unpoller.com/docs/install/installation)
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
 - **Documentation**: [docs/](docs/)
 
 ### Verify Installation
 
 ```
-pfsense_grafana/
+pfsense_siem_stack/
 ├── 📄 Quick Start
 │   ├── README.md                    ★ START HERE - Project overview & getting started
 │   ├── QUICK_START.md               Fast 15-minute deployment walkthrough
