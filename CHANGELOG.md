@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Wazuh Security Overview dashboard** (`dashboards/wazuh/wazuh_security_overview.json`) — 20 panels: alert stats, MITRE ATT&CK, compliance (PCI DSS, NIST, HIPAA), auth success/failure tracking, hourly alert trend by agent, recent high-level alerts
+- **Wazuh Vulnerability Detection dashboard** (`dashboards/wazuh/wazuh_vulnerability_detection.json`) — 11 panels: CVE tracking, severity distribution, vulnerable packages, severity by agent cross-reference
+- **Wazuh File Integrity Monitoring dashboard** (`dashboards/wazuh/wazuh_file_integrity_monitoring.json`) — 11 panels: file change tracking (added/modified/deleted), per-agent breakdown, multi-terms detail view
+- **Prometheus Stats dashboard** (`dashboards/prometheus_stats.json`) — 17 panels: TSDB internals, scrape target health, rule evaluation, WAL, memory — rebuilt for Prometheus 2.x metrics
+- **Docker Container Monitoring dashboard** (`dashboards/docker_container_monitoring.json`) — 15 panels: container CPU, memory, network I/O, filesystem via cAdvisor + Prometheus
+- **Suricata IDS/IPS Active dashboard** (`dashboards/suricata_ids_ips_active.json`) — 14 panels: current production Suricata dashboard export
+- **Datasource reference** (`dashboards/datasources_reference.json`) — All 8 Grafana datasource configurations with UIDs for reproducibility
+- **Wazuh dashboard deployment script** (`scripts/deploy-wazuh-dashboards.py`) — Standalone Python script that configures the OpenSearch-Wazuh datasource, creates folders, deploys all 3 Wazuh dashboards, and verifies data flow via API queries
+- **Wazuh dashboard README** (`dashboards/wazuh/README.md`) — Panel inventory, datasource configuration, import instructions, field reference
+
+### Fixed
+- **setup.sh: Missing pfBlockerNG index template application** — `setup.sh` Step 2 only applied the Suricata index template, not the pfBlockerNG template. Without the pfBlockerNG template, `tag.*` fields (e.g., `tag.src_ip`, `tag.tld`, `tag.feed_name`) are mapped as `text` instead of `keyword`, causing Grafana aggregation errors: "Text fields are not optimised for operations that require per-document field data like aggregations and sorting". Now applies both templates during setup.
+- **setup.sh: auto-create index missing pfblockerng-*** — The `action.auto_create_index` cluster setting didn't include `pfblockerng-*`, potentially preventing Telegraf from creating daily pfBlockerNG indices. Now includes `pfblockerng-*` in the auto-create whitelist.
+
+### Added
 - **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
 - **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
 - **[Documentation Index](docs/DOCUMENTATION_INDEX.md)**: Organized guide to all documentation with quick search functionality
@@ -153,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned Features
 
-**v1.3.0 (Q1 2025)**
+**v1.3.0 (Planned)**
 - [ ] LAN-side dashboard for internal traffic analysis
 - [ ] RFC1918 filtering for internal monitoring
 - [ ] Lateral movement detection
@@ -161,7 +176,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Alert severity customization
 - [ ] Email alerting integration
 
-**v1.4.0 (Q2 2025)**
+**v1.4.0 (Planned)**
 - [ ] Machine learning anomaly detection
 - [ ] Threat intelligence feed integration
 - [ ] Custom rule management UI
@@ -169,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] HA/clustering support for SIEM stack
 - [ ] Backup/restore automation
 
-**v2.0.0 (Q3 2025)**
+**v2.0.0 (Planned)**
 - [ ] pfSense plugin package
 - [ ] Web-based configuration UI
 - [ ] Multi-tenancy support
@@ -243,15 +258,15 @@ We welcome contributions! See key areas:
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
+This project is licensed under the Mozilla Public License 2.0 - see [LICENSE](LICENSE) file.
 
 ---
 
 ## Support
 
 - **Documentation**: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
-- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
 - **Email**: (Add if you want direct contact)
 
 **Made with ❤️ for the pfSense community**

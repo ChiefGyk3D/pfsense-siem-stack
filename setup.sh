@@ -194,16 +194,32 @@ else
     ((ERRORS++))
 fi
 
+# Apply pfBlockerNG index template (keyword mappings for aggregation)
+PFB_TEMPLATE_FILE="${SCRIPT_DIR}/config/opensearch-pfblockerng-template.json"
+if [[ -f "$PFB_TEMPLATE_FILE" ]]; then
+    HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' \
+        -XPUT "${OPENSEARCH_URL}/_index_template/pfblockerng" \
+        -H 'Content-Type: application/json' -d @"$PFB_TEMPLATE_FILE")
+    if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" ]]; then
+        info "pfBlockerNG index template applied for pfblockerng-*"
+    else
+        error "Failed to apply pfBlockerNG index template (HTTP $HTTP_CODE)"
+        ((ERRORS++))
+    fi
+else
+    warn "pfBlockerNG template not found: $PFB_TEMPLATE_FILE (optional — needed for Telegraf pfBlockerNG integration)"
+fi
+
 # Enable auto-create
 HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' \
     -XPUT "${OPENSEARCH_URL}/_cluster/settings" \
     -H 'Content-Type: application/json' -d '{
     "persistent": {
-        "action.auto_create_index": "suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
+        "action.auto_create_index": "suricata-*,pfblockerng-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
     }
 }')
 if [[ "$HTTP_CODE" == "200" ]]; then
-    info "Auto-create enabled for ${INDEX_PREFIX}-* indices"
+    info "Auto-create enabled for ${INDEX_PREFIX}-* and pfblockerng-* indices"
 else
     warn "Could not set auto-create (HTTP $HTTP_CODE) — may already be configured"
 fi
