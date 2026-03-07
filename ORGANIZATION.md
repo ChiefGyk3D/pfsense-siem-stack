@@ -29,7 +29,7 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 ## Directory Structure
 
 ```
-pfsense_grafana/
+pfsense_siem_stack/
 ├── 🎮 Management Console
 │   └── pfsense-siem                        ★★★ INTERACTIVE MENU FOR EVERYTHING
 │

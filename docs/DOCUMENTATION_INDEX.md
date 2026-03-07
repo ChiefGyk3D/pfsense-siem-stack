@@ -234,7 +234,7 @@ This repository documents:
 **Project documentation:**
 
 - **[CHANGELOG](../CHANGELOG.md)** - Version history and changes
-- **[LICENSE](../LICENSE)** - MIT License
+- **[LICENSE](../LICENSE)** - Mozilla Public License 2.0
 - **[CONTRIBUTING](../CONTRIBUTING.md)** - How to contribute
 - **[Organization](../ORGANIZATION.md)** - Project structure
 
@@ -346,9 +346,9 @@ docs/
 
 1. **Check documentation** - Use this index to find relevant guides
 2. **Run diagnostics** - `./scripts/status.sh` for automated checks
-3. **Search issues** - [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
-4. **Ask questions** - [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
-5. **Report bugs** - [New Issue](https://github.com/ChiefGyk3D/pfsense_grafana/issues/new)
+3. **Search issues** - [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
+4. **Ask questions** - [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
+5. **Report bugs** - [New Issue](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues/new)
 
 ---
 

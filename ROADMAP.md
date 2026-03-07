@@ -121,19 +121,19 @@ Build community-driven platform for pfSense knowledge sharing.
 | Component | Status | ETA | Notes |
 |-----------|--------|-----|-------|
 | Documentation | 🚧 Ongoing | Continuous | Adding troubleshooting, scenarios |
-| SID Management | 🚧 Testing | Q1 2025 | 219 rules optimized, production testing |
+| SID Management | ✅ Complete | Released | 219 rules optimized, production tested |
 | Per-Interface Dashboard | ✅ Complete | Released | Dynamic VLAN/LAN sections |
-| Alert Rules | 🚧 Planning | Q2 2025 | Pre-configured detection library |
+| Alert Rules | 🚧 Planning | TBD | Pre-configured detection library |
 
 ### 📝 Planned (Not Started)
 | Feature | Priority | Target | Notes |
 |---------|----------|--------|-------|
-| Snort Integration | High | Q2 2025 | Currently Suricata only |
-| Multi-Firewall | High | Q2 2025 | Central monitoring |
-| Filterlog Dashboard | Medium | Q2 2025 | Firewall rule analysis |
-| Ansible Playbooks | Medium | Q3 2025 | Automated deployment |
-| Threat Intel Feeds | Low | Q3 2025 | MISP, abuse.ch |
-| Configuration UI | Low | Q4 2025 | Web-based setup |
+| Snort Integration | High | TBD | Currently Suricata only |
+| Multi-Firewall | High | TBD | Central monitoring |
+| Filterlog Dashboard | Medium | TBD | Firewall rule analysis |
+| Ansible Playbooks | Medium | TBD | Automated deployment |
+| Threat Intel Feeds | Low | TBD | MISP, abuse.ch |
+| Configuration UI | Low | TBD | Web-based setup |
 
 ---
 
@@ -168,7 +168,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 - 🚧 **Ansible playbooks** (planned)
 
 ### Community Engagement
-- **GitHub Stars**: Track on [pfsense_grafana](https://github.com/ChiefGyk3D/pfsense_grafana)
+- **GitHub Stars**: Track on [pfsense_siem_stack](https://github.com/ChiefGyk3D/pfsense_siem_stack)
 - **Issues Resolved**: Tracking production deployment feedback
 - **Contributors**: Open to community contributions
 
@@ -209,6 +209,6 @@ Long-term ideas (no timeline, community-driven):
 
 ---
 
-**Last Updated**: November 27, 2025  
+**Last Updated**: March 6, 2026  
 **Maintainer**: [ChiefGyk3D](https://github.com/ChiefGyk3D)  
 **License**: MPL 2.0

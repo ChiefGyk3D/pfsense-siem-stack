@@ -50,11 +50,11 @@ Complete step-by-step checklist for deploying pfSense Suricata Dashboard from sc
 ```bash
 # On your SIEM server
 cd ~
-git clone https://github.com/ChiefGyk3D/pfsense_grafana.git
-cd pfsense_grafana
+git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
+cd pfsense_siem_stack
 ```
 - [ ] Repository cloned successfully
-- [ ] Current directory is `pfsense_grafana/`
+- [ ] Current directory is `pfsense_siem_stack/`
 
 #### 2. Install SIEM Stack
 ```bash
@@ -116,7 +116,7 @@ ssh-copy-id root@<pfsense-ip>
 
 #### 5. Run Automated Setup
 ```bash
-# From pfsense_grafana directory
+# From pfsense_siem_stack directory
 ./setup.sh
 ```
 

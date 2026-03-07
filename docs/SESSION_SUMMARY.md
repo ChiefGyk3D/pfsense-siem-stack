@@ -299,7 +299,7 @@ archive/:
 
 ### Current Structure (Verified)
 ```
-pfsense_grafana/
+pfsense_siem_stack/
 ├── README.md                   ✅ Updated with new guides
 ├── CHANGELOG.md                ✅ NEW - Version history
 ├── LICENSE                     ✅ Existing

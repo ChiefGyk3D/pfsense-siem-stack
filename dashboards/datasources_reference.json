@@ -1,0 +1,66 @@
+[
+  {
+    "name": "InfluxDB-pfSense",
+    "type": "influxdb",
+    "uid": "PEBE514F9387E6776",
+    "url": "http://influxdb:8086",
+    "database": "pfsense",
+    "isDefault": false
+  },
+  {
+    "name": "InfluxDB-UniFi",
+    "type": "influxdb",
+    "uid": "P75CEC857D174ACAD",
+    "url": "http://influxdb:8086",
+    "database": "unpoller",
+    "isDefault": false
+  },
+  {
+    "name": "OpenSearch",
+    "type": "grafana-opensearch-datasource",
+    "uid": "P9744FCCEAAFBD98F",
+    "url": "http://opensearch-hot:9200",
+    "database": "",
+    "isDefault": true
+  },
+  {
+    "name": "OpenSearch-pfBlockerNG",
+    "type": "grafana-opensearch-datasource",
+    "uid": "PB8673F471865BBED",
+    "url": "http://opensearch-hot:9200",
+    "database": "",
+    "isDefault": false
+  },
+  {
+    "name": "OpenSearch-Suricata-Active",
+    "type": "grafana-opensearch-datasource",
+    "uid": "fff2eegoxyxogf",
+    "url": "http://opensearch-hot:9200",
+    "database": "",
+    "isDefault": false
+  },
+  {
+    "name": "OpenSearch-Syslog",
+    "type": "grafana-opensearch-datasource",
+    "uid": "P5337F0994FD28514",
+    "url": "http://opensearch-hot:9200",
+    "database": "",
+    "isDefault": false
+  },
+  {
+    "name": "OpenSearch-Wazuh",
+    "type": "grafana-opensearch-datasource",
+    "uid": "dff8stu43lr7kc",
+    "url": "https://wazuh-indexer:9200",
+    "database": "",
+    "isDefault": false
+  },
+  {
+    "name": "Prometheus",
+    "type": "prometheus",
+    "uid": "PBFA97CFB590B2093",
+    "url": "http://prometheus:9090",
+    "database": "",
+    "isDefault": false
+  }
+]
