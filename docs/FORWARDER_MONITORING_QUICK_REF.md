@@ -7,7 +7,7 @@
 ssh root@192.168.1.1
 
 # Download and run setup script
-fetch -o /tmp/setup_forwarder_monitoring.sh https://raw.githubusercontent.com/ChiefGyk3D/pfsense_grafana/overhaul/scripts/setup_forwarder_monitoring.sh
+fetch -o /tmp/setup_forwarder_monitoring.sh https://raw.githubusercontent.com/ChiefGyk3D/pfsense_siem_stack/overhaul/scripts/setup_forwarder_monitoring.sh
 chmod +x /tmp/setup_forwarder_monitoring.sh
 /tmp/setup_forwarder_monitoring.sh
 

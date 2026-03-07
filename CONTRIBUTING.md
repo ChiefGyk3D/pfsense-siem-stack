@@ -84,9 +84,9 @@ This is not just a monitoring stack—it's a **knowledge repository** covering:
 
 ```bash
 # Fork this repository on GitHub, then:
-git clone https://github.com/<your-username>/pfsense_grafana.git
-cd pfsense_grafana
-git remote add upstream https://github.com/ChiefGyk3D/pfsense_grafana.git
+git clone https://github.com/<your-username>/pfsense_siem_stack.git
+cd pfsense_siem_stack
+git remote add upstream https://github.com/ChiefGyk3D/pfsense_siem_stack.git
 ```
 
 ### 2. Set Up Development Environment
@@ -265,7 +265,7 @@ When adding a feature, include:
 
 ### Before Submitting
 
-1. Check [existing issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
+1. Check [existing issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
 2. Run `./scripts/status.sh` and include output
 3. Check logs:
    - OpenSearch: `/var/log/opensearch/opensearch.log`
@@ -307,12 +307,12 @@ If applicable, add screenshots.
 
 ### Submitting Ideas
 
-Use [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions) for:
+Use [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions) for:
 - Feature ideas
 - Architecture discussions
 - Use case questions
 
-Use [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues) for:
+Use [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues) for:
 - Concrete feature requests with implementation plan
 - Bugs and fixes
 

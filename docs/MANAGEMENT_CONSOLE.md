@@ -860,8 +860,8 @@ sudo ./scripts/restart-services.sh
 - [Documentation Index](../docs/DOCUMENTATION_INDEX.md)
 
 **Get help:**
-- GitHub Issues: https://github.com/ChiefGyk3D/pfsense_grafana/issues
-- GitHub Discussions: https://github.com/ChiefGyk3D/pfsense_grafana/discussions
+- GitHub Issues: https://github.com/ChiefGyk3D/pfsense_siem_stack/issues
+- GitHub Discussions: https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions
 
 **Community:**
 - Share your deployment experiences

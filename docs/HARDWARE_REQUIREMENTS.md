@@ -413,7 +413,7 @@ Before ordering hardware, verify:
 
 ## 📞 Questions?
 
-- **General Hardware**: Open a [GitHub Discussion](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- **General Hardware**: Open a [GitHub Discussion](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
 - **Suricata Performance**: See [SURICATA_OPTIMIZATION_GUIDE.md](SURICATA_OPTIMIZATION_GUIDE.md)
 - **Storage Sizing**: See [MULTI_INTERFACE_RETENTION.md](MULTI_INTERFACE_RETENTION.md)
 - **Troubleshooting**: See [TROUBLESHOOTING_CHECKLIST.md](../TROUBLESHOOTING_CHECKLIST.md)

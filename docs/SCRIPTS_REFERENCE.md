@@ -825,8 +825,8 @@ dos2unix script.sh
 
 **Get help:**
 - [Troubleshooting Guide](TROUBLESHOOTING.md)
-- [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_grafana/issues)
-- [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_grafana/discussions)
+- [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
+- [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
 
 ---
 
