@@ -404,13 +404,18 @@ Mozilla Public License 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
-## � Related Projects
+## 🔗 Related Projects
+
+| Repository | Description |
+|-----------|-------------|
+| [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) | Server-side Dockerized SIEM/SOC stack with hot/warm tiering (OpenSearch, Wazuh, Grafana, Logstash, Prometheus) |
+| [PiNodeXMR_Grafana_Dashboard](https://github.com/ChiefGyk3D/PiNodeXMR_Grafana_Dashboard) | Monero node monitoring dashboard for Grafana |
 
 ### UniFi Network Monitoring
 
 **This project does NOT support UniFi equipment** (switches, access points, controllers).
 
-For UniFi monitoring with Grafana, use **[UniFi Poller](https://github.com/unpoller/unpoller)**:
+For UniFi monitoring with Grafana, use **[UniFi Poller](https://github.com/unpoller/unpoller)** — I have contributed some dashboard fixes to the project:
 - Purpose-built for UniFi telemetry collection
 - Excellent Grafana dashboard integration
 - Supports InfluxDB and Prometheus
