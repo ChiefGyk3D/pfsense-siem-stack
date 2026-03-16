@@ -23,6 +23,7 @@ This is the central index for the pfSense Knowledge Base, covering SIEM infrastr
 | **Configure blocklists** | [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md) | ✅ Stable |
 | **Fix log rotation issues** | [Log Rotation Fix](LOG_ROTATION_FIX.md) | ✅ Solved |
 | **Troubleshoot issues** | [Troubleshooting Guide](TROUBLESHOOTING.md) | ✅ Stable |
+| **Shape traffic / QoS** | [Traffic Shaping Guide](TRAFFIC_SHAPING_GUIDE.md) ⭐ | ✅ Stable |
 | **Understand architecture** | [Architecture Diagram](architecture.png) | ✅ Complete |
 
 **Legend**: ✅ Stable & Production-Ready | 🚧 Work in Progress | 📝 Planned
@@ -165,6 +166,15 @@ This repository documents:
   - Configuration best practices
   - Integration with Suricata
   - Performance tips
+
+**Traffic shaping & QoS:**
+
+- **[Traffic Shaping Guide](TRAFFIC_SHAPING_GUIDE.md)** ⭐ **COMPREHENSIVE** - All QoS approaches
+  - ALTQ vs Limiters vs Weighted Queues — when to use each
+  - CoDel / fq_codel bufferbloat prevention
+  - Tag-based QoS for streaming, gaming, VoIP priority
+  - Real-world examples: simulcast streaming, gaming, VLAN caps
+  - Decision tree, monitoring commands, common mistakes
 
 **Advanced monitoring:**
 

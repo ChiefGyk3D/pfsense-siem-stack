@@ -892,6 +892,17 @@ See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for
 - **Grafana**: Change default admin password immediately
 - **GeoIP Data**: Contains location information - secure appropriately
 
+### pfSense Syslog Format for Wazuh Integration
+
+If you are forwarding pfSense syslog to a [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) deployment that includes **Wazuh**, you **must** configure pfSense to use **RFC 5424 syslog format** with RFC 3339 timestamps:
+
+1. In pfSense, go to **Status → System Logs → Settings**
+2. Under **Remote Logging Options**, enable remote logging to your SIEM server IP on port 514/UDP
+3. Set **Log Message Format** to **RFC 5424 (syslog-protocol)**
+4. Set **Timestamp Format** to **RFC 3339 with microsecond precision**
+
+**Why this matters**: pfSense's default BSD syslog (RFC 3164) omits the hostname field. Without a hostname, Wazuh's pre-decoder misidentifies the program name as the hostname, and the built-in pfSense `pf` decoder never matches — resulting in zero firewall alerts despite data flowing. RFC 5424 always includes the hostname (e.g., `pfsense.localdomain`), and syslog-ng on the SIEM server handles the RFC 5424 → BSD format conversion for Wazuh automatically.
+
 ## 🤝 Contributing
 
 Contributions welcome! Please:
