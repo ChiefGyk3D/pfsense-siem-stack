@@ -209,6 +209,11 @@ epiphan.com
 .epiphan.com
 elgato.com
 .elgato.com
+opus.pro
+.opus.pro
+clip.opus.pro
+featureassets.org
+.featureassets.org
 
 ## Chat Aggregation / Multi-stream
 socialstream.ninja
@@ -752,6 +757,8 @@ hub.docker.com
 registry.docker.io
 ghcr.io
 .ghcr.io
+archive.org
+.archive.org
 
 ## Monitoring / Observability
 # APM, error tracking, alerting, and log aggregation platforms
