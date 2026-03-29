@@ -977,6 +977,15 @@ If you find this pfSense SIEM Stack useful, consider supporting development:
         <code style="font-size:12px;">0x554f18cfB684889c3A60219BDBE7b050C39335ED</code>
       </td>
     </tr>
+    <tr>
+      <td align="center" style="padding:8px; min-width:120px;">
+        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/solana.svg" width="28" height="28" alt="Solana"/>
+      </td>
+      <td align="left" style="padding:8px;">
+        <b>Solana</b><br/>
+        <code style="font-size:12px;">5T8h3HbyvHgLxwXgchRYbHSqRjZyAr8J7uwjLN9Fh8Jh</code>
+      </td>
+    </tr>
   </table>
 </div>
 
