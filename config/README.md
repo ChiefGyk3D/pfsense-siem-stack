@@ -12,7 +12,7 @@ This directory contains all configuration files for the pfSense SIEM stack.
 
 **Purpose:**
 - Receives Suricata events via UDP from pfSense forwarder
-- Parses JSON and nests under `suricata.eve.*` namespace
+- Parses JSON to flat root-level fields (`event_type`, `src_ip`, `alert.*`, ...) — NOT nested under `suricata.eve.*`
 - Indexes to OpenSearch with daily indices (`suricata-YYYY.MM.DD`)
 
 **Deployment:**
@@ -48,10 +48,10 @@ curl -X PUT "http://localhost:9200/_index_template/suricata" \
   -d @config/opensearch-index-template.json
 ```
 
-**Key mappings:**
-- `suricata.eve.geoip_src.location` - geo_point (for geomap)
-- `suricata.eve.in_iface` - keyword (for aggregations)
-- `suricata.eve` - nested object (preserves structure)
+**Key mappings (flat root-level fields):**
+- `geoip_src.location` - geo_point (for geomap)
+- `in_iface` - keyword (for aggregations)
+- `event_type`, `src_ip`, `dest_ip`, `alert.*` - root-level Suricata fields
 
 ### opensearch-pfblockerng-template.json
 

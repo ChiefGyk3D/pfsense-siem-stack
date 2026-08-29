@@ -1,8 +1,8 @@
 # Project Organization & Structure
 
-> **Repository Layout Guide** — File organization and navigation for the pfSense Knowledge Base
+> **Repository Layout Guide** — File organization and navigation for the pfSense SIEM Stack
 
-This repository has evolved from a simple Grafana dashboard into a comprehensive pfSense knowledge base covering security, monitoring, automation, and operations.
+This repository has evolved from a simple Grafana dashboard into a full pfSense SIEM toolkit covering security, monitoring, automation, and operations.
 
 ## Quick Navigation
 
@@ -29,42 +29,53 @@ This repository has evolved from a simple Grafana dashboard into a comprehensive
 ## Directory Structure
 
 ```
-pfsense_siem_stack/
+pfsense-siem-stack/
 ├── 🎮 Management Console
 │   └── pfsense-siem                        ★★★ INTERACTIVE MENU FOR EVERYTHING
 │
 ├── 📄 Core Documentation
 │   ├── README.md                           ← START HERE
 │   ├── QUICK_START.md                      ← Fast 15-min setup
+│   ├── ROADMAP.md                          ← Project plan
 │   ├── ORGANIZATION.md                     ← This file
 │   └── LICENSE
 │
 ├── 📊 dashboards/
 │   ├── pfsense_pfblockerng_system.json     ★ pfSense system & pfBlockerNG
-│   ├── Suricata_IDS_IPS.json     ★ WAN-side security monitoring
+│   ├── Suricata_IDS_IPS.json               ★ WAN-side security monitoring
 │   ├── Suricata_Per_Interface.json         ★ Per-interface LAN monitoring
+│   ├── suricata_ids_ips_active.json        Current production Suricata export
+│   ├── prometheus_stats.json               Prometheus internals
+│   ├── docker_container_monitoring.json    Container metrics (cAdvisor)
+│   ├── windows_exporter.json               Windows host metrics
+│   ├── datasources_reference.json          Datasource UID reference
+│   ├── wazuh/                              Wazuh dashboards + deploy README
 │   └── archive/                            Old versions (reference only)
 │
 ├── 🔧 scripts/
-│   ├── forward-suricata-eve.py      ★ Multi-interface forwarder
-│   ├── check-forwarder-status.sh           Status monitoring
-│   ├── check-system-health.sh              System diagnostics
+│   ├── forward-suricata-eve.py             ★ Multi-interface forwarder
+│   ├── status.sh                           Comprehensive status check
+│   ├── diagnose-and-repair.sh              Guided diagnostics/repair
 │   ├── restart-services.sh                 Service management
-│   ├── verify-suricata-data.sh             Data validation
-│   ├── configure-retention-policy.sh       Index lifecycle
-│   ├── check-and-restart-logstash.sh       Logstash maintenance
+│   ├── configure-retention-policy.sh       Index lifecycle (ISM)
+│   ├── install-opensearch-config.sh        Index templates
+│   ├── deploy-wazuh-dashboards.py          Wazuh dashboard deployment
+│   ├── setup_forwarder_monitoring.sh       Watchdog/cron installer
+│   ├── suricata-forwarder-watchdog.sh      Forwarder watchdog
+│   ├── apply-suricata-drop-rules.sh        SID drop-rule management
 │   ├── README.md                           Script documentation
 │   └── archive/                            Deprecated scripts
 │
 ├── ⚙️ config/
-│   ├── logstash-suricata.conf              Logstash pipeline
+│   ├── logstash-suricata.conf              Logstash pipeline (flat EVE fields)
 │   ├── opensearch-index-template.json      Suricata index template (geo_point)
-│   └── opensearch-pfblockerng-template.json pfBlockerNG index template (keyword)
+│   ├── opensearch-pfblockerng-template.json pfBlockerNG index template (keyword)
+│   └── sid/                                Suricata SID tuning lists
 │
 ├── 📚 docs/
+│   ├── DOCUMENTATION_INDEX.md              Index of all guides
 │   ├── INSTALL_SIEM_STACK.md               SIEM installation guide
 │   ├── INSTALL_PFSENSE_FORWARDER.md        Forwarder deployment
-│   ├── INSTALL_DASHBOARD.md                Dashboard configuration
 │   ├── CONFIGURATION.md                    Advanced settings
 │   ├── TROUBLESHOOTING.md                  Problem solving
 │   ├── GEOIP_SETUP.md                      GeoIP database setup
@@ -73,25 +84,20 @@ pfsense_siem_stack/
 │
 ├── 🔌 plugins/
 │   ├── telegraf_pfifgw.php                 Gateway monitoring
+│   ├── telegraf_arp_mac_vendor.php         MAC vendor lookup (ARP)
 │   ├── telegraf_temperature.sh             Temperature stats
 │   ├── telegraf_unbound.sh                 DNS resolver stats
 │   ├── telegraf_unbound_lite.sh            Lightweight DNS stats
 │   ├── README.md                           Plugin documentation
 │   └── Old/                                Deprecated plugins
 │
-├── 🖼️ media/
-│   ├── Grafana-pfSense.png                         pfSense system dashboard
-│   ├── Suricata IDS_IPS WAN Dashboard.png          WAN security dashboard
-│   ├── Suricata Per-Interface Dashboard.png        Per-interface dashboard
-│   └── streamelements.png                          Donation icon
-│
 ├── 🧪 tests/
 │   ├── test-multi-interface.sh             Multi-interface testing
 │   └── test-panel-compatibility.sh         Dashboard panel testing
 │
 └── 🚀 Installation Scripts
-    ├── install.sh                          ★ SIEM stack installer
-    ├── deploy-pfsense-forwarder.sh         ★ Forwarder deployer
+    ├── install.sh                          ★ SIEM stack installer (server side)
+    ├── setup.sh                            ★ Deployment to pfSense
     └── install_plugins.sh                  Telegraf plugin installer
 ```
 

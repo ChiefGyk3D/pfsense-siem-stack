@@ -66,7 +66,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 1. **pfSense** runs Suricata on multiple interfaces (WAN inline IPS, VLAN IDS)
 2. **Forwarder** (`forward-suricata-eve.py`) tails eve.json logs, enriches with GeoIP, handles rotation
-3. **Logstash** receives events via UDP, parses/nests under `suricata.eve.*`, forwards to storage
+3. **Logstash** receives events via UDP, parses JSON to flat root-level fields (`event_type`, `src_ip`, ...), forwards to storage
 4. **OpenSearch** indexes Suricata events for search and aggregation (geomap, dashboards)
 5. **Telegraf** on pfSense collects system metrics → InfluxDB AND pfBlockerNG logs → OpenSearch
 6. **InfluxDB** stores time-series system metrics (CPU, RAM, interfaces, gateways)
@@ -95,7 +95,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 ### ✅ Production Ready
 - **Suricata Multi-Interface Monitoring** - Stable, tested on 15 instances (2 WAN + 13 VLAN)
 - **Log Forwarder** - Inode-aware rotation handling, GeoIP enrichment, watchdog monitoring
-- **OpenSearch/Logstash Pipeline** - Nested format, index templates, retention policies
+- **OpenSearch/Logstash Pipeline** - Flat root-level field format, index templates, retention policies
 - **WAN Security Dashboard** - Attack visualization, signature tracking, geographic mapping
 - **PfBlockerNG Integration** - Blocklist optimization, DNSBL whitelisting
 - **Automated Installation** - One-command SIEM stack deployment

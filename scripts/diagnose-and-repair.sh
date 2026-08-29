@@ -31,10 +31,11 @@ else
     exit 1
 fi
 
-# Defaults
-SIEM_HOST="${SIEM_HOST:-192.0.2.10}"
-PFSENSE_HOST="${PFSENSE_HOST:-192.0.2.1}"
+# Defaults (SIEM_HOST and PFSENSE_HOST must come from config.env or the environment)
+SIEM_HOST="${SIEM_HOST:?ERROR: Set SIEM_HOST in config.env}"
+PFSENSE_HOST="${PFSENSE_HOST:?ERROR: Set PFSENSE_HOST in config.env}"
 PFSENSE_USER="${PFSENSE_USER:-admin}"
+SIEM_SSH_USER="${SIEM_SSH_USER:-${USER:-$(whoami)}}"
 OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
 LOGSTASH_UDP_PORT="${LOGSTASH_UDP_PORT:-5140}"
 GRAFANA_PORT="${GRAFANA_PORT:-3000}"
@@ -301,12 +302,12 @@ fi
 
 # Check Logstash config on SIEM
 echo -e "  Checking deployed Logstash config..."
-if ssh -o ConnectTimeout=3 -o BatchMode=yes "${GRAFANA_ADMIN_USER}@${SIEM_HOST}" 'test -f /etc/logstash/conf.d/suricata.conf' 2>/dev/null; then
+if ssh -o ConnectTimeout=3 -o BatchMode=yes "${SIEM_SSH_USER}@${SIEM_HOST}" 'test -f /etc/logstash/conf.d/suricata.conf' 2>/dev/null; then
     # Check if config uses flat or nested
-    CONFIG_TYPE=$(ssh -o ConnectTimeout=3 -o BatchMode=yes "${GRAFANA_ADMIN_USER}@${SIEM_HOST}" 'grep -c "suricata.*eve" /etc/logstash/conf.d/suricata.conf' 2>/dev/null)
+    CONFIG_TYPE=$(ssh -o ConnectTimeout=3 -o BatchMode=yes "${SIEM_SSH_USER}@${SIEM_HOST}" 'grep -c "suricata.*eve" /etc/logstash/conf.d/suricata.conf' 2>/dev/null)
     if [ "${CONFIG_TYPE:-0}" -gt 0 ]; then
         fail "Deployed Logstash config uses NESTED structure"
-        info "Update with: scp config/logstash-suricata.conf ${GRAFANA_ADMIN_USER}@${SIEM_HOST}:/tmp/"
+        info "Update with: scp config/logstash-suricata.conf ${SIEM_SSH_USER}@${SIEM_HOST}:/tmp/"
         info "Then on SIEM: sudo cp /tmp/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash"
     else
         ok "Deployed Logstash config uses flat structure"
@@ -334,14 +335,19 @@ if [ "$PFSENSE_SSH" = true ]; then
         fail "Forwarder NOT running"
         echo ""
         echo -e "  ${YELLOW}FIXING: Starting forwarder...${NC}"
-        ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &' 2>/dev/null
+        # Prefer the rc.d service installed by setup.sh; fall back to nohup with a detected Python
+        if ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder' 2>/dev/null; then
+            ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'service suricata_forwarder restart' 2>/dev/null
+        else
+            ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'PY=$(command -v python3.11 || command -v python3); nohup "$PY" /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &' 2>/dev/null
+        fi
         sleep 3
         FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'pgrep -f forward-suricata-eve' 2>/dev/null)
         if [ -n "$FORWARDER_PID" ]; then
             fix "Forwarder started (PID: $FORWARDER_PID)"
         else
             fail "Failed to start forwarder"
-            info "Check manually: ssh ${PFSENSE_USER}@${PFSENSE_HOST} '/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py'"
+            info "Check manually: ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'service suricata_forwarder start'"
         fi
     fi
 
@@ -554,8 +560,8 @@ else
     echo -e "${BLUE}  Quick fix commands:${NC}"
     echo ""
     echo "  # 1. Deploy updated Logstash config (on SIEM server):"
-    echo "  scp config/logstash-suricata.conf ${GRAFANA_ADMIN_USER}@${SIEM_HOST}:/tmp/"
-    echo "  ssh ${GRAFANA_ADMIN_USER}@${SIEM_HOST} 'sudo cp /tmp/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash'"
+    echo "  scp config/logstash-suricata.conf ${SIEM_SSH_USER}@${SIEM_HOST}:/tmp/"
+    echo "  ssh ${SIEM_SSH_USER}@${SIEM_HOST} 'sudo cp /tmp/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash'"
     echo ""
     echo "  # 2. Apply index template:"
     echo "  curl -XPUT '${OS_URL}/_index_template/${INDEX_PREFIX}' -H 'Content-Type: application/json' -d @config/opensearch-index-template.json"

@@ -144,7 +144,9 @@ interactive_config() {
         exit 0
     fi
     
-    # Save config
+    # Save config (restrictive permissions — contains the Grafana password)
+    touch /tmp/monitoring-config.env
+    chmod 600 /tmp/monitoring-config.env
     cat > /tmp/monitoring-config.env <<EOF
 MONITOR_MODE=$MONITOR_MODE
 SIEM_IP=$SIEM_IP
@@ -320,7 +322,9 @@ install_logstash() {
             cp "$SCRIPT_DIR/config/logstash-telegraf.conf" /etc/logstash/conf.d/telegraf.conf
             print_success "Telegraf pipeline configured"
         else
-            print_info "Telegraf pipeline not found - will need manual configuration"
+            print_error "No Telegraf Logstash pipeline ships with this project yet"
+            print_info "Telegraf/both mode requires you to write /etc/logstash/conf.d/telegraf.conf manually"
+            print_info "See docs/TELEGRAF_PFBLOCKER_SETUP.md for the Telegraf-to-OpenSearch approach"
         fi
     fi
     
@@ -387,7 +391,10 @@ configure_firewall() {
     
     # Grafana
     ufw allow 3000/tcp comment "Grafana Web UI"
-    
+
+    # SSH — must be allowed BEFORE enabling ufw or we lock ourselves out
+    ufw allow OpenSSH
+
     # Enable firewall if not already enabled
     ufw --force enable
     
@@ -407,92 +414,6 @@ configure_retention() {
     print_success "Retention policy configured"
 }
 
-generate_deployment_script() {
-    print_header "Generating pfSense Deployment Script"
-    
-    DEPLOY_SCRIPT="/tmp/deploy-to-pfsense.sh"
-    
-    cat > "$DEPLOY_SCRIPT" <<'EOFSCRIPT'
-#!/bin/bash
-# Auto-generated pfSense deployment script
-# Run this on your workstation (not on the SIEM server)
-
-set -e
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-EOFSCRIPT
-
-    # Add configuration from interactive setup
-    cat >> "$DEPLOY_SCRIPT" <<EOFSCRIPT
-
-# Configuration from SIEM installation
-PFSENSE_IP="$PFSENSE_IP"
-SIEM_IP="$SIEM_IP"
-MONITOR_MODE="$MONITOR_MODE"
-
-EOFSCRIPT
-
-    cat >> "$DEPLOY_SCRIPT" <<'EOFSCRIPT'
-
-echo -e "${GREEN}=== pfSense Monitoring Deployment ===${NC}"
-echo "  pfSense IP:      $PFSENSE_IP"
-echo "  SIEM Server IP:  $SIEM_IP"
-echo "  Monitor Mode:    $MONITOR_MODE"
-echo ""
-
-# Check connectivity
-echo -e "${YELLOW}Testing pfSense connectivity...${NC}"
-if ! ping -c 1 -W 2 "$PFSENSE_IP" > /dev/null 2>&1; then
-    echo -e "${RED}ERROR: Cannot reach pfSense at $PFSENSE_IP${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ pfSense is reachable${NC}"
-
-# Check SSH
-echo -e "${YELLOW}Testing SSH access...${NC}"
-if ! ssh -o BatchMode=yes -o ConnectTimeout=5 root@"$PFSENSE_IP" "echo test" > /dev/null 2>&1; then
-    echo -e "${RED}ERROR: Cannot SSH to pfSense. Please configure SSH key or you'll be prompted for password.${NC}"
-    read -p "Continue anyway? [y/N]: " CONT
-    if [[ ! "$CONT" =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
-
-# Deploy based on monitor mode
-if [[ "$MONITOR_MODE" == "suricata" ]] || [[ "$MONITOR_MODE" == "both" ]]; then
-    echo ""
-    echo -e "${GREEN}=== Deploying Suricata Forwarder ===${NC}"
-    
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ -f "$SCRIPT_DIR/deploy-pfsense-forwarder.sh" ]; then
-        bash "$SCRIPT_DIR/deploy-pfsense-forwarder.sh" "$PFSENSE_IP" "$SIEM_IP"
-    else
-        echo -e "${RED}ERROR: deploy-pfsense-forwarder.sh not found${NC}"
-        echo "Please run this script from the repository root directory"
-        exit 1
-    fi
-fi
-
-if [[ "$MONITOR_MODE" == "telegraf" ]] || [[ "$MONITOR_MODE" == "both" ]]; then
-    echo ""
-    echo -e "${GREEN}=== Deploying Telegraf ===${NC}"
-    echo -e "${YELLOW}Telegraf deployment requires manual configuration via pfSense WebUI${NC}"
-    echo "See: https://docs.netgate.com/pfsense/en/latest/monitoring/telegraf.html"
-fi
-
-echo ""
-echo -e "${GREEN}=== Deployment Complete ===${NC}"
-EOFSCRIPT
-
-    chmod +x "$DEPLOY_SCRIPT"
-    
-    print_success "Deployment script created: $DEPLOY_SCRIPT"
-}
-
 print_next_steps() {
     print_header "Installation Complete!"
     
@@ -507,8 +428,8 @@ print_next_steps() {
     echo ""
     
     echo -e "${YELLOW}1. Deploy to pfSense:${NC}"
-    echo "   Copy /tmp/deploy-to-pfsense.sh to your workstation"
-    echo "   Run: bash deploy-to-pfsense.sh"
+    echo "   Copy config.env.example to config.env, edit your IPs, then run:"
+    echo "   ./setup.sh   (deploys the Suricata forwarder + watchdog to pfSense)"
     echo ""
     
     echo -e "${YELLOW}2. Access Grafana:${NC}"
@@ -518,8 +439,8 @@ print_next_steps() {
     echo ""
     
     echo -e "${YELLOW}3. Verify Data Flow:${NC}"
-    echo "   bash scripts/check-system-health.sh"
-    echo "   bash scripts/verify-suricata-data.sh"
+    echo "   bash scripts/status.sh"
+    echo "   bash scripts/diagnose-and-repair.sh"
     echo ""
     
     if [[ "$MONITOR_MODE" == "suricata" ]] || [[ "$MONITOR_MODE" == "both" ]]; then
@@ -531,13 +452,15 @@ print_next_steps() {
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
     echo ""
     echo -e "${BLUE}Documentation:${NC}"
-    echo "  • Quick Start:          docs/QUICK_START.md"
+    echo "  • Quick Start:          QUICK_START.md"
     echo "  • Multi-Interface:      docs/MULTI_INTERFACE_RETENTION.md"
     echo "  • Troubleshooting:      docs/TROUBLESHOOTING.md"
     echo "  • Full Documentation:   README.md"
     echo ""
     
     print_info "Installation log saved to: /var/log/pfsense-monitoring-install.log"
+    print_info "Config saved to /tmp/monitoring-config.env — it contains your Grafana password."
+    print_info "Delete it when you no longer need it: rm /tmp/monitoring-config.env"
 }
 
 # Main execution
@@ -569,13 +492,12 @@ EOF
     install_grafana
     configure_firewall
     configure_retention
-    generate_deployment_script
-    
+
     # Completion
     print_next_steps
 }
 
-# Run main function and log output
+# Run main function and log output (preserve main's exit code, not tee's)
 main 2>&1 | tee /var/log/pfsense-monitoring-install.log
 
-exit 0
+exit "${PIPESTATUS[0]}"

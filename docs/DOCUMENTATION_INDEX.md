@@ -440,7 +440,7 @@ docs/
   - Log locations
   - Service restarts
 
-- **[Troubleshooting Checklist](../TROUBLESHOOTING_CHECKLIST.md)**
+- **[Troubleshooting Checklist](archive/TROUBLESHOOTING_CHECKLIST.md)** (archived)
   - Systematic diagnosis
   - Quick checks
   - Status validation
@@ -465,13 +465,13 @@ docs/
   - Similar to Unifi dashboards
 
 ### Graylog Integration (Optional)
-- **[Graylog Index Setup](../GRAYLOG_INDEX.md)**
+- **[Graylog Index Setup](archive/GRAYLOG_INDEX.md)** (archived)
   - Alternative to OpenSearch
   - Index configuration
   - Stream setup
   - Extractor configuration
 
-- **[Graylog Suricata Setup](../GRAYLOG_SURICATA_SETUP.md)**
+- **[Graylog Suricata Setup](archive/GRAYLOG_SURICATA_SETUP.md)** (archived)
   - Complete Graylog integration
   - Input configuration
   - Pipeline rules
@@ -529,7 +529,6 @@ Telegraf → InfluxDB → Grafana
 - **config.env.example**: Environment variables template
 - **config/logstash-suricata.conf**: Logstash pipeline
 - **config/opensearch-index-template.json**: Index mapping
-- **config/additional_config.conf**: Advanced Telegraf config
 
 ### Archived Documentation
 Located in `docs/archive/`:

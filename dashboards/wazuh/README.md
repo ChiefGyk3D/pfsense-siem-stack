@@ -84,6 +84,6 @@ curl -X POST http://localhost:3000/api/dashboards/db \
 
 ### Via automated script
 ```bash
-cd siem-server
-./scripts/deploy-grafana-dashboards.sh
+# From the repository root
+GRAFANA_PASS=... WAZUH_INDEXER_PASS=... ./scripts/deploy-wazuh-dashboards.py
 ```

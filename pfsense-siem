@@ -61,7 +61,7 @@ print_menu() {
     echo -e "${MAGENTA}Advanced:${NC}"
     echo " 13) Verify Data Flow (End-to-end test)"
     echo " 14) Configure Custom SIDs (Suricata rules)"
-    echo " 15) Setup Telegram Alerts"
+    echo " 15) Search Suricata Alerts Mentioning Telegram (app)"
     echo " 16) Backup Configuration"
     echo " 17) Restore Configuration"
     echo ""
@@ -404,13 +404,18 @@ restart_forwarder() {
     fi
     
     echo "Restarting forwarder on ${PFSENSE_HOST}..."
-    
-    # Stop existing forwarder
-    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
-    sleep 2
-    
-    # Start forwarder
-    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+
+    # Prefer the rc.d service installed by setup.sh; fall back to pkill + nohup
+    if ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder' 2>/dev/null; then
+        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'service suricata_forwarder restart' || true
+    else
+        # Stop existing forwarder
+        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
+        sleep 2
+
+        # Start forwarder (detect Python interpreter)
+        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'PY=$(command -v python3.11 || command -v python3); nohup "$PY" /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+    fi
     sleep 3
     
     # Check status
@@ -577,9 +582,12 @@ configure_custom_sids() {
 
 setup_telegram_alerts() {
     print_banner
-    echo -e "${CYAN}═══ Setup Telegram Alerts ═══${NC}"
+    echo -e "${CYAN}═══ Search Suricata Alerts Mentioning Telegram (app) ═══${NC}"
     echo ""
-    
+    echo "Note: this only greps recent Suricata alerts for signatures mentioning"
+    echo "the Telegram messaging app. It does NOT configure Telegram notifications."
+    echo ""
+
     bash "${SCRIPT_DIR}/scripts/check-telegram-alerts.sh"
     
     echo ""

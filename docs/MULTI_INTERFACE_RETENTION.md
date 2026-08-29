@@ -30,23 +30,20 @@ The forwarder automatically finds all Suricata instances:
 
 ### Deployment
 
-Use the same deployment script - it automatically handles multiple interfaces:
+Use the standard setup script - it automatically handles multiple interfaces:
 
 ```bash
-./deploy-pfsense-forwarder.sh PFSENSE_IP SIEM_IP
+./setup.sh
 ```
 
-Example:
-```bash
-./deploy-pfsense-forwarder.sh 192.168.1.1 192.0.2.10
-```
+(Configure `PFSENSE_HOST` and `SIEM_HOST` in `config.env` first.)
 
 ### Testing Multi-Interface Setup
 
 Check which interfaces are being monitored:
 
 ```bash
-./scripts/test-multi-interface.sh PFSENSE_IP
+./tests/test-multi-interface.sh PFSENSE_IP
 ```
 
 Or manually on pfSense:
@@ -186,7 +183,7 @@ ssh root@PFSENSE_IP 'tail -20 /var/log/system.log | grep suricata-forwarder'
 
 **Only one interface monitored:**
 - Old forwarder version still running
-- Deploy updated forwarder: `./deploy-pfsense-forwarder.sh PFSENSE_IP SIEM_IP`
+- Deploy updated forwarder: `./setup.sh`
 
 **Interface field missing in events:**
 - Logstash not updated with new config
@@ -264,10 +261,10 @@ Policy applies to all indices matching `suricata-*` pattern automatically.
 
 ```bash
 # Deploy updated multi-interface forwarder
-./deploy-pfsense-forwarder.sh PFSENSE_IP SIEM_IP
+./setup.sh
 
 # Test multi-interface detection
-./scripts/test-multi-interface.sh PFSENSE_IP
+./tests/test-multi-interface.sh PFSENSE_IP
 
 # Configure 90-day retention
 ./scripts/configure-retention-policy.sh 90

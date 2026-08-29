@@ -1,18 +1,20 @@
 #!/bin/bash
 #
-# Check Telegram Alerts on pfSense
-# This script analyzes recent Suricata logs to find Telegram-related alerts
+# Search Suricata alerts mentioning the Telegram app
+# Greps recent Suricata eve.json logs on pfSense for alert signatures that
+# mention the Telegram messaging app. This does NOT configure Telegram
+# notifications of any kind.
 #
 
 PFSENSE_IP="${1:-192.168.1.1}"
 
 echo "================================================"
-echo "Checking Telegram Alerts on pfSense..."
+echo "Searching Suricata alerts mentioning Telegram (app)..."
 echo "================================================"
 echo ""
 
 # Check recent Telegram alerts in Suricata logs
-echo "🔍 Recent Telegram Alerts (last 1000 lines):"
+echo "🔍 Recent Suricata alerts mentioning Telegram (last 1000 lines):"
 echo "================================================"
 ssh root@${PFSENSE_IP} "
     for log in /var/log/suricata/suricata_*/eve.json; do

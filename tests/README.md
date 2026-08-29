@@ -77,7 +77,7 @@ Tests output:
 **Fix**: Check SSH access, verify pfSense IP
 
 **Issue**: Forwarder not running
-**Fix**: Deploy forwarder with `deploy-pfsense-forwarder.sh`
+**Fix**: Deploy forwarder with `./setup.sh` (from the repository root)
 
 ### test-panel-compatibility.sh fails
 **Issue**: No OpenSearch data

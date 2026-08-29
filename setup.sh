@@ -191,7 +191,7 @@ if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" ]]; then
     info "Index template applied for ${INDEX_PREFIX}-*"
 else
     error "Failed to apply index template (HTTP $HTTP_CODE)"
-    ((ERRORS++))
+    ERRORS=$((ERRORS+1))
 fi
 
 # Apply pfBlockerNG index template (keyword mappings for aggregation)
@@ -204,7 +204,7 @@ if [[ -f "$PFB_TEMPLATE_FILE" ]]; then
         info "pfBlockerNG index template applied for pfblockerng-*"
     else
         error "Failed to apply pfBlockerNG index template (HTTP $HTTP_CODE)"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 else
     warn "pfBlockerNG template not found: $PFB_TEMPLATE_FILE (optional — needed for Telegraf pfBlockerNG integration)"
@@ -391,7 +391,7 @@ if [[ -n "$FORWARDER_PID" ]]; then
 else
     error "Forwarder failed to start"
     echo "  Check logs: ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'tail -50 /var/log/system.log | grep suricata'"
-    ((ERRORS++))
+    ERRORS=$((ERRORS+1))
 fi
 
 # =============================================================================
@@ -549,12 +549,12 @@ if [[ "$GRAFANA_OK" == true ]]; then
     import_dashboard \
         "${SCRIPT_DIR}/dashboards/Suricata_IDS_IPS.json" \
         "suricata_ids_ips" \
-        "Suricata IDS/IPS Dashboard" || ((ERRORS++))
+        "Suricata IDS/IPS Dashboard" || ERRORS=$((ERRORS+1))
 
     import_dashboard \
         "${SCRIPT_DIR}/dashboards/Suricata_Per_Interface.json" \
         "suricata_per_interface" \
-        "Suricata Per-Interface Dashboard" || ((ERRORS++))
+        "Suricata Per-Interface Dashboard" || ERRORS=$((ERRORS+1))
 
     echo ""
     echo "  Import pfSense system dashboard manually (requires InfluxDB datasource):"

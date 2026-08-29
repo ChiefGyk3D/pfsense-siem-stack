@@ -7,11 +7,19 @@
 set -e
 
 # Configuration
-OPENSEARCH_HOST="${OPENSEARCH_HOST:-localhost}"
-OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
-OPENSEARCH_URL="http://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${SCRIPT_DIR}/../config"
+
+# Load config.env if present (consistent with other scripts)
+CONFIG_FILE="$(dirname "$SCRIPT_DIR")/config.env"
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
+
+OPENSEARCH_HOST="${OPENSEARCH_HOST:-${SIEM_HOST:-localhost}}"
+OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
+OPENSEARCH_URL="http://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -238,7 +246,7 @@ main() {
     echo "========================================"
     echo "OpenSearch Configuration Installer"
     echo "pfSense SIEM Stack"
-    echo "========================================
+    echo "========================================"
     echo ""
     
     print_info "Target OpenSearch: ${OPENSEARCH_URL}"
