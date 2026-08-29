@@ -9,7 +9,7 @@ This repository has evolved from a simple Grafana dashboard into a full pfSense 
 **New to the project?** → Start with [README.md](README.md)  
 **Want quick deployment?** → Follow [QUICK_START.md](QUICK_START.md)  
 **Need specific docs?** → Browse [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)  
-**Something not working?** → Check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)  
+**Something not working?** → Check [docs/troubleshooting/TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md)  
 **Want to contribute?** → Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Essential Files
@@ -49,8 +49,7 @@ pfsense-siem-stack/
 │   ├── docker_container_monitoring.json    Container metrics (cAdvisor)
 │   ├── windows_exporter.json               Windows host metrics
 │   ├── datasources_reference.json          Datasource UID reference
-│   ├── wazuh/                              Wazuh dashboards + deploy README
-│   └── archive/                            Old versions (reference only)
+│   └── wazuh/                              Wazuh dashboards + deploy README
 │
 ├── 🔧 scripts/
 │   ├── forward-suricata-eve.py             ★ Multi-interface forwarder
@@ -63,8 +62,9 @@ pfsense-siem-stack/
 │   ├── setup_forwarder_monitoring.sh       Watchdog/cron installer
 │   ├── suricata-forwarder-watchdog.sh      Forwarder watchdog
 │   ├── apply-suricata-drop-rules.sh        SID drop-rule management
-│   ├── README.md                           Script documentation
-│   └── archive/                            Deprecated scripts
+│   ├── preflight.sh                        Pre-install/deploy sanity checks
+│   ├── check-doc-links.py                  Docs link checker (CI)
+│   └── README.md                           Script documentation
 │
 ├── ⚙️ config/
 │   ├── logstash-suricata.conf              Logstash pipeline (flat EVE fields)
@@ -73,14 +73,48 @@ pfsense-siem-stack/
 │   └── sid/                                Suricata SID tuning lists
 │
 ├── 📚 docs/
-│   ├── DOCUMENTATION_INDEX.md              Index of all guides
-│   ├── INSTALL_SIEM_STACK.md               SIEM installation guide
-│   ├── INSTALL_PFSENSE_FORWARDER.md        Forwarder deployment
-│   ├── CONFIGURATION.md                    Advanced settings
-│   ├── TROUBLESHOOTING.md                  Problem solving
-│   ├── GEOIP_SETUP.md                      GeoIP database setup
-│   ├── MULTI_INTERFACE_RETENTION.md        Multi-WAN & retention
-│   └── archive/                            Historical docs
+│   ├── DOCUMENTATION_INDEX.md              ★ Documentation hub (start here)
+│   ├── ARCHIVE.md                          Where superseded material went (git history)
+│   ├── install/                            SIEM server, forwarder, dashboards, GeoIP
+│   │   ├── INSTALL_SIEM_STACK.md
+│   │   ├── INSTALL_PFSENSE_FORWARDER.md
+│   │   ├── INSTALL_DASHBOARD.md
+│   │   ├── GEOIP_SETUP.md
+│   │   ├── NEW_USER_CHECKLIST.md
+│   │   └── HARDWARE_REQUIREMENTS.md
+│   ├── pfsense/                            Suricata/pfBlockerNG/Telegraf tuning
+│   │   ├── SURICATA_CONFIGURATION.md
+│   │   ├── SURICATA_OPTIMIZATION_GUIDE.md
+│   │   ├── PFBLOCKERNG_OPTIMIZATION.md
+│   │   ├── LAN_MONITORING.md
+│   │   ├── TRAFFIC_SHAPING_GUIDE.md
+│   │   ├── TELEGRAF_PFBLOCKER_SETUP.md
+│   │   ├── TELEGRAF_RESTART_PROCEDURE.md
+│   │   ├── MAC_VENDOR_LOOKUP_SETUP.md
+│   │   └── crowdsec-phase1.md
+│   ├── operations/                         Monitoring, watchdogs, retention
+│   │   ├── MANAGEMENT_CONSOLE.md
+│   │   ├── SURICATA_FORWARDER_MONITORING.md
+│   │   ├── FORWARDER_MONITORING_QUICK_REF.md
+│   │   ├── MULTI_INTERFACE_RETENTION.md
+│   │   └── SETUP_FILTERLOG_MONITORING_CRON.md
+│   ├── troubleshooting/                    Symptom → fix guides
+│   │   ├── TROUBLESHOOTING.md
+│   │   ├── DASHBOARD_NO_DATA_FIX.md
+│   │   ├── OPENSEARCH_AUTO_CREATE.md
+│   │   ├── LOG_ROTATION_FIX.md
+│   │   ├── PFSENSE_FILTERLOG_ROTATION_FIX.md
+│   │   ├── PF_INFORMATION_PANEL_ISSUE.md
+│   │   └── TELEGRAF_INTERFACE_FIXES.md
+│   ├── reference/                          Configuration/scripts reference, architecture
+│   │   ├── CONFIGURATION.md
+│   │   ├── SCRIPTS_REFERENCE.md
+│   │   ├── architecture.mmd
+│   │   └── architecture.png
+│   └── siem/                               SIEM backend comparison & integrations
+│       ├── COMPARISON.md
+│       ├── graylog/README.md
+│       └── wazuh/README.md
 │
 ├── 🔌 plugins/
 │   ├── telegraf_pfifgw.php                 Gateway monitoring
@@ -88,12 +122,12 @@ pfsense-siem-stack/
 │   ├── telegraf_temperature.sh             Temperature stats
 │   ├── telegraf_unbound.sh                 DNS resolver stats
 │   ├── telegraf_unbound_lite.sh            Lightweight DNS stats
-│   ├── README.md                           Plugin documentation
-│   └── Old/                                Deprecated plugins
+│   └── README.md                           Plugin documentation
 │
 ├── 🧪 tests/
 │   ├── test-multi-interface.sh             Multi-interface testing
-│   └── test-panel-compatibility.sh         Dashboard panel testing
+│   ├── test-panel-compatibility.sh         Dashboard panel testing
+│   └── python/test_forwarder.py            Forwarder unit tests (pytest)
 │
 └── 🚀 Installation Scripts
     ├── install.sh                          ★ SIEM stack installer (server side)
@@ -140,10 +174,10 @@ graph TD
 |----------|----------|---------|
 | README.md | Everyone | Project overview, features, quick start |
 | QUICK_START.md | Beginners | Step-by-step 15-minute setup |
-| docs/INSTALL_SIEM_STACK.md | Admins | Detailed OpenSearch/Logstash/Grafana install |
-| docs/INSTALL_PFSENSE_FORWARDER.md | Admins | Manual forwarder deployment |
-| docs/CONFIGURATION.md | Advanced | Tuning, performance, customization |
-| docs/TROUBLESHOOTING.md | Support | Common issues and solutions |
+| docs/install/INSTALL_SIEM_STACK.md | Admins | Detailed OpenSearch/Logstash/Grafana install |
+| docs/install/INSTALL_PFSENSE_FORWARDER.md | Admins | Manual forwarder deployment |
+| docs/reference/CONFIGURATION.md | Advanced | Tuning, performance, customization |
+| docs/troubleshooting/TROUBLESHOOTING.md | Support | Common issues and solutions |
 
 ## Key Features
 
@@ -165,4 +199,7 @@ graph TD
 
 ## Archive Policy
 
-Moved to `archive/` when superseded or deprecated, but kept for reference.
+Superseded material is deleted from the working tree and preserved in git history.
+See [docs/ARCHIVE.md](docs/ARCHIVE.md) for the last commit that contains the old
+`docs/archive/`, `scripts/archive/`, `dashboards/archive/`, and `plugins/Old/` trees,
+along with recovery instructions.

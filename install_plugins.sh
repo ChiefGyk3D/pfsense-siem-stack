@@ -85,7 +85,7 @@ show_plugins() {
     echo "2) telegraf_temperature.sh      - Temperature sensors"
     echo "3) telegraf_unbound_lite.sh     - Unbound DNS (lite version)"
     echo "4) telegraf_unbound.sh          - Unbound DNS (full version)"
-    echo "5) telegraf_arp_mac_vendor.php  - MAC vendor lookup (see docs/MAC_VENDOR_LOOKUP_SETUP.md)"
+    echo "5) telegraf_arp_mac_vendor.php  - MAC vendor lookup (see docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md)"
     echo "6) All plugins                  - Install all available plugins"
     echo "7) Custom selection             - Select multiple plugins"
     echo "0) Exit"

@@ -29,7 +29,7 @@ This repo is one of three related projects:
 - **SID management** — curated disable/drop/suppress lists (`config/sid/`)
 - **Automation** — `install.sh` (server), `setup.sh` (deployment), `pfsense-siem` menu console, 17 operational scripts
 
-> Note: Wazuh dashboards **ship today** — earlier docs describing Wazuh as "planned" were stale. Graylog support was explored and abandoned (see `docs/archive/`).
+> Note: Wazuh dashboards **ship today** — earlier docs describing Wazuh as "planned" were stale. Graylog support was explored and abandoned (superseded guides live in git history — see [docs/ARCHIVE.md](docs/ARCHIVE.md)).
 
 ---
 
@@ -78,9 +78,9 @@ ML anomaly detection, hardware sizing guide, configuration marketplace, web UI, 
 ## 🧹 Repo hygiene decisions (2026-08 review)
 
 - `RENAME_CLEANUP_PLAN.md` and `MIGRATION_CHECKLIST.md` **deleted** — they tracked the `pfsense_grafana` → `pfsense-siem-stack` rename, which is complete; the checklist claimed the opposite.
-- `REORGANIZATION_SUMMARY.md` moved to `docs/archive/` — historical session log of the 2025 rebrand.
+- `REORGANIZATION_SUMMARY.md` — historical session log of the 2025 rebrand, now in git history (see [docs/ARCHIVE.md](docs/ARCHIVE.md)).
 - The duplicate roadmap that lived at the bottom of `CHANGELOG.md` is merged into this file; CHANGELOG now only records changes.
-- ~A third of the tree is archived material (43 scripts, 12 docs, 7 dashboards). Planned: delete the archives and note the last-good commit in `docs/archive/README.md` — git history keeps them.
+- ~~A third of the tree is archived material (43 scripts, 12 docs, 7 dashboards).~~ Done: the archives were deleted and the last commit containing them is recorded in [docs/ARCHIVE.md](docs/ARCHIVE.md) — git history keeps them.
 
 ---
 

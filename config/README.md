@@ -100,7 +100,7 @@ subdomain.example.com
 
 **PfBlockerNG configuration guide** - Moved to main docs
 
-**See:** [docs/PFBLOCKERNG_OPTIMIZATION.md](../docs/PFBLOCKERNG_OPTIMIZATION.md)
+**See:** [docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md](../docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md)
 
 ---
 
@@ -391,7 +391,7 @@ curl -XPUT "http://localhost:9200/_cluster/settings" \
   }'
 ```
 
-See [docs/OPENSEARCH_AUTO_CREATE.md](../docs/OPENSEARCH_AUTO_CREATE.md) for details.
+See [docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md) for details.
 
 ### Index Template Not Applied
 
@@ -415,11 +415,11 @@ curl -X DELETE "http://localhost:9200/pfblockerng-*"
 - **[Logstash Pipeline](logstash-suricata.conf)** - See inline comments for detailed config
 - **[Suricata Template](opensearch-index-template.json)** - Suricata field mappings
 - **[pfBlockerNG Template](opensearch-pfblockerng-template.json)** - pfBlockerNG field mappings
-- **[Telegraf pfBlockerNG Setup](../docs/TELEGRAF_PFBLOCKER_SETUP.md)** - OpenSearch output config
-- **[Configuration Guide](../docs/CONFIGURATION.md)** - All config.env options
-- **[SIEM Installation](../docs/INSTALL_SIEM_STACK.md)** - Full setup guide
-- **[OpenSearch Auto-Create](../docs/OPENSEARCH_AUTO_CREATE.md)** - Fix midnight UTC issue
-- **[Troubleshooting](../docs/TROUBLESHOOTING.md)** - Common config issues
+- **[Telegraf pfBlockerNG Setup](../docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md)** - OpenSearch output config
+- **[Configuration Guide](../docs/reference/CONFIGURATION.md)** - All config.env options
+- **[SIEM Installation](../docs/install/INSTALL_SIEM_STACK.md)** - Full setup guide
+- **[OpenSearch Auto-Create](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md)** - Fix midnight UTC issue
+- **[Troubleshooting](../docs/troubleshooting/TROUBLESHOOTING.md)** - Common config issues
 
 ---
 

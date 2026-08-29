@@ -206,7 +206,7 @@ Yes, but not recommended for the same data:
 
 Want to help add Graylog or Wazuh support?
 
-1. Check archived Graylog docs: `docs/archive/GRAYLOG_*.md`
+1. Check archived Graylog docs (`GRAYLOG_*.md`, in git history — see [../ARCHIVE.md](../ARCHIVE.md))
 2. Review this comparison for technical details
 3. See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
 4. Open a GitHub Discussion to coordinate efforts

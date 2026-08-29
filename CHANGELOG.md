@@ -17,12 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Datasource reference** (`dashboards/datasources_reference.json`) — All 8 Grafana datasource configurations with UIDs for reproducibility
 - **Wazuh dashboard deployment script** (`scripts/deploy-wazuh-dashboards.py`) — Standalone Python script that configures the OpenSearch-Wazuh datasource, creates folders, deploys all 3 Wazuh dashboards, and verifies data flow via API queries
 - **Wazuh dashboard README** (`dashboards/wazuh/README.md`) — Panel inventory, datasource configuration, import instructions, field reference
-- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
-- **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
+- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
+- **[Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
 - **[Documentation Index](docs/DOCUMENTATION_INDEX.md)**: Organized guide to all documentation with quick search functionality
-- **[Forwarder Monitoring Guide](docs/SURICATA_FORWARDER_MONITORING.md)**: Three monitoring strategies with hybrid approach (crash recovery + activity monitoring)
-- **[Forwarder Monitoring Quick Reference](docs/FORWARDER_MONITORING_QUICK_REF.md)**: One-liner commands for common monitoring tasks
-- **[MAC Vendor Lookup Setup](docs/MAC_VENDOR_LOOKUP_SETUP.md)**: Custom Telegraf plugin for MAC vendor identification via ARP table
+- **[Forwarder Monitoring Guide](docs/operations/SURICATA_FORWARDER_MONITORING.md)**: Three monitoring strategies with hybrid approach (crash recovery + activity monitoring)
+- **[Forwarder Monitoring Quick Reference](docs/operations/FORWARDER_MONITORING_QUICK_REF.md)**: One-liner commands for common monitoring tasks
+- **[MAC Vendor Lookup Setup](docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md)**: Custom Telegraf plugin for MAC vendor identification via ARP table
 - **Automated forwarder monitoring setup script** (`scripts/setup_forwarder_monitoring.sh`)
 - **Interactive monitoring installer** with 6 preset configurations
 

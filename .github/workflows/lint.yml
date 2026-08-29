@@ -26,6 +26,14 @@ jobs:
           fi
           exit "$fail"
 
+      - name: ShellCheck (error severity)
+        run: |
+          set -e
+          # shellcheck is preinstalled on ubuntu-latest runners
+          mapfile -t files < <(git ls-files '*.sh')
+          files+=(pfsense-siem)
+          shellcheck --severity=error "${files[@]}"
+
       - name: JSON validation (dashboards and config)
         run: |
           set -e
@@ -43,12 +51,26 @@ jobs:
           set -e
           fail=0
           while IFS= read -r -d '' f; do
-            case "$f" in
-              plugins/Old/*) continue ;;  # legacy Python 2 plugins, kept for reference
-            esac
             if ! python3 -m py_compile "$f"; then
               echo "Syntax error: $f"
               fail=1
             fi
           done < <(git ls-files -z '*.py')
           exit "$fail"
+
+      - name: Documentation link check
+        run: python3 scripts/check-doc-links.py
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pytest
+        run: python3 -m pip install --user pytest
+
+      # maxminddb is deliberately NOT installed: the forwarder degrades
+      # gracefully without it and the tests stub the GeoIP reader, so CI
+      # needs no GeoIP database.
+      - name: Run forwarder unit tests
+        run: python3 -m pytest tests/python/ -v

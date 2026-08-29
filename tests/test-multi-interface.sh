@@ -11,7 +11,7 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 PFSENSE_IP="${1:-${PFSENSE_HOST:-}}"
-PFSENSE_USER="${PFSENSE_USER:-root}"
+PFSENSE_USER="${PFSENSE_USER:-admin}"
 
 if [ -z "$PFSENSE_IP" ]; then
     echo "ERROR: pfSense host not set."

@@ -26,6 +26,29 @@ cp config.env.example config.env
 nano config.env  # Set SIEM_HOST and PFSENSE_HOST
 ```
 
+### preflight.sh
+**Pre-install/deploy sanity checks** - Run before `install.sh` / `setup.sh` (setup.sh also runs it automatically; skip with `--skip-preflight`)
+
+```bash
+./scripts/preflight.sh
+```
+
+**Checks:**
+- `config.env` exists and defines SIEM_HOST, PFSENSE_HOST, PFSENSE_USER, SIEM_SSH_USER
+- SSH key-based access to pfSense and the SIEM server (BatchMode, 5s timeout)
+- `python3` present on pfSense (required by the forwarder)
+- OpenSearch port reachable (warning only — expected to fail before `install.sh`)
+- GeoIP database present on pfSense (warning only — enrichment is optional)
+
+Exits non-zero on hard failures; makes no changes to any host.
+
+### check-doc-links.py
+**Documentation link checker** - Used by CI; verifies every relative markdown link/image in tracked `.md` files resolves
+
+```bash
+python3 scripts/check-doc-links.py
+```
+
 ### status.sh
 **Health check and diagnostics** - Run when troubleshooting
 
@@ -81,7 +104,7 @@ DEBUG_ENABLED="true"            # Enable debug logging
 2. `/usr/local/share/suricata/GeoLite2/GeoLite2-Country.mmdb` (Suricata default)
 3. `/usr/local/share/GeoIP/GeoLite2-Country.mmdb` (pfBlockerNG)
 
-See [docs/GEOIP_SETUP.md](../docs/GEOIP_SETUP.md) for GeoIP details.
+See [docs/install/GEOIP_SETUP.md](../docs/install/GEOIP_SETUP.md) for GeoIP details.
 
 ---
 
@@ -155,7 +178,7 @@ ssh root@<pfsense> "chmod +x /usr/local/pkg/suricata/suricata-restart-hook.sh"
 
 **Requires:** OpenSearch running and reachable
 
-See [docs/OPENSEARCH_AUTO_CREATE.md](../docs/OPENSEARCH_AUTO_CREATE.md) for details.
+See [docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md) for details.
 
 ### configure-retention-policy.sh
 **Data retention policy configuration**
@@ -190,7 +213,7 @@ See [docs/OPENSEARCH_AUTO_CREATE.md](../docs/OPENSEARCH_AUTO_CREATE.md) for deta
 - **Business Hours**: Weekday 8am-6pm monitoring
 - **Custom**: Configure your own cron schedule
 
-See [docs/FORWARDER_MONITORING_QUICK_REF.md](../docs/FORWARDER_MONITORING_QUICK_REF.md) for details.
+See [docs/operations/FORWARDER_MONITORING_QUICK_REF.md](../docs/operations/FORWARDER_MONITORING_QUICK_REF.md) for details.
 
 ---
 
@@ -239,12 +262,14 @@ ssh root@<pfsense> "/usr/local/bin/apply-suricata-drop-rules.sh"
 
 ## 📁 Archive
 
-Old/deprecated scripts kept for reference:
+Deprecated scripts still present for reference:
 
 - **suricata-eve-forwarder.sh** - Shell-based forwarder (superseded by Python version)
 - **suricata-restart-with-forwarder.sh** - Manual restart (superseded by watchdog)
 
-See [scripts/archive/](archive/) for historical scripts.
+Older one-off fix/debug scripts were removed from the working tree — they live in
+git history. See [docs/ARCHIVE.md](../docs/ARCHIVE.md) for the commit hash and
+recovery instructions.
 
 ---
 
@@ -279,10 +304,10 @@ ssh root@<pfsense> "ps aux | grep forward-suricata-eve.py | grep -v grep"
 ## 📚 Related Documentation
 
 - **[Main README](../README.md)** - Project overview
-- **[Installation Guide](../docs/INSTALL_PFSENSE_FORWARDER.md)** - Forwarder deployment
-- **[Log Rotation Fix](../docs/LOG_ROTATION_FIX.md)** - Rotation handling details
-- **[Troubleshooting](../docs/TROUBLESHOOTING.md)** - Common issues
-- **[Forwarder Monitoring](../docs/FORWARDER_MONITORING_QUICK_REF.md)** - Monitoring setup
+- **[Installation Guide](../docs/install/INSTALL_PFSENSE_FORWARDER.md)** - Forwarder deployment
+- **[Log Rotation Fix](../docs/troubleshooting/LOG_ROTATION_FIX.md)** - Rotation handling details
+- **[Troubleshooting](../docs/troubleshooting/TROUBLESHOOTING.md)** - Common issues
+- **[Forwarder Monitoring](../docs/operations/FORWARDER_MONITORING_QUICK_REF.md)** - Monitoring setup
 
 ---
 

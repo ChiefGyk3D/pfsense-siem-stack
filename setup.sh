@@ -17,6 +17,9 @@
 #   1. Copy config.env.example to config.env and edit with your IPs
 #   2. Run: ./setup.sh
 #
+# Options:
+#   --skip-preflight   Skip the scripts/preflight.sh gate (not recommended)
+#
 # Requirements:
 #   - SSH key access to pfSense (ssh-copy-id admin@<pfsense-ip>)
 #   - OpenSearch, Logstash, and Grafana running on the SIEM server
@@ -32,6 +35,24 @@ BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.env"
+
+# ── Arguments ─────────────────────────────────────────────────────────────────
+SKIP_PREFLIGHT=false
+for arg in "$@"; do
+    case "$arg" in
+        --skip-preflight) SKIP_PREFLIGHT=true ;;
+        -h|--help)
+            echo "Usage: ./setup.sh [--skip-preflight]"
+            echo ""
+            echo "  --skip-preflight   Skip the scripts/preflight.sh gate (not recommended)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg (see ./setup.sh --help)"
+            exit 1
+            ;;
+    esac
+done
 
 info()    { echo -e "  ${GREEN}[✓]${NC} $1"; }
 warn()    { echo -e "  ${YELLOW}[!]${NC} $1"; }
@@ -100,6 +121,20 @@ read -rp "  Continue with this configuration? [Y/n] " REPLY
 # STEP 1: Preflight checks
 # =============================================================================
 header "Step 1/${TOTAL_STEPS}: Preflight Checks"
+
+# Run the standalone preflight gate first (config vars, SSH, python3, GeoIP)
+if [[ "$SKIP_PREFLIGHT" == false ]]; then
+    if [[ -x "${SCRIPT_DIR}/scripts/preflight.sh" || -f "${SCRIPT_DIR}/scripts/preflight.sh" ]]; then
+        if ! bash "${SCRIPT_DIR}/scripts/preflight.sh"; then
+            error "Preflight checks failed — fix the issues above, or re-run with --skip-preflight"
+            exit 1
+        fi
+    else
+        warn "scripts/preflight.sh not found — continuing with built-in checks only"
+    fi
+else
+    warn "Preflight gate skipped (--skip-preflight)"
+fi
 
 # Check local tools
 MISSING_TOOLS=()
@@ -609,7 +644,7 @@ if [[ "$PFBLOCK_COUNT" -gt 0 ]]; then
     info "pfBlockerNG data flowing! ${PFBLOCK_COUNT} events"
 else
     warn "No pfBlockerNG events yet (requires Telegraf with opensearch output on pfSense)"
-    echo "    See docs/TELEGRAF_PFBLOCKER_SETUP.md"
+    echo "    See docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md"
 fi
 
 # =============================================================================

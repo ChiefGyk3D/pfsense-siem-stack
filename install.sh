@@ -324,7 +324,7 @@ install_logstash() {
         else
             print_error "No Telegraf Logstash pipeline ships with this project yet"
             print_info "Telegraf/both mode requires you to write /etc/logstash/conf.d/telegraf.conf manually"
-            print_info "See docs/TELEGRAF_PFBLOCKER_SETUP.md for the Telegraf-to-OpenSearch approach"
+            print_info "See docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md for the Telegraf-to-OpenSearch approach"
         fi
     fi
     
@@ -445,7 +445,7 @@ print_next_steps() {
     
     if [[ "$MONITOR_MODE" == "suricata" ]] || [[ "$MONITOR_MODE" == "both" ]]; then
         echo -e "${YELLOW}4. Import Suricata Dashboard:${NC}"
-        echo "   Follow: docs/INSTALL_DASHBOARD.md"
+        echo "   Follow: docs/install/INSTALL_DASHBOARD.md"
         echo ""
     fi
     
@@ -453,8 +453,8 @@ print_next_steps() {
     echo ""
     echo -e "${BLUE}Documentation:${NC}"
     echo "  • Quick Start:          QUICK_START.md"
-    echo "  • Multi-Interface:      docs/MULTI_INTERFACE_RETENTION.md"
-    echo "  • Troubleshooting:      docs/TROUBLESHOOTING.md"
+    echo "  • Multi-Interface:      docs/operations/MULTI_INTERFACE_RETENTION.md"
+    echo "  • Troubleshooting:      docs/troubleshooting/TROUBLESHOOTING.md"
     echo "  • Full Documentation:   README.md"
     echo ""
     

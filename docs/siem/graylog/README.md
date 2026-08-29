@@ -24,7 +24,7 @@ Graylog is an excellent alternative to OpenSearch for users who want:
 
 Graylog support is **planned but not yet implemented**. The existing OpenSearch implementation works excellently, but we recognize many users prefer Graylog's ease of use and superior web interface.
 
-**Historical Context**: Early versions of this project (see `docs/archive/GRAYLOG_*.md`) included Graylog documentation, but those guides are outdated and need complete rewrite for current pfSense/Suricata versions.
+**Historical Context**: Early versions of this project included Graylog documentation (`GRAYLOG_*.md`, now only in git history — see [ARCHIVE.md](../../ARCHIVE.md)), but those guides are outdated and need complete rewrite for current pfSense/Suricata versions.
 
 ---
 
@@ -100,7 +100,7 @@ Graylog support is **planned but not yet implemented**. The existing OpenSearch 
 - Share your current Graylog setup for pfSense
 
 ### 2. Documentation Contribution
-- Review archived Graylog docs (`docs/archive/GRAYLOG_*.md`)
+- Review the archived Graylog docs from git history (see [ARCHIVE.md](../../ARCHIVE.md))
 - Test integration with current pfSense/Suricata versions
 - Write updated guides
 
@@ -160,8 +160,8 @@ When Graylog integration is implemented, we'll provide guides for:
 - [Graylog Suricata Input](https://marketplace.graylog.org/addons?tag=suricata)
 
 ### Archived Documentation (Outdated)
-- `docs/archive/GRAYLOG_INDEX.md` - Old Graylog setup guide
-- `docs/archive/GRAYLOG_SURICATA_SETUP.md` - Old Suricata integration
+- `GRAYLOG_INDEX.md` - Old Graylog setup guide (git history — see [ARCHIVE.md](../../ARCHIVE.md))
+- `GRAYLOG_SURICATA_SETUP.md` - Old Suricata integration (git history)
 
 **Note**: These archived docs are for reference only and may not work with current versions.
 
@@ -177,7 +177,7 @@ When Graylog integration is implemented, we'll provide guides for:
 3. Contribute documentation or code
 4. Share your existing Graylog setup
 
-See [ROADMAP.md](../../ROADMAP.md) for overall project priorities.
+See [ROADMAP.md](../../../ROADMAP.md) for overall project priorities.
 
 ---
 
@@ -185,7 +185,7 @@ See [ROADMAP.md](../../ROADMAP.md) for overall project priorities.
 
 - **General Questions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
 - **Feature Requests**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
-- **Contribution**: [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- **Contribution**: [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 
 ---
 

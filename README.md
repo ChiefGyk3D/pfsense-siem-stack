@@ -43,7 +43,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 - **Deployment Guides**: Step-by-step installation, configuration templates, best practices
 
 
-**📍 Quick Links**: [SIEM Comparison](docs/siem/COMPARISON.md) | [Hardware Requirements](docs/HARDWARE_REQUIREMENTS.md) ⭐ | [Project Status](#-project-status) | [Roadmap](ROADMAP.md) | [Documentation Index](docs/DOCUMENTATION_INDEX.md) | [Contributing](CONTRIBUTING.md)
+**📍 Quick Links**: [SIEM Comparison](docs/siem/COMPARISON.md) | [Hardware Requirements](docs/install/HARDWARE_REQUIREMENTS.md) ⭐ | [Project Status](#-project-status) | [Roadmap](ROADMAP.md) | [Documentation Index](docs/DOCUMENTATION_INDEX.md) | [Contributing](CONTRIBUTING.md)
 
 ---
 
@@ -60,7 +60,7 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ## �️ Architecture
 
-![Architecture Diagram](docs/architecture.png)
+![Architecture Diagram](docs/reference/architecture.png)
 
 ### Data Flow
 
@@ -213,7 +213,7 @@ These packages enhance functionality and are used/referenced throughout this pro
 
 **Notes:**
 - **pfBlockerNG-devel vs pfBlockerNG**: Use `-devel` for latest GeoIP updates and features
-- **ntopng alternative**: If not using ntopng, manually update GeoIP database (see [GeoIP Setup](docs/GEOIP_SETUP.md))
+- **ntopng alternative**: If not using ntopng, manually update GeoIP database (see [GeoIP Setup](docs/install/GEOIP_SETUP.md))
 - **Telegraf configuration**: After installation, use included plugins from `plugins/` directory
 - **Service_Watchdog**: Configure to monitor at minimum: Suricata, Unbound, dpinger
 
@@ -244,7 +244,7 @@ cd pfsense_siem_stack
 - ✅ Configuration backup/restore
 - ✅ Built-in troubleshooting tools
 
-**[Full Management Console Documentation →](docs/MANAGEMENT_CONSOLE.md)**
+**[Full Management Console Documentation →](docs/operations/MANAGEMENT_CONSOLE.md)**
 
 #### Option 2: Manual Commands
 
@@ -309,31 +309,28 @@ This will verify:
 
 ## 📚 Documentation
 
-### Getting Started
-- **[Quick Start Guide](QUICK_START.md)** - 15-minute deployment walkthrough
-- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)** - Step-by-step validation
-- **[Documentation Index](docs/DOCUMENTATION_INDEX.md)** - Complete guide to all docs
+**Start at the hub: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** — this
+repo doubles as a documentation hub for a production pfSense → SIEM deployment, organized
+into task-oriented learning paths (Deploy it / Understand it / Operate it / Fix it /
+Extend it).
 
-### Installation & Configuration
-- **[SIEM Stack Installation](docs/INSTALL_SIEM_STACK.md)** - OpenSearch, Logstash, Grafana
-- **[pfSense Forwarder Setup](docs/INSTALL_PFSENSE_FORWARDER.md)** - Python forwarder deployment
-- **[GeoIP Configuration](docs/GEOIP_SETUP.md)** - MaxMind database setup
-- **[Configuration Guide](docs/CONFIGURATION.md)** - All `config.env` options
+The docs tree is organized by purpose:
 
-### Optimization & Tuning
-- **[Suricata Optimization](docs/SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **ESSENTIAL**
-  - Rule selection strategies
-  - Performance tuning (inline IPS vs IDS)
-  - Multi-interface configuration
-  - Testing and validation
-- **[PfBlockerNG Setup](docs/PFBLOCKERNG_OPTIMIZATION.md)** - Blocklist strategies
-- **[Retention Policies](docs/MULTI_INTERFACE_RETENTION.md)** - Index lifecycle management
+| Directory | What's in it |
+|-----------|--------------|
+| **[docs/install/](docs/install/)** | SIEM server install, forwarder deployment, dashboards, GeoIP, hardware sizing, new-user checklist |
+| **[docs/pfsense/](docs/pfsense/)** | Suricata configuration & optimization, pfBlockerNG, Telegraf plugins, LAN monitoring, traffic shaping |
+| **[docs/operations/](docs/operations/)** | Management console, forwarder monitoring/watchdogs, retention, maintenance crons |
+| **[docs/troubleshooting/](docs/troubleshooting/)** | Symptom → root cause → fix guides ("No Data", midnight UTC stop, log rotation, …) |
+| **[docs/reference/](docs/reference/)** | Configuration reference, scripts reference, architecture diagram |
+| **[docs/siem/](docs/siem/)** | SIEM backend comparison, Wazuh and Graylog integration notes |
 
-### Troubleshooting
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and fixes
-- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)** - Datasource and field issues
-- **[Log Rotation Fix](docs/LOG_ROTATION_FIX.md)** - Forwarder stuck on old files
-- **[Forwarder Monitoring](docs/FORWARDER_MONITORING_QUICK_REF.md)** - Health checks
+Quick jumps:
+
+- **[Quick Start Guide](QUICK_START.md)** - deployment walkthrough (preflight → install → setup → dashboards)
+- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)** - step-by-step validation
+- **[Suricata Optimization](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **ESSENTIAL** - rule selection, tuning, IDS vs IPS
+- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)** - common issues and fixes
 
 ---
 
@@ -349,14 +346,14 @@ This will verify:
 # NAS/trusted VLANs: Light monitoring
 ```
 
-See [Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md) for per-VLAN policy configuration.
+See [Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md) for per-VLAN policy configuration.
 
 **East-West Detection:**
 - Monitor RFC1918 → RFC1918 flows for lateral movement
 - Separate dashboard for internal traffic analysis
 - Detect anomalies like SMB brute force, RDP scanning, etc.
 
-See [LAN Monitoring Setup](docs/LAN_MONITORING.md) for configuration.
+See [LAN Monitoring Setup](docs/pfsense/LAN_MONITORING.md) for configuration.
 
 ### Watchdog & Automation
 
@@ -475,12 +472,14 @@ pfsense_siem_stack/
 │       ├── pfsense_pfblockerng_system.json        ★ pfSense system & pfBlockerNG dashboard
 │       ├── Suricata_IDS_IPS.json        ★ WAN-side Suricata security dashboard
 │       ├── Suricata_Per_Interface.json            ★ Per-interface LAN/VLAN monitoring
-│       └── archive/                               Historical dashboard versions
+│       └── wazuh/                                 Wazuh dashboards + deploy README
 │
 ├── 🔧 Scripts & Automation
 │   └── scripts/
 │       ├── forward-suricata-eve.py            ★ Multi-interface log forwarder (Python)
 │       ├── status.sh                          ★ Comprehensive health check
+│       ├── preflight.sh                       ★ Pre-install/deploy sanity checks
+│       ├── check-doc-links.py                 Docs link checker (CI)
 │       ├── check_custom_sids.sh               Suricata SID verification tool
 │       ├── restart-services.sh                Service management & recovery
 │       ├── configure-retention-policy.sh      Data lifecycle management
@@ -506,36 +505,43 @@ pfsense_siem_stack/
 │           ├── README.md                      SID management documentation
 │           └── APPLYING_CHANGES.md            Deployment guide
 │
-├── 📚 Documentation (🚧 Active Development)
+├── 📚 Documentation
 │   └── docs/
-│       ├── DOCUMENTATION_INDEX.md             ★ Master documentation index
-│       ├── architecture.png                   Visual architecture diagram
+│       ├── DOCUMENTATION_INDEX.md             ★ Documentation hub (start here)
+│       ├── ARCHIVE.md                         Superseded material → git history
 │       │
-│       ├── 🏗️ Installation Guides
+│       ├── install/                           🏗️ Installation guides
 │       │   ├── INSTALL_SIEM_STACK.md          OpenSearch/Logstash/Grafana setup
 │       │   ├── INSTALL_PFSENSE_FORWARDER.md   Forwarder deployment to pfSense
 │       │   ├── INSTALL_DASHBOARD.md           Grafana dashboard import
-│       │   └── NEW_USER_CHECKLIST.md          Step-by-step validation
+│       │   ├── GEOIP_SETUP.md                 MaxMind GeoIP database
+│       │   ├── NEW_USER_CHECKLIST.md          Step-by-step validation
+│       │   └── HARDWARE_REQUIREMENTS.md       Sizing guidance
 │       │
-│       ├── 🔒 Security & IDS/IPS
+│       ├── pfsense/                           🔒 pfSense-side tuning
 │       │   ├── SURICATA_OPTIMIZATION_GUIDE.md ★ Rule selection & tuning
+│       │   ├── SURICATA_CONFIGURATION.md      Config philosophy & SID tuning
 │       │   ├── PFBLOCKERNG_OPTIMIZATION.md    Blocklist configuration
 │       │   ├── LAN_MONITORING.md              Internal threat detection
-│       │   └── SURICATA_FORWARDER_MONITORING.md  Watchdog strategies
+│       │   └── ...                            Telegraf, traffic shaping, MAC vendor
 │       │
-│       ├── ⚙️ Configuration & Tuning
-│       │   ├── CONFIGURATION.md               All config.env settings
-│       │   ├── GEOIP_SETUP.md                 MaxMind GeoIP database
-│       │   ├── MULTI_INTERFACE_RETENTION.md   Index lifecycle policies
-│       │   └── OPENSEARCH_AUTO_CREATE.md      Midnight UTC fix
+│       ├── operations/                        ⚙️ Day-2 operations
+│       │   ├── MANAGEMENT_CONSOLE.md          pfsense-siem menu guide
+│       │   ├── SURICATA_FORWARDER_MONITORING.md  Watchdog strategies
+│       │   └── MULTI_INTERFACE_RETENTION.md   Index lifecycle policies
 │       │
-│       ├── 🐛 Troubleshooting & Fixes
+│       ├── troubleshooting/                   🐛 Symptom → fix guides
 │       │   ├── TROUBLESHOOTING.md             ★ Common issues & solutions
-│       │   ├── LOG_ROTATION_FIX.md            Inode-aware rotation handling
 │       │   ├── DASHBOARD_NO_DATA_FIX.md       Data flow validation
-│       │   └── TELEGRAF_INTERFACE_FIXES.md    Interface monitoring fixes
+│       │   ├── OPENSEARCH_AUTO_CREATE.md      Midnight UTC fix
+│       │   └── ...                            Log rotation, Telegraf, PF panel
 │       │
-│       └── archive/                           Historical documentation
+│       ├── reference/                         📖 Reference material
+│       │   ├── CONFIGURATION.md               All config file settings
+│       │   ├── SCRIPTS_REFERENCE.md           Every helper script explained
+│       │   └── architecture.png               Visual architecture diagram
+│       │
+│       └── siem/                              SIEM backend comparison & integrations
 │
 ├── 🔌 Plugins (Optional Telegraf Metrics)
 │   └── plugins/
@@ -554,7 +560,8 @@ pfsense_siem_stack/
 └── 🧪 Testing & Validation
     └── tests/
         ├── test-multi-interface.sh            Multi-WAN testing
-        └── test-panel-compatibility.sh        Dashboard validation
+        ├── test-panel-compatibility.sh        Dashboard validation
+        └── python/test_forwarder.py           Forwarder unit tests (pytest)
 ```
 
 **🌟 Essential Files to Get Started:**
@@ -769,7 +776,7 @@ This will identify most common problems automatically.
 **5. Data stops at midnight UTC**
 - **Cause**: OpenSearch auto-create disabled
 - **Fix**: Run `./setup.sh` (it configures this automatically)
-- **Details**: See `docs/OPENSEARCH_AUTO_CREATE.md`
+- **Details**: See `docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md`
 
 **6. Multiple forwarders running**
 - Stop all and restart cleanly: `ssh admin@<pfsense-ip> 'pkill -f forward-suricata; service suricata_forwarder start'`
@@ -782,8 +789,8 @@ This will identify most common problems automatically.
 
 ### Detailed Troubleshooting
 
-- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)**: 🔥 Complete guide for the most common issue - panels showing "No Data"
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Comprehensive troubleshooting for all components
+- **[Dashboard "No Data" Fix](docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md)**: 🔥 Complete guide for the most common issue - panels showing "No Data"
+- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)**: Comprehensive troubleshooting for all components
 
 ### Geomap Not Displaying
 
@@ -816,13 +823,13 @@ ssh admin@pfsense 'ls -la /var/log/suricata/*/eve.json'
 ssh admin@pfsense 'service suricata_forwarder restart'
 ```
 
-See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.
+See [TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md) for more solutions.
 
 ### pfBlocker Panels Show No Data
 
 pfBlockerNG data now flows through **OpenSearch** (not InfluxDB). Common causes:
 
-1. **Telegraf opensearch output not configured**: The pfSense Telegraf package needs `[[outputs.opensearch]]` configured to send pfBlockerNG data to OpenSearch. See [Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md).
+1. **Telegraf opensearch output not configured**: The pfSense Telegraf package needs `[[outputs.opensearch]]` configured to send pfBlockerNG data to OpenSearch. See [Telegraf pfBlocker Setup](docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md).
 
 2. **OpenSearch index template not applied**: Fields may be mapped as `text` instead of `keyword`, preventing aggregation. Re-apply the template:
    ```bash
@@ -856,7 +863,7 @@ php -r 'require_once("/usr/local/pkg/pfblockerng/pfblockerng.inc"); pfblockerng_
 ```
 
 **Prevention & Monitoring:**
-See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for:
+See [pfSense Filterlog Rotation Fix](docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md) for:
 - GUI configuration options
 - Automated monitoring setup
 - Preventive measures
@@ -865,25 +872,25 @@ See [pfSense Filterlog Rotation Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md) for
 ## 📖 Documentation
 
 ### Setup Guides
-- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: 🎯 Complete step-by-step checklist for first-time setup
+- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)**: 🎯 Complete step-by-step checklist for first-time setup
 - **[Quick Start Guide](QUICK_START.md)**: Fast setup for experienced users
-- **[SIEM Stack Installation](docs/INSTALL_SIEM_STACK.md)**: Detailed OpenSearch/Logstash/Grafana setup
-- **[Forwarder Installation](docs/INSTALL_PFSENSE_FORWARDER.md)**: pfSense forwarder deployment
-- **[Dashboard Import](docs/INSTALL_DASHBOARD.md)**: Dashboard configuration and customization
+- **[SIEM Stack Installation](docs/install/INSTALL_SIEM_STACK.md)**: Detailed OpenSearch/Logstash/Grafana setup
+- **[Forwarder Installation](docs/install/INSTALL_PFSENSE_FORWARDER.md)**: pfSense forwarder deployment
+- **[Dashboard Import](docs/install/INSTALL_DASHBOARD.md)**: Dashboard configuration and customization
 
 ### Configuration
-- **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: 🌟 Complete guide for new users - rule selection, performance tuning, IDS vs IPS
-- **[GeoIP Setup](docs/GEOIP_SETUP.md)**: MaxMind database installation
-- **[Configuration Guide](docs/CONFIGURATION.md)**: Advanced settings and tuning
-- **[Telegraf Interface Fixes](docs/TELEGRAF_INTERFACE_FIXES.md)**: Universal interface detection
-- **[Forwarder Monitoring](docs/SURICATA_FORWARDER_MONITORING.md)**: Automatic restart and monitoring strategies
-- **[Telegraf pfBlocker Setup](docs/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
+- **[Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: 🌟 Complete guide for new users - rule selection, performance tuning, IDS vs IPS
+- **[GeoIP Setup](docs/install/GEOIP_SETUP.md)**: MaxMind database installation
+- **[Configuration Guide](docs/reference/CONFIGURATION.md)**: Advanced settings and tuning
+- **[Telegraf Interface Fixes](docs/troubleshooting/TELEGRAF_INTERFACE_FIXES.md)**: Universal interface detection
+- **[Forwarder Monitoring](docs/operations/SURICATA_FORWARDER_MONITORING.md)**: Automatic restart and monitoring strategies
+- **[Telegraf pfBlocker Setup](docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
 
 ### Troubleshooting
-- **[Dashboard "No Data" Fix](docs/DASHBOARD_NO_DATA_FIX.md)**: 🔥 **START HERE** - Fix the most common issue (panels showing "No Data")
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and fixes for all components
-- **[pfSense Filterlog Fix](docs/PFSENSE_FILTERLOG_ROTATION_FIX.md)**: Fix for pfBlocker data loss
-- **[OpenSearch Auto-Create](docs/OPENSEARCH_AUTO_CREATE.md)**: Midnight UTC data stoppage fix
+- **[Dashboard "No Data" Fix](docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md)**: 🔥 **START HERE** - Fix the most common issue (panels showing "No Data")
+- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)**: Common issues and fixes for all components
+- **[pfSense Filterlog Fix](docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md)**: Fix for pfBlocker data loss
+- **[OpenSearch Auto-Create](docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md)**: Midnight UTC data stoppage fix
 
 ## 🔐 Security Considerations
 
