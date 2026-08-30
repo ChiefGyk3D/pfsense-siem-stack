@@ -51,7 +51,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "time() - node_boot_time_seconds{instance=~\"192.0.2.100.*\"}",
+          "expr": "time() - node_boot_time_seconds{instance=~\"SIEM_HOST_IP.*\"}",
           "legendFormat": "Uptime",
           "refId": "A"
         }
@@ -138,7 +138,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",instance=~\"192.0.2.100.*\"}[5m])) * 100)",
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",instance=~\"SIEM_HOST_IP.*\"}[5m])) * 100)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -187,7 +187,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"192.0.2.100.*\"} / node_memory_MemTotal_bytes{instance=~\"192.0.2.100.*\"})) * 100",
+          "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"SIEM_HOST_IP.*\"} / node_memory_MemTotal_bytes{instance=~\"SIEM_HOST_IP.*\"})) * 100",
           "legendFormat": "",
           "refId": "A"
         }
@@ -236,7 +236,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\",instance=~\"192.0.2.100.*\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\",instance=~\"192.0.2.100.*\"})) * 100",
+          "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\",instance=~\"SIEM_HOST_IP.*\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\",instance=~\"SIEM_HOST_IP.*\"})) * 100",
           "legendFormat": "",
           "refId": "A"
         }
@@ -282,7 +282,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "node_load1{instance=~\"192.0.2.100.*\"}",
+          "expr": "node_load1{instance=~\"SIEM_HOST_IP.*\"}",
           "legendFormat": "",
           "refId": "A"
         }

@@ -67,7 +67,7 @@ killall python3.11
 ls -lh /var/log/suricata/*/eve.json
 
 # Check recent events in OpenSearch
-curl -s "http://192.0.2.10:9200/suricata-*/_search?size=1&sort=@timestamp:desc"
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc"
 ```
 
 ### Remove Monitoring

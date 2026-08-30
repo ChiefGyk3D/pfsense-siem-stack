@@ -80,7 +80,7 @@ If SID 2029322 (Telegram) shows as commented out (#), it worked!
 #### Check OpenSearch:
 ```bash
 # Should return 0 alerts for disabled SIDs (last 1 hour)
-curl -s "http://192.0.2.10:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
 {
   "size": 0,
   "query": {

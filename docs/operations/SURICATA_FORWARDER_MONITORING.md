@@ -334,7 +334,7 @@ tail -f /var/log/cron
 **Method 3: Verify logs are flowing**
 ```bash
 # Check OpenSearch has recent events
-curl -s "http://192.0.2.10:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | \
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | \
   python3 -c "import sys,json; print('Last event:', json.load(sys.stdin)['hits']['hits'][0]['_source']['suricata']['eve']['timestamp'])"
 ```
 
@@ -454,7 +454,7 @@ grep "forward-suricata-eve.py" /var/log/cron | grep "$(date +%Y-%m-%d)" | wc -l
 ### Verify No Log Gaps
 ```bash
 # Check OpenSearch for continuous timestamps
-curl -s "http://192.0.2.10:9200/suricata-*/_search?size=100&sort=@timestamp:desc" | \
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=100&sort=@timestamp:desc" | \
   python3 -c "
 import sys, json
 data = json.load(sys.stdin)

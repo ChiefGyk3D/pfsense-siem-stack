@@ -651,7 +651,7 @@ lsof -p $(pgrep telegraf) | grep pfblockerng
 **4. Verify data in InfluxDB:**
 ```bash
 # From SIEM server
-influx -host 192.0.2.10 -database pfsense -execute "SELECT COUNT(*) FROM tail_ip_block_log WHERE time > now() - 1h"
+influx -host <SIEM_IP> -database pfsense -execute "SELECT COUNT(*) FROM tail_ip_block_log WHERE time > now() - 1h"
 
 # Should return count > 0
 ```

@@ -272,7 +272,7 @@ ssh root@192.168.1.1 "FILTERLOG_PID=\$(pgrep filterlog) && lsof -p \$FILTERLOG_P
 
 **From SIEM server:**
 ```bash
-curl -s "http://192.0.2.10:9200/pfblockerng-*/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_count" | jq '.count'
 ```
 
 **Expected:** Should show count > 0 if pfBlocker is blocking traffic  

@@ -105,7 +105,7 @@ OpenSearch now automatically deletes indices older than 90 days using Index Stat
 > **Note:** The same retention policy should be applied to both `suricata-*` and `pfblockerng-*` indices. If you only applied it to `suricata-*`, extend it:
 > ```bash
 > # Apply retention policy to pfBlockerNG indices
-> curl -s http://192.0.2.10:9200/_plugins/_ism/add/pfblockerng-* \
+> curl -s http://<SIEM_IP>:9200/_plugins/_ism/add/pfblockerng-* \
 >   -H 'Content-Type: application/json' \
 >   -d '{"policy_id": "delete-after-90d"}'
 > ```
@@ -114,12 +114,12 @@ OpenSearch now automatically deletes indices older than 90 days using Index Stat
 
 Check policy status:
 ```bash
-curl -s http://192.0.2.10:9200/_plugins/_ism/explain/suricata-* | python3 -m json.tool
+curl -s http://<SIEM_IP>:9200/_plugins/_ism/explain/suricata-* | python3 -m json.tool
 ```
 
 Check all policies:
 ```bash
-curl -s http://192.0.2.10:9200/_plugins/_ism/policies | python3 -m json.tool
+curl -s http://<SIEM_IP>:9200/_plugins/_ism/policies | python3 -m json.tool
 ```
 
 ### Change Retention Period
@@ -161,12 +161,12 @@ Based on current rates (~30k events/day = 10.5 MB/day):
 
 List all indices with sizes:
 ```bash
-curl -s http://192.0.2.10:9200/_cat/indices/suricata-*?v&s=index
+curl -s http://<SIEM_IP>:9200/_cat/indices/suricata-*?v&s=index
 ```
 
 Manually delete old index (emergency only):
 ```bash
-curl -X DELETE http://192.0.2.10:9200/suricata-2024.08.01
+curl -X DELETE http://<SIEM_IP>:9200/suricata-2024.08.01
 ```
 
 ---
@@ -195,7 +195,7 @@ ssh root@PFSENSE_IP 'tail -20 /var/log/system.log | grep suricata-forwarder'
 **Indices not being deleted:**
 ```bash
 # Check ISM explain for specific index
-curl -s http://192.0.2.10:9200/_plugins/_ism/explain/suricata-2024.08.01 | python3 -m json.tool
+curl -s http://<SIEM_IP>:9200/_plugins/_ism/explain/suricata-2024.08.01 | python3 -m json.tool
 ```
 
 **Policy not applied to new indices:**
@@ -207,7 +207,7 @@ curl -s http://192.0.2.10:9200/_plugins/_ism/explain/suricata-2024.08.01 | pytho
 **Want to keep old data before enabling retention:**
 ```bash
 # Export old indices before deletion
-curl -s http://192.0.2.10:9200/suricata-2024.08.01/_search?size=10000 > old-data.json
+curl -s http://<SIEM_IP>:9200/suricata-2024.08.01/_search?size=10000 > old-data.json
 ```
 
 ---
@@ -270,10 +270,10 @@ Policy applies to all indices matching `suricata-*` pattern automatically.
 ./scripts/configure-retention-policy.sh 90
 
 # Check retention policy status
-curl -s http://192.0.2.10:9200/_plugins/_ism/policies/delete-after-90d | python3 -m json.tool
+curl -s http://<SIEM_IP>:9200/_plugins/_ism/policies/delete-after-90d | python3 -m json.tool
 
 # View events by interface in OpenSearch
-curl -s http://192.0.2.10:9200/suricata-*/_search -H 'Content-Type: application/json' -d '{
+curl -s http://<SIEM_IP>:9200/suricata-*/_search -H 'Content-Type: application/json' -d '{
   "size": 0,
   "aggs": {
     "by_interface": {

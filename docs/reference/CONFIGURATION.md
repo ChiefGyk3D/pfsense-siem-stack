@@ -352,7 +352,7 @@ Multi-value: false
 
 **Configuration Variables:**
 ```python
-SIEM_HOST = "192.0.2.10"  # SIEM server IP
+SIEM_HOST = "<SIEM_IP>"  # SIEM server IP
 LOGSTASH_PORT = 5140                # Logstash UDP port
 ```
 

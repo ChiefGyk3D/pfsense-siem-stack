@@ -67,7 +67,7 @@ option 21 in the [`pfsense-siem` management console](../operations/MANAGEMENT_CO
 **Output example:**
 ```
 ========================================
-SIEM Server Status (192.0.2.10)
+SIEM Server Status (<SIEM_IP>)
 ========================================
 
 Checking OpenSearch... ✓ OpenSearch is running
@@ -423,7 +423,7 @@ nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/nu
 **Configuration:**
 Hardcoded in script (set during deployment):
 ```python
-SIEM_HOST = "192.0.2.10"  # Your SIEM server IP
+SIEM_HOST = "<SIEM_IP>"  # Your SIEM server IP
 LOGSTASH_PORT = 5140                # Logstash UDP port
 DEBUG_ENABLED = False              # Set True for debug logs
 ```

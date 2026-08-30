@@ -51,7 +51,7 @@ ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
 The forwarder will:
 - Auto-detect all Suricata EVE log files
 - Load GeoIP database from pfSense (Suricata/pfBlockerNG/ntopng)
-- Send enriched events to 192.0.2.10:5140 (default, configurable via environment variables)
+- Send enriched events to <SIEM_IP>:5140 (default, configurable via environment variables)
 
 ## Configuration
 
@@ -61,7 +61,7 @@ The forwarder reads configuration from environment variables with sensible defau
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SIEM_HOST` | `192.0.2.10` | SIEM/Logstash server IP |
+| `SIEM_HOST` | `<SIEM_IP>` | SIEM/Logstash server IP |
 | `LOGSTASH_UDP_PORT` | `5140` | UDP port for Logstash |
 | `DEBUG_ENABLED` | `False` | Enable debug logging |
 | `DEBUG_LOG` | `/var/log/suricata_forwarder_debug.log` | Debug log path |
@@ -96,7 +96,7 @@ The forwarder searches for GeoIP databases in this order:
 
 ## Manual Installation Steps
 
-Replace `192.0.2.10` with your actual SIEM server IP.
+Replace `<SIEM_IP>` with your actual SIEM server IP.
 If you prefer to install step-by-step instead of using the quick install above:
 
 ### 1. Copy Scripts to pfSense
@@ -130,7 +130,7 @@ grep suricata-forwarder /var/log/system.log | tail -5
 Expected output in syslog:
 ```
 Jan 24 12:32:15 firewall suricata-forwarder: Loaded GeoIP database from /usr/local/share/GeoIP/GeoLite2-Country.mmdb
-Jan 24 12:32:15 firewall suricata-forwarder: Starting forwarder for 13 interface(s) to 192.0.2.10:5140 (GeoIP: enabled)
+Jan 24 12:32:15 firewall suricata-forwarder: Starting forwarder for 13 interface(s) to <SIEM_IP>:5140 (GeoIP: enabled)
 ```
 
 ### 3. Install Watchdog Cron Job

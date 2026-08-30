@@ -147,7 +147,7 @@ By default, OpenSearch has `action.auto_create_index` set to `false`, which prev
 
 #### Enable auto-create:
 ```bash
-curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
+curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{
     "persistent": {
@@ -158,7 +158,7 @@ curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
 
 #### Verify the setting:
 ```bash
-curl -s "http://192.0.2.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
 ```
 
 Expected output:
@@ -180,7 +180,7 @@ Expected output:
 
 **Check Logstash errors:**
 ```bash
-ssh user@192.0.2.10 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
+ssh <user>@<SIEM_IP> 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
 ```
 
 **Fix:** Verify auto-create setting includes both `pfblockerng-*` and `suricata-*`.

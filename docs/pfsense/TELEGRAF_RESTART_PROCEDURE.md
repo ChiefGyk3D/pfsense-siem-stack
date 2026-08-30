@@ -200,7 +200,7 @@ ssh root@pfsense "ps aux | grep '[t]elegraf'"
 ### Verify Data Flow
 ```bash
 # From SIEM server
-influx -host 192.0.2.10 -database pfsense -execute "SELECT COUNT(*) FROM pf WHERE time > now() - 1m"
+influx -host <SIEM_IP> -database pfsense -execute "SELECT COUNT(*) FROM pf WHERE time > now() - 1m"
 ```
 
 ---

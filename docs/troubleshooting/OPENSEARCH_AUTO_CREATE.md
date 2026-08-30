@@ -28,7 +28,7 @@ index_not_found_exception: no such index [suricata-2025.11.26]
 Run the installer script during initial setup:
 
 ```bash
-OPENSEARCH_HOST=192.0.2.10 ./scripts/install-opensearch-config.sh
+OPENSEARCH_HOST=<SIEM_IP> ./scripts/install-opensearch-config.sh
 ```
 
 This script:
@@ -42,7 +42,7 @@ This script:
 
 #### 1. Enable Auto-Create
 ```bash
-curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
+curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{
     "persistent": {
@@ -54,7 +54,7 @@ curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
 #### 2. Create Today's Index
 ```bash
 TODAY=$(date -u +%Y.%m.%d)
-curl -XPUT "http://192.0.2.10:9200/suricata-${TODAY}" \
+curl -XPUT "http://<SIEM_IP>:9200/suricata-${TODAY}" \
   -H 'Content-Type: application/json' \
   -d '{
     "settings": {
@@ -66,7 +66,7 @@ curl -XPUT "http://192.0.2.10:9200/suricata-${TODAY}" \
 
 #### 3. Verify Setting
 ```bash
-curl -s "http://192.0.2.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
 ```
 
 Expected output:
@@ -85,14 +85,14 @@ Expected output:
 ### Check for the Problem
 ```bash
 # Check if auto-create is disabled
-curl -s "http://192.0.2.10:9200/_cluster/settings" | jq '.persistent.action.auto_create_index'
+curl -s "http://<SIEM_IP>:9200/_cluster/settings" | jq '.persistent.action.auto_create_index'
 
 # If it returns null or "false", you have the problem
 ```
 
 ### Check Logstash Errors
 ```bash
-ssh user@192.0.2.10 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
+ssh <user>@<SIEM_IP> 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
 ```
 
 If you see errors like:
@@ -105,19 +105,19 @@ The index doesn't exist and auto-create is disabled.
 ### Verify Fix is Working
 ```bash
 # 1. Check the setting is enabled
-curl -s "http://192.0.2.10:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
 
 # 2. Check indices exist
-curl -s "http://192.0.2.10:9200/_cat/indices/suricata-*?v&s=index"
+curl -s "http://<SIEM_IP>:9200/_cat/indices/suricata-*?v&s=index"
 
 # 3. Verify today's index exists
 TODAY=$(date -u +%Y.%m.%d)
-curl -s "http://192.0.2.10:9200/suricata-${TODAY}" | jq .
+curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}" | jq .
 
 # 4. Check event count is increasing
-curl -s "http://192.0.2.10:9200/suricata-*/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/suricata-*/_count" | jq '.count'
 sleep 10
-curl -s "http://192.0.2.10:9200/suricata-*/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/suricata-*/_count" | jq '.count'
 # Count should increase
 ```
 
@@ -139,7 +139,7 @@ This allows these indices to auto-create while keeping auto-create disabled for 
 ⚠️ **Not recommended for production** - less secure
 
 ```bash
-curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
+curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{
     "persistent": {
@@ -155,18 +155,18 @@ If you discover the problem after midnight and have lost events:
 ```bash
 # 1. Create today's index immediately
 TODAY=$(date -u +%Y.%m.%d)
-curl -XPUT "http://192.0.2.10:9200/suricata-${TODAY}" \
+curl -XPUT "http://<SIEM_IP>:9200/suricata-${TODAY}" \
   -H 'Content-Type: application/json' \
   -d '{"settings":{"number_of_shards":1,"number_of_replicas":0}}'
 
 # 2. Enable auto-create
-curl -XPUT "http://192.0.2.10:9200/_cluster/settings" \
+curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
   -d '{"persistent":{"action.auto_create_index":"pfblockerng-*,suricata-*,.monitoring-*"}}'
 
 # 3. Verify data is flowing
 sleep 10
-curl -s "http://192.0.2.10:9200/suricata-${TODAY}/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}/_count" | jq '.count'
 ```
 
 **Note**: Events written during the downtime are LOST. The forwarder uses tail -f behavior (starts at EOF), so it only forwards events written AFTER it starts. Historical events in the Suricata log files are not backfilled.
@@ -189,7 +189,7 @@ curl -s "http://192.0.2.10:9200/suricata-${TODAY}/_count" | jq '.count'
 **Cause**: Index created before template or template priority too low  
 **Fix**: Delete and recreate index, or apply template with higher priority:
 ```bash
-curl -XPUT "http://192.0.2.10:9200/_index_template/suricata-template" \
+curl -XPUT "http://<SIEM_IP>:9200/_index_template/suricata-template" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-index-template.json
 ```
@@ -198,7 +198,7 @@ curl -XPUT "http://192.0.2.10:9200/_index_template/suricata-template" \
 **Cause**: Template not applied, missing geo_point mapping  
 **Fix**: Verify template with:
 ```bash
-curl -s "http://192.0.2.10:9200/suricata-2025.11.26/_mapping" | \
+curl -s "http://<SIEM_IP>:9200/suricata-2025.11.26/_mapping" | \
   jq '.["suricata-2025.11.26"].mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location.type'
 ```
 

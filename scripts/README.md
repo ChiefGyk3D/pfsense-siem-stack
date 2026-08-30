@@ -94,7 +94,7 @@ ssh admin@<pfsense> "chmod +x /usr/local/bin/forward-suricata-eve.py"
 **Configuration:** Via environment variables (or edit header defaults)
 ```bash
 # Environment variables (or edit script defaults)
-SIEM_HOST="192.0.2.10"      # Your SIEM IP
+SIEM_HOST="192.168.1.100"      # Your SIEM IP
 LOGSTASH_UDP_PORT="5140"        # Logstash UDP port
 DEBUG_ENABLED="true"            # Enable debug logging
 ```

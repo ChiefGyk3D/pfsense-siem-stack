@@ -119,12 +119,12 @@ Wait 60 seconds for first collection, then check:
 
 ```bash
 # From your SIEM server (or any machine with influx CLI)
-influx -host 192.0.2.10 -database pfsense -execute "SHOW MEASUREMENTS" | grep arp
+influx -host <SIEM_IP> -database pfsense -execute "SHOW MEASUREMENTS" | grep arp
 
 # Should show: arp_table
 
 # Query recent data
-influx -host 192.0.2.10 -database pfsense -execute "SELECT * FROM arp_table WHERE time > now() - 5m LIMIT 10"
+influx -host <SIEM_IP> -database pfsense -execute "SELECT * FROM arp_table WHERE time > now() - 5m LIMIT 10"
 ```
 
 **Expected fields:**

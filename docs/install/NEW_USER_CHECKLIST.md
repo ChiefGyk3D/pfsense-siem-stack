@@ -86,7 +86,7 @@ nano config.env
 
 **Required changes:**
 ```bash
-SIEM_HOST=192.0.2.10        # Your SIEM server IP
+SIEM_HOST=<SIEM_IP>        # Your SIEM server IP
 PFSENSE_HOST=192.168.1.1        # Your pfSense IP
 ```
 

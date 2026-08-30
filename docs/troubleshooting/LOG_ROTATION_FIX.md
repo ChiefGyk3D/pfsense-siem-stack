@@ -98,7 +98,7 @@ python3.1 40727 root   6r  VREG ... /var/log/suricata/suricata_ix055721/eve.json
 
 ```bash
 # Check last 2 minutes for interface distribution
-curl -s -u admin:admin "http://192.0.2.10:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
+curl -s -u admin:admin "http://<SIEM_IP>:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
 {
   "size": 0,
   "query": {

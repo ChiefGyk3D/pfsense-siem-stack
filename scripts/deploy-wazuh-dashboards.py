@@ -10,7 +10,7 @@ Standalone Python script (no dependencies beyond stdlib) that:
 
 Usage:
     python3 deploy-wazuh-dashboards.py
-    python3 deploy-wazuh-dashboards.py --grafana http://192.0.2.100:3000 --user admin --pass secret
+    python3 deploy-wazuh-dashboards.py --grafana http://<SIEM_IP>:3000 --user admin --pass secret
 
 Environment variables (alternative to flags):
     GRAFANA_URL, GRAFANA_USER, GRAFANA_PASS, WAZUH_INDEXER_URL, WAZUH_INDEXER_USER, WAZUH_INDEXER_PASS

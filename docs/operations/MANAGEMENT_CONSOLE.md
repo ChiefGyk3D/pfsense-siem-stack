@@ -349,7 +349,7 @@ Monitored interfaces:
   • /var/log/suricata/suricata_lagg1.20049359/eve.json
 
 Recent activity:
-  Nov 27 10:15:23 forwarder: Sent 150 events to 192.0.2.10:5140
+  Nov 27 10:15:23 forwarder: Sent 150 events to <SIEM_IP>:5140
 ```
 
 #### 10. Restart Forwarder
@@ -399,7 +399,7 @@ If forwarder fails to start, check:
 **Log examples:**
 ```
 suricata-forwarder: Started monitoring 15 interfaces
-suricata-forwarder: Sent 150 events to 192.0.2.10:5140
+suricata-forwarder: Sent 150 events to <SIEM_IP>:5140
 suricata-forwarder: GeoIP: 203.0.113.1 -> US, New York
 suricata-forwarder-watchdog: Forwarder running (PID: 12345, CPU: 2.5%)
 ```
@@ -615,7 +615,7 @@ Run this before Options 1–2 (or before `install.sh`/`setup.sh` from the shell)
 **Required variables:**
 ```bash
 # SIEM Server
-SIEM_HOST=192.0.2.10           # Your SIEM server IP
+SIEM_HOST=<SIEM_IP>           # Your SIEM server IP
 
 # pfSense
 PFSENSE_HOST=192.168.1.1           # Your pfSense IP

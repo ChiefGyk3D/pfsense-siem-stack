@@ -297,7 +297,7 @@ tail -50 /var/log/telegraf/telegraf.log | grep pf
 **3. Check InfluxDB for data:**
 ```bash
 # From SIEM server
-influx -host 192.0.2.10 -database pfsense -execute "SELECT * FROM pf WHERE time > now() - 5m LIMIT 1"
+influx -host <SIEM_IP> -database pfsense -execute "SELECT * FROM pf WHERE time > now() - 5m LIMIT 1"
 # Should return data if Option 2 implemented, empty if Option 3
 ```
 

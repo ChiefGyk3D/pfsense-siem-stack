@@ -43,7 +43,7 @@ Add this to Telegraf's **Additional Configuration** section on pfSense:
   namepass = ["tail_ip_block_log", "tail_dnsbl_log"]
 ```
 
-Replace `<SIEM_IP>` with your SIEM server IP (e.g., `192.0.2.10`).
+Replace `<SIEM_IP>` with your SIEM server IP (e.g., `<SIEM_IP>`).
 
 **Key fields:**
 - `namepass`: Only sends pfBlockerNG measurements to OpenSearch (not system metrics)
