@@ -47,9 +47,6 @@ What started as a simple Grafana dashboard tweak evolved into a **comprehensive 
 
 ---
 
-![pfSense System Dashboard](media/Grafana-pfSense.png)
-*pfSense System and pfBlockerNG monitoring dashboard*
-
 ![WAN Dashboard](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
 *WAN-side Suricata IDS/IPS monitoring with attack sources, signatures, and geographic visualization*
 
@@ -552,7 +549,6 @@ pfsense_siem_stack/
 │
 ├── 🖼️ Media & Assets
 │   └── media/
-│       ├── Grafana-pfSense.png                    pfSense system dashboard screenshot
 │       ├── Suricata IDS_IPS WAN Dashboard.png     WAN dashboard screenshot
 │       ├── Suricata Per-Interface Dashboard.png   Per-interface dashboard screenshot
 │       └── streamelements.png                     StreamElements donation icon

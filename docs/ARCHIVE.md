@@ -10,20 +10,20 @@ into how the stack evolved.
 The last commit that contains all archived material is:
 
 ```
-6529c5bc6b1883c46d87b6ee2bbb4239bb4e2ce5
+b66e45ee5b0f13c36235c93be19ad653aa5abf73
 ```
 
 To browse or recover anything from the archives:
 
 ```bash
 # List everything that existed at that commit
-git ls-tree -r --name-only 6529c5bc6b1883c46d87b6ee2bbb4239bb4e2ce5
+git ls-tree -r --name-only b66e45ee5b0f13c36235c93be19ad653aa5abf73
 
 # View a single archived file
-git show 6529c5bc6b1883c46d87b6ee2bbb4239bb4e2ce5:docs/archive/GRAYLOG_SURICATA_SETUP.md
+git show b66e45ee5b0f13c36235c93be19ad653aa5abf73:docs/archive/GRAYLOG_SURICATA_SETUP.md
 
 # Check out the whole tree at that point in time
-git checkout 6529c5bc6b1883c46d87b6ee2bbb4239bb4e2ce5 -- docs/archive scripts/archive
+git checkout b66e45ee5b0f13c36235c93be19ad653aa5abf73 -- docs/archive scripts/archive
 ```
 
 ## What was removed
