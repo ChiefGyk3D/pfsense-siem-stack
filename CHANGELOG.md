@@ -17,18 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Datasource reference** (`dashboards/datasources_reference.json`) — All 8 Grafana datasource configurations with UIDs for reproducibility
 - **Wazuh dashboard deployment script** (`scripts/deploy-wazuh-dashboards.py`) — Standalone Python script that configures the OpenSearch-Wazuh datasource, creates folders, deploys all 3 Wazuh dashboards, and verifies data flow via API queries
 - **Wazuh dashboard README** (`dashboards/wazuh/README.md`) — Panel inventory, datasource configuration, import instructions, field reference
-
-### Fixed
-- **setup.sh: Missing pfBlockerNG index template application** — `setup.sh` Step 2 only applied the Suricata index template, not the pfBlockerNG template. Without the pfBlockerNG template, `tag.*` fields (e.g., `tag.src_ip`, `tag.tld`, `tag.feed_name`) are mapped as `text` instead of `keyword`, causing Grafana aggregation errors: "Text fields are not optimised for operations that require per-document field data like aggregations and sorting". Now applies both templates during setup.
-- **setup.sh: auto-create index missing pfblockerng-*** — The `action.auto_create_index` cluster setting didn't include `pfblockerng-*`, potentially preventing Telegraf from creating daily pfBlockerNG indices. Now includes `pfblockerng-*` in the auto-create whitelist.
-
-### Added
-- **[New User Checklist](docs/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
-- **[Suricata Optimization Guide](docs/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
+- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)**: Complete step-by-step installation and validation checklist
+- **[Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
 - **[Documentation Index](docs/DOCUMENTATION_INDEX.md)**: Organized guide to all documentation with quick search functionality
-- **[Forwarder Monitoring Guide](docs/SURICATA_FORWARDER_MONITORING.md)**: Three monitoring strategies with hybrid approach (crash recovery + activity monitoring)
-- **[Forwarder Monitoring Quick Reference](docs/FORWARDER_MONITORING_QUICK_REF.md)**: One-liner commands for common monitoring tasks
-- **[MAC Vendor Lookup Setup](docs/MAC_VENDOR_LOOKUP_SETUP.md)**: Custom Telegraf plugin for MAC vendor identification via ARP table
+- **[Forwarder Monitoring Guide](docs/operations/SURICATA_FORWARDER_MONITORING.md)**: Three monitoring strategies with hybrid approach (crash recovery + activity monitoring)
+- **[Forwarder Monitoring Quick Reference](docs/operations/FORWARDER_MONITORING_QUICK_REF.md)**: One-liner commands for common monitoring tasks
+- **[MAC Vendor Lookup Setup](docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md)**: Custom Telegraf plugin for MAC vendor identification via ARP table
 - **Automated forwarder monitoring setup script** (`scripts/setup_forwarder_monitoring.sh`)
 - **Interactive monitoring installer** with 6 preset configurations
 
@@ -38,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status script**: Now checks for watchdog/monitoring cron installation
 
 ### Fixed
+- **setup.sh: Missing pfBlockerNG index template application** — `setup.sh` Step 2 only applied the Suricata index template, not the pfBlockerNG template. Without the pfBlockerNG template, `tag.*` fields (e.g., `tag.src_ip`, `tag.tld`, `tag.feed_name`) are mapped as `text` instead of `keyword`, causing Grafana aggregation errors: "Text fields are not optimised for operations that require per-document field data like aggregations and sorting". Now applies both templates during setup.
+- **setup.sh: auto-create index missing pfblockerng-*** — The `action.auto_create_index` cluster setting didn't include `pfblockerng-*`, potentially preventing Telegraf from creating daily pfBlockerNG indices. Now includes `pfblockerng-*` in the auto-create whitelist.
 - **Documented Telegraf restart procedure**: Proper method using `/usr/local/etc/rc.d/telegraf.sh` on pfSense
 - **Forwarder restart after Suricata restart**: Documented need to restart forwarder when Suricata creates new log files
 - **Permission issues**: Clarified that Telegraf runs as root by design on pfSense
@@ -166,41 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Roadmap
 
-### Planned Features
-
-**v1.3.0 (Planned)**
-- [ ] LAN-side dashboard for internal traffic analysis
-- [ ] RFC1918 filtering for internal monitoring
-- [ ] Lateral movement detection
-- [ ] Internal host activity tracking
-- [ ] Alert severity customization
-- [ ] Email alerting integration
-
-**v1.4.0 (Planned)**
-- [ ] Machine learning anomaly detection
-- [ ] Threat intelligence feed integration
-- [ ] Custom rule management UI
-- [ ] Performance optimization wizard
-- [ ] HA/clustering support for SIEM stack
-- [ ] Backup/restore automation
-
-**v2.0.0 (Planned)**
-- [ ] pfSense plugin package
-- [ ] Web-based configuration UI
-- [ ] Multi-tenancy support
-- [ ] Role-based access control
-- [ ] API for programmatic access
-- [ ] Mobile-responsive dashboard
-
-### Community Requests
-
-Vote for features on GitHub Discussions! Top requested:
-- [ ] Telegram/Slack notification integration
-- [ ] pfBlocker and Suricata correlation dashboard
-- [ ] DNS query analysis (via Unbound logs)
-- [ ] SSL/TLS certificate monitoring
-- [ ] Automated report generation
-- [ ] Docker deployment option
+Future plans live in [ROADMAP.md](ROADMAP.md) — the version-numbered roadmap that used to live here was merged into it (2026-08-29) so the project has a single plan.
 
 ---
 
@@ -265,8 +227,7 @@ This project is licensed under the Mozilla Public License 2.0 - see [LICENSE](LI
 ## Support
 
 - **Documentation**: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
-- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
-- **Email**: (Add if you want direct contact)
+- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
 
 **Made with ❤️ for the pfSense community**

@@ -4,8 +4,21 @@
 
 set -e
 
-# Configuration
-OPENSEARCH_HOST="${OPENSEARCH_HOST:-192.0.2.10}"
+# Load config.env if present (consistent with other scripts)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$(dirname "$SCRIPT_DIR")/config.env"
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
+
+# Configuration (host must come from OPENSEARCH_HOST/SIEM_HOST env or config.env)
+OPENSEARCH_HOST="${OPENSEARCH_HOST:-${SIEM_HOST:-}}"
+if [ -z "$OPENSEARCH_HOST" ]; then
+    echo "ERROR: OpenSearch host not set."
+    echo "Set SIEM_HOST in config.env (cp config.env.example config.env) or export OPENSEARCH_HOST."
+    exit 1
+fi
 OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
 RETENTION_DAYS="${1:-90}"
 INDEX_PATTERN="${2:-suricata-*}"

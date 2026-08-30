@@ -57,10 +57,10 @@ Custom Grafana dashboards for Wazuh EDR/SIEM data stored in OpenSearch (Wazuh In
 
 ### Wazuh Agents
 
-These dashboards show data from Wazuh agents. The production deployment has 5 agents:
+These dashboards show data from Wazuh agents. An example deployment might look like:
 
-| Agent | OS | Hostname |
-|-------|-----|----------|
+| Agent | OS | Role |
+|-------|-----|------|
 | pi-node-01 | Linux ARM64 | Raspberry Pi |
 | siem-server | Ubuntu 24.04 | SIEM Server |
 | workstation-01 | Windows | Workstation |
@@ -84,6 +84,6 @@ curl -X POST http://localhost:3000/api/dashboards/db \
 
 ### Via automated script
 ```bash
-cd siem-server
-./scripts/deploy-grafana-dashboards.sh
+# From the repository root
+GRAFANA_PASS=... WAZUH_INDEXER_PASS=... ./scripts/deploy-wazuh-dashboards.py
 ```

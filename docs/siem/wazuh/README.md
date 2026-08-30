@@ -199,7 +199,7 @@ Help us prioritize this integration!
 
 **Estimated Effort**: 3-6 months for full integration
 
-See [ROADMAP.md](../../ROADMAP.md) for overall project priorities.
+See [ROADMAP.md](../../../ROADMAP.md) for overall project priorities.
 
 ---
 
@@ -219,7 +219,7 @@ This provides EDR benefits without migrating working pfSense integration.
 
 - **General Questions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
 - **Feature Requests**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
-- **Contribution**: [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- **Contribution**: [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 
 ---
 

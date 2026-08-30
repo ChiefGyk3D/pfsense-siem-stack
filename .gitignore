@@ -43,3 +43,6 @@ secrets/
 
 # Configuration (user-specific)
 config.env
+
+# Testing
+.pytest_cache/

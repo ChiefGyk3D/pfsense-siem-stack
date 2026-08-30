@@ -241,7 +241,7 @@ if crontab -l | grep -q "forward-suricata-eve.py"; then
     echo "2. Test by killing the forwarder: ${YELLOW}killall python3.11${NC}"
     echo "3. Check it restarts: ${YELLOW}ps aux | grep forward-suricata-eve.py${NC}"
     echo ""
-    echo "For more information, see: docs/SURICATA_FORWARDER_MONITORING.md"
+    echo "For more information, see: docs/operations/SURICATA_FORWARDER_MONITORING.md"
 else
     echo ""
     echo "${RED}✗ Installation failed${NC}"

@@ -10,7 +10,7 @@ Standalone Python script (no dependencies beyond stdlib) that:
 
 Usage:
     python3 deploy-wazuh-dashboards.py
-    python3 deploy-wazuh-dashboards.py --grafana http://192.0.2.100:3000 --user admin --pass secret
+    python3 deploy-wazuh-dashboards.py --grafana http://<SIEM_IP>:3000 --user admin --pass secret
 
 Environment variables (alternative to flags):
     GRAFANA_URL, GRAFANA_USER, GRAFANA_PASS, WAZUH_INDEXER_URL, WAZUH_INDEXER_USER, WAZUH_INDEXER_PASS
@@ -35,21 +35,27 @@ def get_config():
                         help="Grafana URL (default: http://localhost:3000)")
     parser.add_argument("--user", default=os.environ.get("GRAFANA_USER", "admin"),
                         help="Grafana admin username")
-    parser.add_argument("--pass", dest="password", default=os.environ.get("GRAFANA_PASS", "changeme"),
-                        help="Grafana admin password")
+    parser.add_argument("--pass", dest="password", default=os.environ.get("GRAFANA_PASS", ""),
+                        help="Grafana admin password (or set GRAFANA_PASS)")
     parser.add_argument("--wazuh-url", default=os.environ.get("WAZUH_INDEXER_URL", "https://wazuh-indexer:9200"),
                         help="Wazuh Indexer URL (default: https://wazuh-indexer:9200)")
     parser.add_argument("--wazuh-user", default=os.environ.get("WAZUH_INDEXER_USER", "admin"),
                         help="Wazuh Indexer username")
-    parser.add_argument("--wazuh-pass", default=os.environ.get("WAZUH_INDEXER_PASS", "SecretPassword"),
-                        help="Wazuh Indexer password")
-    parser.add_argument("--skip-verify", action="store_true", default=True,
-                        help="Skip TLS verification for Wazuh Indexer (default: true)")
+    parser.add_argument("--wazuh-pass", default=os.environ.get("WAZUH_INDEXER_PASS", ""),
+                        help="Wazuh Indexer password (or set WAZUH_INDEXER_PASS)")
+    parser.add_argument("--skip-verify", action="store_true", default=False,
+                        help="Skip TLS verification for Wazuh Indexer (default: false)")
     parser.add_argument("--verify-only", action="store_true",
                         help="Only verify queries, don't deploy")
     parser.add_argument("--dashboard-dir", default=None,
                         help="Directory containing dashboard JSON files (auto-detected)")
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if not args.password:
+        parser.error("Grafana password not set — pass --pass or set the GRAFANA_PASS environment variable")
+    if not args.verify_only and not args.wazuh_pass:
+        parser.error("Wazuh Indexer password not set — pass --wazuh-pass or set the WAZUH_INDEXER_PASS environment variable")
+    return args
 
 
 # ============================================================

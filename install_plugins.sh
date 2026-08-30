@@ -5,6 +5,8 @@
 # pfSense Telegraf Plugins Installer
 # This script helps install Telegraf plugins to pfSense via SSH
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -83,8 +85,9 @@ show_plugins() {
     echo "2) telegraf_temperature.sh      - Temperature sensors"
     echo "3) telegraf_unbound_lite.sh     - Unbound DNS (lite version)"
     echo "4) telegraf_unbound.sh          - Unbound DNS (full version)"
-    echo "5) All plugins                  - Install all available plugins"
-    echo "6) Custom selection             - Select multiple plugins"
+    echo "5) telegraf_arp_mac_vendor.php  - MAC vendor lookup (see docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md)"
+    echo "6) All plugins                  - Install all available plugins"
+    echo "7) Custom selection             - Select multiple plugins"
     echo "0) Exit"
     echo "================================================"
     echo ""
@@ -93,7 +96,7 @@ show_plugins() {
 # Function to install a single plugin
 install_plugin() {
     local plugin_file=$1
-    local plugin_path="plugins/${plugin_file}"
+    local plugin_path="${SCRIPT_DIR}/plugins/${plugin_file}"
     local remote_path="/usr/local/bin/${plugin_file}"
     
     if [ ! -f "${plugin_path}" ]; then
@@ -121,18 +124,19 @@ install_plugin() {
 
 # Function to install telegraf config
 install_config() {
-    local config_file="config/additional_config.conf"
+    local config_file="${SCRIPT_DIR}/config/additional_config.conf"
     local remote_path="/usr/local/etc/telegraf_additional.conf"
-    
+
+    # Optional file — not currently shipped with this repository
+    if [ ! -f "${config_file}" ]; then
+        print_info "No additional Telegraf configuration found (${config_file}) — skipping"
+        return 0
+    fi
+
     echo ""
     read -p "Do you want to install the additional Telegraf configuration? (y/n): " install_conf
-    
+
     if [[ $install_conf =~ ^[Yy]$ ]]; then
-        if [ ! -f "${config_file}" ]; then
-            print_error "Config file not found: ${config_file}"
-            return 1
-        fi
-        
         print_info "Installing additional Telegraf configuration..."
         
         if scp -P "${PFSENSE_PORT}" "${config_file}" "${PFSENSE_USER}@${PFSENSE_HOST}:${remote_path}"; then
@@ -164,13 +168,17 @@ process_selection() {
             install_plugin "telegraf_unbound.sh"
             ;;
         5)
+            install_plugin "telegraf_arp_mac_vendor.php"
+            ;;
+        6)
             print_info "Installing all plugins..."
             install_plugin "telegraf_pfifgw.php"
             install_plugin "telegraf_temperature.sh"
             install_plugin "telegraf_unbound_lite.sh"
             install_plugin "telegraf_unbound.sh"
+            install_plugin "telegraf_arp_mac_vendor.php"
             ;;
-        6)
+        7)
             echo ""
             echo "Enter plugin numbers separated by spaces (e.g., 1 2 4):"
             read -p "> " selections
@@ -218,7 +226,7 @@ main() {
     show_plugins
     
     # Get user selection
-    read -p "Select an option [0-6]: " selection
+    read -p "Select an option [0-7]: " selection
     
     # Process selection
     process_selection "$selection"

@@ -11,7 +11,7 @@ Handles log rotation automatically by detecting:
   - File disappearance and reappearance
 
 Configuration (via environment variables or baked-in defaults):
-  SIEM_HOST          - Logstash server IP (default: 192.0.2.10)
+  SIEM_HOST          - Logstash server IP (default: 192.168.1.100)
   LOGSTASH_UDP_PORT  - Logstash UDP port (default: 5140)
   DEBUG_ENABLED      - Enable debug logging (default: False)
   DEBUG_LOG          - Debug log path (default: /var/log/suricata_forwarder_debug.log)
@@ -29,7 +29,7 @@ import ipaddress
 # ── Configuration ─────────────────────────────────────────────────────────────
 # These defaults are replaced by setup.sh during deployment.
 # They can also be overridden via environment variables at runtime.
-SIEM_HOST = os.getenv("SIEM_HOST", "192.0.2.10")
+SIEM_HOST = os.getenv("SIEM_HOST", "192.168.1.100")
 LOGSTASH_PORT = int(os.getenv("LOGSTASH_UDP_PORT", "5140"))
 DEBUG_ENABLED = os.getenv("DEBUG_ENABLED", "False").lower() in ("true", "1", "yes")
 DEBUG_LOG = os.getenv("DEBUG_LOG", "/var/log/suricata_forwarder_debug.log")

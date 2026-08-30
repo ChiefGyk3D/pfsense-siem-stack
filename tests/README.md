@@ -2,6 +2,30 @@
 
 Validation and testing utilities for the pfSense Suricata Dashboard project.
 
+There are two kinds of tests:
+
+- **Unit tests** (`tests/python/`) — run anywhere, no infrastructure needed (CI runs these)
+- **Integration test scripts** (`tests/test-*.sh`) — require a live deployment
+
+## Unit Tests (pytest)
+
+### tests/python/test_forwarder.py
+
+Unit tests for the core logic of `scripts/forward-suricata-eve.py`:
+
+- Log-rotation handling (inode change and truncation) using temp files
+- GeoIP enrichment, including the no-database fallback (maxminddb is not required —
+  the GeoIP reader is stubbed, so no GeoIP database is needed)
+- UDP event forwarding format (mocked socket)
+
+**Usage** (from the repository root):
+```bash
+python3 -m pip install pytest   # one-time
+python3 -m pytest tests/python/ -v
+```
+
+These run in CI on every push via `.github/workflows/lint.yml`.
+
 ## Available Tests
 
 ### test-multi-interface.sh
@@ -77,7 +101,7 @@ Tests output:
 **Fix**: Check SSH access, verify pfSense IP
 
 **Issue**: Forwarder not running
-**Fix**: Deploy forwarder with `deploy-pfsense-forwarder.sh`
+**Fix**: Deploy forwarder with `./setup.sh` (from the repository root)
 
 ### test-panel-compatibility.sh fails
 **Issue**: No OpenSearch data

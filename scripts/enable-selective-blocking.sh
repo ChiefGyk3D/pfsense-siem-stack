@@ -5,7 +5,7 @@
 set -e
 
 PFSENSE_HOST="${PFSENSE_HOST:-192.168.1.1}"
-PFSENSE_USER="${PFSENSE_USER:-root}"
+PFSENSE_USER="${PFSENSE_USER:-admin}"
 
 # High-confidence categories safe to block
 HIGH_CONFIDENCE_RULES=(

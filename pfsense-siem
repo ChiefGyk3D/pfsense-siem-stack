@@ -61,7 +61,7 @@ print_menu() {
     echo -e "${MAGENTA}Advanced:${NC}"
     echo " 13) Verify Data Flow (End-to-end test)"
     echo " 14) Configure Custom SIDs (Suricata rules)"
-    echo " 15) Setup Telegram Alerts"
+    echo " 15) Search Suricata Alerts Mentioning Telegram (app)"
     echo " 16) Backup Configuration"
     echo " 17) Restore Configuration"
     echo ""
@@ -69,6 +69,9 @@ print_menu() {
     echo " 18) View Quick Start Guide"
     echo " 19) Open Troubleshooting Guide"
     echo " 20) Show Configuration"
+    echo ""
+    echo -e "${GREEN}Checks:${NC}"
+    echo " 21) Preflight Check (run before install/deploy)"
     echo ""
     echo "  0) Exit"
     echo ""
@@ -231,7 +234,7 @@ import_dashboards() {
     echo ""
     
     read -p "Press Enter to open documentation..."
-    less "${SCRIPT_DIR}/docs/INSTALL_DASHBOARD.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/INSTALL_DASHBOARD.md"
+    less "${SCRIPT_DIR}/docs/install/INSTALL_DASHBOARD.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/install/INSTALL_DASHBOARD.md"
 }
 
 # Management Functions
@@ -311,7 +314,7 @@ view_logs() {
             fi
             echo ""
             echo -e "${GREEN}Forwarder logs (Ctrl+C to exit):${NC}"
-            ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
+            ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
             ;;
         5)
             echo ""
@@ -367,7 +370,7 @@ check_forwarder() {
     echo ""
     
     # Check if forwarder is running
-    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
     
     if [ -n "$FORWARDER_PID" ]; then
         echo -e "${GREEN}✓ Forwarder is running${NC}"
@@ -376,14 +379,14 @@ check_forwarder() {
         
         # Show monitored interfaces
         echo "Monitored interfaces:"
-        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "lsof -p ${FORWARDER_PID} 2>/dev/null | grep eve.json | awk '{print \$9}'" | while read -r iface; do
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "lsof -p ${FORWARDER_PID} 2>/dev/null | grep eve.json | awk '{print \$9}'" | while read -r iface; do
             echo "  • $iface"
         done
         
         # Show recent log entries
         echo ""
         echo "Recent activity (last 10 entries):"
-        ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "tail -10 /var/log/system.log | grep suricata-forwarder"
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "tail -10 /var/log/system.log | grep suricata-forwarder"
     else
         echo -e "${RED}✗ Forwarder is NOT running${NC}"
         echo ""
@@ -404,17 +407,22 @@ restart_forwarder() {
     fi
     
     echo "Restarting forwarder on ${PFSENSE_HOST}..."
-    
-    # Stop existing forwarder
-    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
-    sleep 2
-    
-    # Start forwarder
-    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+
+    # Prefer the rc.d service installed by setup.sh; fall back to pkill + nohup
+    if ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder' 2>/dev/null; then
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'service suricata_forwarder restart' || true
+    else
+        # Stop existing forwarder
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
+        sleep 2
+
+        # Start forwarder (detect Python interpreter)
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'PY=$(command -v python3.11 || command -v python3); nohup "$PY" /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+    fi
     sleep 3
     
     # Check status
-    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'")
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'")
     
     if [ -n "$FORWARDER_PID" ]; then
         echo -e "${GREEN}✓ Forwarder restarted successfully${NC}"
@@ -423,7 +431,7 @@ restart_forwarder() {
         echo -e "${RED}✗ Failed to start forwarder${NC}"
         echo ""
         echo "Check logs:"
-        echo "  ssh ${PFSENSE_USER:-root}@${PFSENSE_HOST} 'tail -20 /var/log/system.log | grep suricata'"
+        echo "  ssh ${PFSENSE_USER:-admin}@${PFSENSE_HOST} 'tail -20 /var/log/system.log | grep suricata'"
     fi
     
     echo ""
@@ -444,7 +452,7 @@ view_forwarder_logs() {
     echo -e "${GREEN}(Ctrl+C to exit)${NC}"
     echo ""
     
-    ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
+    ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'tail -f /var/log/system.log | grep suricata'
 }
 
 test_pfsense_connectivity() {
@@ -469,7 +477,7 @@ test_pfsense_connectivity() {
     
     # SSH test
     echo -n "  SSH test... "
-    if ssh -o ConnectTimeout=5 -o BatchMode=yes "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "echo test" > /dev/null 2>&1; then
+    if ssh -o ConnectTimeout=5 -o BatchMode=yes "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "echo test" > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed (may need password)${NC}"
@@ -477,7 +485,7 @@ test_pfsense_connectivity() {
     
     # Suricata check
     echo -n "  Suricata installed... "
-    SURICATA_CHECK=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "pkg info | grep -c suricata" 2>/dev/null || echo "0")
+    SURICATA_CHECK=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "pkg info | grep -c suricata" 2>/dev/null || echo "0")
     if [ "$SURICATA_CHECK" -gt 0 ]; then
         echo -e "${GREEN}✓${NC}"
     else
@@ -486,7 +494,7 @@ test_pfsense_connectivity() {
     
     # Python check
     echo -n "  Python 3.11 available... "
-    PYTHON_CHECK=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "which python3.11" 2>/dev/null)
+    PYTHON_CHECK=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "which python3.11" 2>/dev/null)
     if [ -n "$PYTHON_CHECK" ]; then
         echo -e "${GREEN}✓${NC}"
     else
@@ -545,7 +553,7 @@ verify_data_flow() {
     
     # Check forwarder
     echo -n "4. Forwarder status... "
-    FORWARDER_PID=$(ssh "${PFSENSE_USER:-root}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
+    FORWARDER_PID=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "ps aux | grep '[f]orward-suricata-eve' | awk '{print \$2}'" 2>/dev/null)
     if [ -n "$FORWARDER_PID" ]; then
         echo -e "${GREEN}✓ Running (PID: $FORWARDER_PID)${NC}"
     else
@@ -577,9 +585,12 @@ configure_custom_sids() {
 
 setup_telegram_alerts() {
     print_banner
-    echo -e "${CYAN}═══ Setup Telegram Alerts ═══${NC}"
+    echo -e "${CYAN}═══ Search Suricata Alerts Mentioning Telegram (app) ═══${NC}"
     echo ""
-    
+    echo "Note: this only greps recent Suricata alerts for signatures mentioning"
+    echo "the Telegram messaging app. It does NOT configure Telegram notifications."
+    echo ""
+
     bash "${SCRIPT_DIR}/scripts/check-telegram-alerts.sh"
     
     echo ""
@@ -678,6 +689,18 @@ restore_configuration() {
     read -p "Press Enter to continue..."
 }
 
+# Preflight
+run_preflight() {
+    print_banner
+    echo -e "${CYAN}═══ Preflight Check ═══${NC}"
+    echo ""
+
+    bash "${SCRIPT_DIR}/scripts/preflight.sh" || true
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
 # Documentation Functions
 view_quick_start() {
     print_banner
@@ -686,7 +709,7 @@ view_quick_start() {
 
 view_troubleshooting() {
     print_banner
-    less "${SCRIPT_DIR}/docs/TROUBLESHOOTING.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/TROUBLESHOOTING.md"
+    less "${SCRIPT_DIR}/docs/troubleshooting/TROUBLESHOOTING.md" 2>/dev/null || cat "${SCRIPT_DIR}/docs/troubleshooting/TROUBLESHOOTING.md"
 }
 
 show_configuration() {
@@ -705,7 +728,7 @@ show_configuration() {
         echo ""
         echo "pfSense:"
         echo "  Host:           ${PFSENSE_HOST}"
-        echo "  User:           ${PFSENSE_USER:-root}"
+        echo "  User:           ${PFSENSE_USER:-admin}"
         echo ""
         echo "Settings:"
         echo "  Index Prefix:   ${INDEX_PREFIX:-suricata}"
@@ -729,7 +752,7 @@ main() {
         print_banner
         print_menu
         
-        read -p "Enter choice [0-20]: " CHOICE
+        read -p "Enter choice [0-21]: " CHOICE
         
         case $CHOICE in
             1) install_siem_stack ;;
@@ -752,7 +775,8 @@ main() {
             18) view_quick_start ;;
             19) view_troubleshooting ;;
             20) show_configuration ;;
-            0) 
+            21) run_preflight ;;
+            0)
                 print_banner
                 echo -e "${GREEN}Thank you for using pfSense SIEM Stack!${NC}"
                 echo ""

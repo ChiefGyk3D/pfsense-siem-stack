@@ -23,7 +23,7 @@ else
     OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
     LOGSTASH_UDP_PORT="${LOGSTASH_UDP_PORT:-5140}"
     INDEX_PREFIX="${INDEX_PREFIX:-suricata}"
-    PFSENSE_USER="${PFSENSE_USER:-root}"
+    PFSENSE_USER="${PFSENSE_USER:-admin}"
 fi
 
 ERRORS=0
@@ -169,7 +169,7 @@ if [ "$PFBLOCK_COUNT" -gt 0 ]; then
 else
     print_status 0 "No pfBlockerNG data in OpenSearch (normal if Telegraf opensearch output not configured)"
     echo "  Configure Telegraf with [[outputs.opensearch]] for pfBlockerNG data"
-    echo "  See docs/TELEGRAF_PFBLOCKER_SETUP.md"
+    echo "  See docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md"
 fi
 
 # Also check InfluxDB for pfBlocker data (legacy/system metrics)
@@ -316,6 +316,6 @@ else
     echo "  • Forwarder not running: Check SSH connectivity and watchdog"
     echo "  • Multiple forwarders: Kill extras: pkill -f forward-suricata-eve"
     echo ""
-    echo "For detailed troubleshooting, see: docs/TROUBLESHOOTING.md"
+    echo "For detailed troubleshooting, see: docs/troubleshooting/TROUBLESHOOTING.md"
     exit 1
 fi
