@@ -173,7 +173,7 @@ telemetry patterns, and everyone who tested and reported.
 
 Mozilla Public License 2.0 — see [LICENSE](LICENSE).
 
-## Support
+## Questions & Issues
 
 - **Issues**: https://github.com/ChiefGyk3D/pfsense-siem-stack/issues
 - **Discussions**: https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions
