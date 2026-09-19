@@ -2,6 +2,11 @@
 
 Manual, step-by-step installation of OpenSearch, Logstash, and Grafana on Ubuntu 24.04 LTS.
 
+> **This is the bare-metal, single-box path.** The recommended server side for this project is
+> [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) (Docker, hot/warm tiers,
+> ISM, Wazuh); `setup.sh` works against it or any existing OpenSearch + Grafana with no server
+> install at all. Use `install.sh` / this page when you want everything on one Ubuntu host.
+
 > **Most users should run `sudo ./install.sh` instead.** It performs every step on this
 > page (same versions, same paths, same settings) with interactive prompts. This guide is
 > the manual alternative — use it when you want to understand what the installer does, need

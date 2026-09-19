@@ -1,0 +1,76 @@
+name: Release
+
+# Cut a GitHub Release whenever a version tag is pushed:
+#   scripts/release.sh 2.0.0 --push      (or: git tag -a v2.0.0 -m "v2.0.0" && git push --tags)
+# Builds a source tarball + SHA256SUMS and uses the matching CHANGELOG section as notes.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive version
+        id: v
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if [ "$(cat VERSION | tr -d '[:space:]')" != "$VERSION" ]; then
+            echo "VERSION file ($(cat VERSION)) does not match tag ($VERSION)"; exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Run the lint checks first
+        run: |
+          set -e
+          while IFS= read -r -d '' f; do bash -n "$f"; done < <(git ls-files -z '*.sh')
+          bash -n pfsense-siem
+          while IFS= read -r -d '' f; do python3 -m json.tool "$f" > /dev/null; done < <(git ls-files -z 'dashboards/*.json' 'dashboards/**/*.json' 'config/*.json')
+          while IFS= read -r -d '' f; do python3 -m py_compile "$f"; done < <(git ls-files -z '*.py')
+          python3 scripts/check-doc-links.py
+
+      - name: Build tarball and checksums
+        run: |
+          set -e
+          NAME="pfsense-siem-stack-${{ steps.v.outputs.version }}"
+          git archive --format=tar.gz --prefix="${NAME}/" -o "${NAME}.tar.gz" "${{ steps.v.outputs.tag }}"
+          sha256sum "${NAME}.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Extract changelog section
+        run: |
+          set -e
+          python3 - "${{ steps.v.outputs.version }}" > RELEASE_NOTES.md <<'PY'
+          import re, sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## \[" + re.escape(version) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          body = m.group(1).strip() if m else f"See CHANGELOG.md for {version}."
+          print(body)
+          print()
+          print("Install: download the tarball, verify it against SHA256SUMS, unpack, run `./pfsense-siem`. "
+                "Upgrading an existing deployment: `git pull` (or unpack over the old tree) and re-run `./setup.sh`.")
+          PY
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: ${{ steps.v.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            pfsense-siem-stack-${{ steps.v.outputs.version }}.tar.gz
+            SHA256SUMS

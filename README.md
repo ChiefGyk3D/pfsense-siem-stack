@@ -14,7 +14,7 @@ This repository is two things, and you can use either without the other:
 | | What you get | Start here |
 |-|--------------|------------|
 | **pfSense knowledge base** | How to run Suricata, pfBlockerNG and Telegraf well on pfSense: rule selection and SID tuning, blocklist strategy, east-west VLAN monitoring, traffic shaping, Telegraf plugins, the filterlog rotation bug, and **what breaks when you upgrade pfSense** | [docs/pfsense/](docs/DOCUMENTATION_INDEX.md#-pfsense-knowledge-base-no-siem-required) |
-| **SIEM stack** | Automated deployment of a Suricata → OpenSearch → Grafana pipeline (`install.sh`, `setup.sh`, `pfsense-siem` console), a rotation-aware GeoIP-enriching forwarder with watchdog, index templates, retention, and eight Grafana dashboards including three for Wazuh | [Quick Start](QUICK_START.md) |
+| **SIEM stack** | `setup.sh` wires pfSense into **any** OpenSearch + Grafana you already run (recommended: [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack)): a rotation-aware GeoIP-enriching forwarder with watchdog, index templates, retention, and eight Grafana dashboards including three for Wazuh. `install.sh` builds a bare-metal server if you have none. | [Quick Start](QUICK_START.md) |
 
 ![WAN Dashboard](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
 *Suricata IDS/IPS dashboard — WAN attack sources, signatures and geography*
@@ -31,7 +31,8 @@ This repository is two things, and you can use either without the other:
 | Suricata multi-interface forwarding (`scripts/forward-suricata-eve.py`) | ✅ Production — tested with 15 instances (2 WAN inline IPS + 13 VLAN IDS) on pfSense 2.8.1 |
 | OpenSearch / Logstash pipeline, index templates, ISM retention | ✅ Production — **flat** root-level EVE fields ([Field Reference](docs/reference/FIELD_REFERENCE.md)) |
 | Grafana dashboards: Suricata WAN, Suricata per-interface, pfSense system + pfBlockerNG, Windows exporter, Prometheus, Docker, 3× Wazuh | ✅ Shipped ([inventory](dashboards/README.md)) |
-| `install.sh` bare-metal SIEM server (Ubuntu 24.04) | ✅ Works; **OpenSearch is unauthenticated by default** — see Security below |
+| `install.sh` bare-metal SIEM server (Ubuntu 24.04) | ✅ Works, now the **manual/single-box path**; **OpenSearch is unauthenticated by default** — see Security below. New server-side capability lands in siem-docker-stack first. |
+| Releases | ✅ Tagged from `main` as `vX.Y.Z` (this overhaul is **2.0.0**); each tag publishes a tarball + `SHA256SUMS` on the [Releases page](https://github.com/ChiefGyk3D/pfsense-siem-stack/releases) |
 | pfSense CE 2.9.0 | ⚠️ Supported with caveats — the Telegraf package is broken on 2.9.0 at release and the forwarder must be redeployed; read the [Upgrade Guide](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) first |
 | Wazuh backend | ✅ Dashboards + deploy script ship here; the Wazuh server itself is provided by [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) |
 | Graylog backend | ⏸️ Explored and shelved ([why](docs/siem/graylog/README.md)) |
@@ -72,7 +73,7 @@ git clone https://github.com/ChiefGyk3D/pfsense-siem-stack.git && cd pfsense-sie
 cp config.env.example config.env && nano config.env   # SIEM_HOST, PFSENSE_HOST, PFSENSE_USER
 ssh-copy-id admin@<PFSENSE_IP>
 ./scripts/preflight.sh          # validates SSH, Python on pfSense, OpenSearch reachability
-sudo ./install.sh               # on the SIEM server: OpenSearch, Logstash, Grafana (skip if you have them)
+sudo ./install.sh               # ONLY if you have no OpenSearch/Grafana yet (bare-metal, single box)
 ./setup.sh                      # templates, Logstash pipeline, forwarder + rc.d + watchdog, dashboards, verification
 ./scripts/status.sh             # green ticks = data flowing
 ```
