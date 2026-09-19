@@ -1,409 +1,195 @@
-# pfSense Filterlog Rotation Issue - Fix and Prevention
+# pfSense Filterlog Stops After Log Rotation
 
-## Problem Summary
+This is a pfSense issue, not a SIEM-stack one, but it takes out two of the data sources
+this stack relies on. It is worth fixing on every pfSense box that feeds Grafana, whether
+or not you use pfBlockerNG.
 
-When pfSense's `filter.log` is rotated by `newsyslog` (at 500KB by default), the `filterlog` daemon does not properly reopen the log file. This causes:
-- **All firewall logging stops** (filter.log receives no new entries)
-- **pfBlockerNG IP blocking logs stop** (ip_block.log dependent on filter.log)
-- **Grafana pfBlocker dashboard panels show no data**
-- Issue persists until filterlog daemon is restarted
+## Symptom
 
-**Symptoms:**
-- filter.log shows only newsyslog rotation message and nothing else
-- pfBlocker panels in Grafana show "No data"
-- `lsof -p <filterlog_pid>` shows no file descriptor for filter.log
-- pfBlocker rules still blocking, but events not logged
+- `/var/log/filter.log` stops growing. Often the only line in it is newsyslog's
+  `logfile turned over` message.
+- pfBlockerNG's `/var/log/pfblockerng/ip_block.log` also stops, because pfBlockerNG
+  derives its block log from filter.log.
+- Grafana: pfBlockerNG panels and the firewall-log panels in
+  `pfsense_pfblockerng_system.json` go to "No data" while everything else keeps working.
+- Rules are still enforced; only the *logging* has stopped.
+- `./scripts/status.sh` reports `Filter.log freshness... Stale` and/or
+  `Filterlog file handle... No file handle`.
 
----
+Quick check from the SIEM server:
 
-## Immediate Fix (When It Happens)
-
-### Option 1: Via SSH (Fastest)
 ```bash
-# SSH to pfSense
-ssh root@<pfsense-ip>
+ssh admin@<PFSENSE_IP> 'wc -l /var/log/filter.log; ls -l /var/log/filter.log; date'
+# 1 line, or an mtime well in the past while traffic is flowing -> you have this problem
 
-# Restart filterlog and pfBlockerNG logging
+ssh admin@<PFSENSE_IP> 'lsof -p $(pgrep filterlog) | grep filter.log'
+# No output -> filterlog has no open handle on the live file
+```
+
+## Cause
+
+pfSense's `filterlog` daemon receives pf log records and writes them to
+`/var/log/filter.log` via syslogd. When `newsyslog` rotates the file (default trigger:
+500 KB), the daemon does not reliably reopen the new file and keeps writing into the
+rotated-away handle, or into nothing. The condition persists until filterlog/syslogd is
+restarted.
+
+Observed on pfSense CE 2.7.x through 2.8.1 (tracked upstream as
+[pfSense bug #8555](https://redmine.pfsense.org/issues/8555)). Re-check after upgrading to
+2.9.0; if the cron job below never fires on the new release, you can remove it.
+
+How often it bites depends on how quickly filter.log reaches the rotation size. A busy
+firewall with logging on the default-deny rule can rotate every couple of hours.
+
+## Immediate fix
+
+Any of these gets logging back within seconds. Use the first one.
+
+**SSH (fastest):**
+
+```bash
+ssh admin@<PFSENSE_IP>
 php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();'
+# pfBlockerNG installed? also re-sync its logging:
 php -r 'require_once("/usr/local/pkg/pfblockerng/pfblockerng.inc"); pfblockerng_sync_on_changes();'
 
-# Verify it's working
-tail -f /var/log/filter.log
-tail -f /var/log/pfblockerng/ip_block.log
+tail -f /var/log/filter.log      # live entries should appear
 ```
 
-### Option 2: Via pfSense Web GUI
-1. Go to **Diagnostics → Command Prompt**
-2. **Execute Shell Command:**
-   ```php
-   php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();'
-   ```
-3. Click **Execute**
-4. Then run second command:
-   ```php
-   php -r 'require_once("/usr/local/pkg/pfblockerng/pfblockerng.inc"); pfblockerng_sync_on_changes();'
-   ```
-5. Click **Execute**
+**Web GUI:** Diagnostics > Command Prompt > *Execute Shell Command*, paste the same
+`php -r ...` line(s), Execute.
 
-### Option 3: Reboot pfSense
-- Go to **Diagnostics → Reboot**
-- Click **Submit**
-- All services restart cleanly, filterlog reopens log files
+**Reboot:** Diagnostics > Reboot. Works, but is the slowest option.
 
----
+### Reduce how often it happens (optional, GUI)
 
-## GUI Configuration Options
+Status > System Logs > Settings:
 
-### 1. Increase Log Rotation Size (Reduce Rotation Frequency)
+- **Log Rotation Size (KB):** raise from `500` to `2000` or `5000`. Fewer rotations means
+  fewer chances to hit the bug. This applies to every log pfSense rotates, not only
+  filter.log.
+- **Log Rotation Count:** how many rotated copies to keep; does not affect the bug, only
+  disk use.
 
-**Location:** Status → System Logs → Settings
+This is mitigation, not a fix. Install the cron job below regardless.
 
-**Current Setting:** 500KB (default)
-**Recommendation:** Increase to 2000KB or 5000KB
+## Permanent fix: pfSense Cron package job
 
-**Steps:**
-1. Navigate to **Status → System Logs → Settings**
-2. Find **Log Rotation Size (KB)** field
-3. Change from `500` to `2000` (or higher)
-4. Click **Save**
+Run a small check every 10 minutes *on pfSense* that restarts filterlog only when
+filter.log has gone stale. Doing it through the pfSense **Cron** package (rather than
+`crontab -e`) matters: Cron-package jobs are stored in `config.xml`, so they are included
+in pfSense backups and survive upgrades, reinstalls and config restores. A hand-edited
+`/etc/crontab` is regenerated by pfSense and your line disappears.
 
-**Effect:**
-- Logs rotate less frequently
-- Reduces chance of hitting rotation bug
-- Does NOT fix the underlying issue, just reduces frequency
+### 1. Install the Cron package (once)
 
-**Note:** This setting affects ALL logs (system.log, filter.log, vpn.log, etc.)
+System > Package Manager > Available Packages > search `cron` > Install.
 
-### 2. Adjust Log Rotation Count
+### 2. Add the job
 
-**Location:** Status → System Logs → Settings
+Services > Cron > Add:
 
-**Current Setting:** 7 archives (1 week of logs)
-**Options:** Any number 1-99
+| Field | Value |
+|-------|-------|
+| Minute | `*/10` |
+| Hour | `*` |
+| Day of Month | `*` |
+| Month | `*` |
+| Day of Week | `*` |
+| User | `root` |
+| Command | see below |
+| Description | `Restart filterlog if filter.log is stale` |
 
-**Steps:**
-1. Navigate to **Status → System Logs → Settings**
-2. Find **Log Rotation Count** field
-3. Set desired number of archives to keep
-4. Click **Save**
-
-**Effect:**
-- Controls how many old log files are kept
-- Does not affect rotation frequency
-- Higher = more disk space used, more history
-
----
-
-## Permanent Fix Options
-
-### Option 1: Automated Monitoring Script (RECOMMENDED)
-
-Create a script on your SIEM/monitoring server that:
-1. Checks filter.log modification time every 5 minutes
-2. If filter.log hasn't been updated in 10 minutes, alert and auto-restart
-3. Integrates with your existing monitoring
-
-**Create monitoring script:**
+Command (single line):
 
 ```bash
-#!/bin/bash
-# File: /usr/local/bin/check-pfsense-filterlog.sh
-
-PFSENSE_HOST="${PFSENSE_HOST:-192.168.1.1}"
-PFSENSE_USER="${PFSENSE_USER:-admin}"
-MAX_AGE_SECONDS=600  # 10 minutes
-
-# Get last modification time of filter.log
-LAST_MOD=$(ssh ${PFSENSE_USER}@${PFSENSE_HOST} "stat -f %m /var/log/filter.log" 2>/dev/null)
-
-if [ -z "$LAST_MOD" ]; then
-    echo "ERROR: Could not check filter.log on pfSense"
-    exit 1
-fi
-
-NOW=$(date +%s)
-AGE=$((NOW - LAST_MOD))
-
-if [ $AGE -gt $MAX_AGE_SECONDS ]; then
-    echo "WARNING: filter.log is $AGE seconds old (threshold: $MAX_AGE_SECONDS)"
-    echo "Restarting filterlog daemon..."
-    
-    ssh ${PFSENSE_USER}@${PFSENSE_HOST} "php -r 'require_once(\"/etc/inc/filter.inc\"); filter_configure(); system_syslogd_start();'"
-    ssh ${PFSENSE_USER}@${PFSENSE_HOST} "php -r 'require_once(\"/usr/local/pkg/pfblockerng/pfblockerng.inc\"); pfblockerng_sync_on_changes();'"
-    
-    echo "Filterlog restarted successfully"
-    exit 2
-else
-    echo "OK: filter.log is current ($AGE seconds old)"
-    exit 0
-fi
+/usr/bin/find /var/log/filter.log -mmin +10 -exec sh -c 'php -r "require_once(\"/etc/inc/filter.inc\"); filter_configure(); system_syslogd_start();" && php -r "require_once(\"/usr/local/pkg/pfblockerng/pfblockerng.inc\"); pfblockerng_sync_on_changes();"' \; 2>&1 | logger -t filterlog-monitor
 ```
 
-**Make executable:**
-```bash
-chmod +x /usr/local/bin/check-pfsense-filterlog.sh
-```
-
-**Add to crontab:**
-```bash
-# Check every 5 minutes
-*/5 * * * * /usr/local/bin/check-pfsense-filterlog.sh >> /var/log/pfsense-filterlog-check.log 2>&1
-```
-
-**Integrate with status.sh:**
-
-Add this to `scripts/status.sh` in the pfSense checks section:
+Without pfBlockerNG, drop the second `php -r` (everything from `&&` to the closing `"`):
 
 ```bash
-# Check filter.log freshness
-echo -n "Checking filter.log age... "
-FILTER_LOG_MOD=$(ssh -o BatchMode=yes ${PFSENSE_USER}@${PFSENSE_HOST} "stat -f %m /var/log/filter.log" 2>/dev/null)
-if [ -n "$FILTER_LOG_MOD" ]; then
-    NOW=$(date +%s)
-    AGE=$((NOW - FILTER_LOG_MOD))
-    if [ $AGE -gt 600 ]; then
-        echo -e "${RED}✗${NC} filter.log is ${AGE}s old (stale)"
-        ((ERRORS++))
-    else
-        echo -e "${GREEN}✓${NC} ${AGE}s old"
-    fi
-else
-    echo -e "${RED}✗${NC} Could not check"
-    ((ERRORS++))
-fi
+/usr/bin/find /var/log/filter.log -mmin +10 -exec sh -c 'php -r "require_once(\"/etc/inc/filter.inc\"); filter_configure(); system_syslogd_start();"' \; 2>&1 | logger -t filterlog-monitor
 ```
 
-### Option 2: pfSense Cron Job (Direct on Firewall)
+Save. The job is live immediately.
 
-Add a cron job directly on pfSense to restart filterlog after newsyslog runs.
+What it does: `find -mmin +10` matches filter.log only if it has not been modified in
+the last 10 minutes; when it matches, the `-exec` restarts filter/syslogd (and pfBlockerNG
+logging), and anything printed is tagged `filterlog-monitor` in `/var/log/system.log`.
+When filter.log is fresh, `find` matches nothing and the job exits silently.
 
-**Steps:**
-1. Go to **Services → Cron** in pfSense GUI
-2. Click **Add** (+ icon)
-3. Configure:
-   - **Minute:** `5,15,25,35,45,55` (every 10 minutes, offset from hourly)
-   - **Hour:** `*`
-   - **Day of Month:** `*`
-   - **Month:** `*`
-   - **Day of Week:** `*`
-   - **User:** `root`
-   - **Command:** 
-     ```bash
-     /usr/bin/find /var/log/filter.log -mmin +10 -exec php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();' \;
-     ```
-   - **Description:** `Auto-restart filterlog if stale`
-4. Click **Save**
+Tuning: on a very quiet network 10 minutes without a logged packet can be normal, and the
+job will restart filterlog needlessly (harmless, but noisy). Raise `-mmin +10` to `+30`
+and the schedule to `*/30` if you see restarts with nothing wrong. On a busy network you
+can tighten both to 5.
 
-**What this does:**
-- Every 10 minutes, checks if filter.log hasn't been modified in 10+ minutes
-- If stale, restarts filterlog
-- Minimal overhead, runs quickly
+### Alternative: unconditional restart every few hours
 
-### Option 3: Modify newsyslog Rotation Behavior
-
-**⚠️ Advanced - Requires manual file editing on pfSense**
-
-This changes how newsyslog handles filter.log rotation.
-
-**Steps:**
-
-1. SSH to pfSense
-2. Edit newsyslog config:
-   ```bash
-   vi /var/etc/newsyslog.conf.d/pfSense.conf
-   ```
-
-3. Find the filter.log line:
-   ```
-   /var/log/filter.log             root:wheel      600     7       500     *       C
-   ```
-
-4. Change the `C` flag to `B`:
-   ```
-   /var/log/filter.log             root:wheel      600     7       500     *       B
-   ```
-
-5. Save and exit
-
-**Flag meanings:**
-- `C` = Send SIGHUP signal to process (filterlog doesn't handle this properly)
-- `B` = Binary log, no signal sent (filterlog keeps writing to old file handle)
-
-**⚠️ WARNING:** This change will be **overwritten** on every pfSense config change or reboot. You'd need to script it to persist.
-
-**Better approach:** Create a custom config file that won't be overwritten:
+If you prefer brute force, a Cron-package job with Minute `5`, Hour `*/4`, User `root`
+and this command restarts filterlog every four hours regardless of state:
 
 ```bash
-# Create custom newsyslog config
-cat > /var/etc/newsyslog.conf.d/custom-filterlog.conf << 'EOF'
-# Custom filter.log rotation without signal
-/var/log/filter.log             root:wheel      600     7       2000    *       B
-EOF
+php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();' 2>&1 | logger -t filterlog-restart
 ```
 
-This file survives reboots but may conflict with pfSense's auto-generated config.
+The conditional job above is preferred because it also bounds the outage to 10 minutes.
 
----
+## Verification
 
-## Detection and Diagnostics
-
-### Check if Filter.log is Stale
-
-**From SIEM server:**
-```bash
-ssh root@192.168.1.1 "ls -lh /var/log/filter.log && stat /var/log/filter.log"
-```
-
-**Check age:**
-```bash
-ssh root@192.168.1.1 "echo 'Last modified:' && date -r \$(stat -f %m /var/log/filter.log) && echo 'Current time:' && date"
-```
-
-### Check Filterlog Process
-
-**See if filterlog has file open:**
-```bash
-ssh root@192.168.1.1 "FILTERLOG_PID=\$(pgrep filterlog) && lsof -p \$FILTERLOG_PID | grep filter.log"
-```
-
-**If no output:** filterlog has no file handle (PROBLEM!)
-
-### Check pfBlocker Data in OpenSearch
-
-**From SIEM server:**
-```bash
-curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_count" | jq '.count'
-```
-
-**Expected:** Should show count > 0 if pfBlocker is blocking traffic  
-**Problem:** Returns `0` if no data
-
-> **Note:** pfBlockerNG data is stored in OpenSearch (`pfblockerng-*` indices), not InfluxDB.
-> It flows via Telegraf's `[[outputs.opensearch]]` plugin.
-
----
-
-## Integration with Project Status Script
-
-Add to `scripts/status.sh` after pfSense forwarder checks:
+**The job is installed.** The Cron package renders its config.xml entries into
+`/etc/crontab` (that is why you never edit that file by hand):
 
 ```bash
-echo ""
-echo "=== pfSense Filterlog Health ==="
-
-# Check filter.log age
-echo -n "Filter.log freshness... "
-FILTER_LOG_STAT=$(ssh -o BatchMode=yes ${PFSENSE_USER}@${PFSENSE_HOST} "stat -f %m /var/log/filter.log" 2>/dev/null)
-if [ $? -eq 0 ]; then
-    NOW=$(date +%s)
-    AGE=$((NOW - FILTER_LOG_STAT))
-    if [ $AGE -gt 600 ]; then
-        echo -e "${RED}✗${NC} Stale (${AGE}s old, threshold 600s)"
-        echo "  → Run: ssh root@${PFSENSE_HOST} 'php -r \"require_once(\\\"/etc/inc/filter.inc\\\"); filter_configure(); system_syslogd_start();\"'"
-        ((ERRORS++))
-    else
-        echo -e "${GREEN}✓${NC} Current (${AGE}s old)"
-    fi
-else
-    echo -e "${RED}✗${NC} Could not check"
-    ((ERRORS++))
-fi
-
-# Check filterlog has file open
-echo -n "Filterlog file handle... "
-HAS_HANDLE=$(ssh -o BatchMode=yes ${PFSENSE_USER}@${PFSENSE_HOST} "lsof -p \$(pgrep filterlog) 2>/dev/null | grep -c filter.log" 2>/dev/null)
-if [ "$HAS_HANDLE" -gt 0 ]; then
-    echo -e "${GREEN}✓${NC} Open"
-else
-    echo -e "${RED}✗${NC} No file handle"
-    echo "  → Filterlog daemon needs restart"
-    ((ERRORS++))
-fi
-
-# Check recent pfBlocker data (now in OpenSearch, not InfluxDB)
-echo -n "pfBlocker data (last hour)... "
-PFBLOCKER_COUNT=$(curl -s "http://${SIEM_HOST}:9200/pfblockerng-*/_count" -H 'Content-Type: application/json' -d '{"query":{"range":{"@timestamp":{"gte":"now-1h"}}}}' | jq -r '.count // 0' 2>/dev/null)
-if [ "$PFBLOCKER_COUNT" -gt 0 ]; then
-    echo -e "${GREEN}✓${NC} ${PFBLOCKER_COUNT} events"
-else
-    echo -e "${YELLOW}⚠${NC} No events (might be no blocked traffic)"
-fi
+ssh admin@<PFSENSE_IP> 'grep filterlog /etc/crontab'
 ```
 
----
+**Simulate the failure and watch it recover:**
 
-## Recommended Implementation
-
-**For Production Use:**
-
-1. **GUI Change (Now):**
-   - Increase log rotation size to 2000KB in Status → System Logs → Settings
-   - Reduces rotation frequency from ~every 2 hours to ~every 8 hours
-
-2. **Monitoring (This Week):**
-   - Add filter.log age check to `scripts/status.sh`
-   - Run status.sh via cron every 5 minutes
-   - Alert if filter.log is stale
-
-3. **Auto-Remediation (Optional):**
-   - Extend status.sh to auto-restart filterlog if stale
-   - OR add pfSense cron job to check and restart
-
-4. **Documentation:**
-   - Add troubleshooting section to README
-   - Reference this document for future occurrences
-
----
-
-## Testing the Fix
-
-After implementing monitoring/auto-restart:
-
-1. **Manually trigger rotation:**
-   ```bash
-   ssh root@192.168.1.1 "newsyslog -f /var/log/filter.log"
-   ```
-
-2. **Wait 5-10 minutes** (for monitoring to detect)
-
-3. **Verify auto-restart occurred:**
-   ```bash
-   ssh root@192.168.1.1 "tail -20 /var/log/filter.log"
-   ```
-
-4. **Should see:** Recent firewall events
-
-5. **Check monitoring logs:**
-   ```bash
-   tail /var/log/pfsense-filterlog-check.log
-   ```
-
----
-
-## Related Issues
-
-- [pfSense Bug #8555](https://redmine.pfsense.org/issues/8555) - filterlog doesn't handle log rotation
-- Known issue since pfSense 2.4.x
-- No official fix as of pfSense 2.8.1
-- Workaround: Manual restart or automated monitoring
-
----
-
-## Quick Reference
-
-**Check if broken:**
 ```bash
-ssh root@192.168.1.1 "wc -l /var/log/filter.log"
-# If only 1 line (newsyslog message), it's broken
+ssh admin@<PFSENSE_IP>
+pkill -9 filterlog                  # nothing will be written to filter.log from here
+# wait up to 10 minutes for the cron run, then:
+grep filterlog-monitor /var/log/system.log | tail -5
+tail -5 /var/log/filter.log         # fresh entries again
 ```
 
-**Quick fix:**
+**Or run the command by hand** with `-mmin +0` so it fires regardless of age:
+
 ```bash
-ssh root@192.168.1.1 "php -r 'require_once(\"/etc/inc/filter.inc\"); filter_configure(); system_syslogd_start();'"
+/usr/bin/find /var/log/filter.log -mmin +0 -exec sh -c 'php -r "require_once(\"/etc/inc/filter.inc\"); filter_configure(); system_syslogd_start();"' \;
+tail -5 /var/log/filter.log
 ```
 
-**Verify fixed:**
+**Check pfBlockerNG data is reaching OpenSearch again** (from the SIEM server):
+
 ```bash
-ssh root@192.168.1.1 "tail -f /var/log/filter.log"
-# Should see live firewall events
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_count" -H 'Content-Type: application/json' \
+  -d '{"query":{"range":{"@timestamp":{"gte":"now-1h"}}}}' | jq .count
 ```
+
+pfBlockerNG events arrive via Telegraf's `[[outputs.opensearch]]`, so a count of 0 here
+after filterlog is confirmed healthy points at Telegraf instead. See
+[TELEGRAF_ON_PFSENSE.md](../pfsense/TELEGRAF_ON_PFSENSE.md), which also covers the separate
+pfBlockerNG log-permissions problem that can starve Telegraf even when filterlog is fine.
+
+## How status.sh detects it
+
+`./scripts/status.sh` already includes a **pfSense Filterlog Health** section (no changes
+needed on your side). Over SSH it:
+
+1. reads `stat -f %m /var/log/filter.log` and flags the file **Stale** if it is older than
+   600 seconds, printing the one-line `php -r` fix;
+2. runs `lsof -p $(pgrep filterlog)` and flags **No file handle** if filterlog has no
+   descriptor on filter.log.
+
+Either failure counts toward the script's non-zero exit code, so running `status.sh` from
+a SIEM-side cron or from the `pfsense-siem` console (option 5) gives you visibility, while
+the pfSense Cron-package job above does the actual remediation.
+
+## Related
+
+- [pfSense bug #8555](https://redmine.pfsense.org/issues/8555): upstream tracker
+- [TELEGRAF_ON_PFSENSE.md](../pfsense/TELEGRAF_ON_PFSENSE.md): Telegraf on pfSense, including pfBlockerNG log permissions
+- [Telegraf on pfSense](../pfsense/TELEGRAF_ON_PFSENSE.md): the PF Information panel and other Telegraf panels that depend on filter.log / `/dev/pf`
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md): general troubleshooting

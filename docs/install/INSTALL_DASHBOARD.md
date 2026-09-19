@@ -2,13 +2,21 @@
 
 Complete guide for setting up Grafana datasources and importing the pre-built dashboards.
 
+> **`./setup.sh` does most of this for you.** Step 5 of `setup.sh` creates the OpenSearch
+> datasources and imports the two Suricata dashboards through the Grafana API. Use this
+> guide when `setup.sh` could not reach Grafana, when you want the optional pfSense system /
+> pfBlockerNG dashboard (imported manually because it needs InfluxDB), or when you want to
+> build panels by hand. The full list of shipped dashboards is in
+> [dashboards/README.md](../../dashboards/README.md).
+
 ## Prerequisites
 
-- Grafana 12.3.0+ installed and running
+- Grafana 12.x installed and running (`install.sh` installs 12.3.0)
 - grafana-opensearch-datasource plugin installed
 - OpenSearch accessible from Grafana server
 - Suricata events flowing into OpenSearch (verify event count > 0)
-- InfluxDB configured with Telegraf metrics (for system dashboard)
+- *Optional:* InfluxDB fed by Telegraf on pfSense — only needed for the pfSense system /
+  pfBlockerNG dashboard (see [Telegraf pfBlockerNG Setup](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md))
 
 ## Installation Steps
 
@@ -16,7 +24,7 @@ Complete guide for setting up Grafana datasources and importing the pre-built da
 
 ```bash
 # Open browser to your Grafana instance
-http://YOUR_SIEM_IP:3000
+http://<SIEM_IP>:3000
 
 # Default credentials
 Username: admin
@@ -27,9 +35,11 @@ Change the password when prompted on first login.
 
 ### 2. Add Datasources
 
-You need **three** datasources: one InfluxDB and two OpenSearch.
+The Suricata dashboards need **two OpenSearch datasources**. A third, InfluxDB, is only
+required for the optional pfSense system / pfBlockerNG dashboard. `setup.sh` creates the
+OpenSearch datasources automatically; the InfluxDB one is always manual.
 
-#### 2a. InfluxDB Datasource (System Metrics)
+#### 2a. InfluxDB Datasource (System Metrics — optional)
 
 1. Click **☰ menu** → **Connections** → **Data sources**
 2. Click **Add data source** → Search **InfluxDB**
@@ -38,7 +48,7 @@ You need **three** datasources: one InfluxDB and two OpenSearch.
 ```
 Name: pfsense
 URL: http://localhost:8086
-Database: pfsense
+Database: pfsense        # not "telegraf" — the Telegraf output on pfSense writes to "pfsense"
 User: pfsense
 Password: (your InfluxDB password)
 ```
@@ -81,7 +91,19 @@ Version: 2.0+
 
 ### 3. Import Dashboards
 
-#### Dashboard 1: pfSense System & pfBlockerNG
+Shipped dashboard files and their UIDs:
+
+| File | UID | Datasources | Imported by |
+|------|-----|-------------|-------------|
+| `dashboards/Suricata_IDS_IPS.json` | `suricata_ids_ips` | OpenSearch-Suricata | `setup.sh` (automatic) |
+| `dashboards/Suricata_Per_Interface.json` | `suricata_per_interface` | OpenSearch-Suricata | `setup.sh` (automatic) |
+| `dashboards/pfsense_pfblockerng_system.json` | `GflT1CsMz_v2` | InfluxDB + OpenSearch-pfBlockerNG | manual |
+
+Other dashboards in the `dashboards/` directory (`windows_exporter.json`,
+`prometheus_stats.json`, `docker_container_monitoring.json`, `wazuh/*.json`) are for
+optional integrations and are described in [dashboards/README.md](../../dashboards/README.md).
+
+#### Dashboard 1: pfSense System & pfBlockerNG (optional, manual import)
 
 1. Click **☰ menu** → **Dashboards** → **New** → **Import**
 2. Click **Upload JSON file**
@@ -91,9 +113,11 @@ Version: 2.0+
    - **OpenSearch**: Select your `OpenSearch-pfBlockerNG` datasource (pfBlockerNG panels)
 5. Click **Import**
 
-> This dashboard uses **both** InfluxDB (CPU, RAM, interfaces, gateways) and OpenSearch-pfBlockerNG (IP blocks, DNSBL blocks, block logs).
+> This dashboard uses **both** InfluxDB (CPU, RAM, interfaces, gateways) and OpenSearch-pfBlockerNG (IP blocks, DNSBL blocks, block logs). If its WAN/LAN dropdowns are empty or show the wrong NICs, see [Adapting the pfSense system dashboard to your NIC names](#adapting-the-pfsense-system-dashboard-to-your-nic-names) below.
 
-#### Dashboard 2: Suricata WAN Monitoring
+#### Dashboard 2: Suricata IDS/IPS (WAN monitoring)
+
+`setup.sh` imports this automatically. If it did not (Grafana unreachable at the time):
 
 1. Click **Import** → **Upload JSON file**
 2. Select `dashboards/Suricata_IDS_IPS.json`
@@ -102,14 +126,18 @@ Version: 2.0+
 
 #### Dashboard 3: Suricata Per-Interface (LAN)
 
+`setup.sh` imports this automatically. If it did not:
+
 1. Click **Import** → **Upload JSON file**
 2. Select `dashboards/Suricata_Per_Interface.json`
 3. Select datasource: **OpenSearch-Suricata**
 4. Click **Import**
 
-#### Option B: Create Dashboard Manually
+#### Alternative: Create a Dashboard Manually
 
-If you don't have the JSON file, create the dashboard step-by-step:
+If you want to build your own instead of importing the JSON, create the dashboard
+step-by-step. All field names below are the **flat root-level fields** written by
+`config/logstash-suricata.conf` (nothing is nested under `suricata.eve.*`):
 
 **1. Create New Dashboard**
 - Click **☰ menu** → **Dashboards** → **New** → **New Dashboard**
@@ -131,8 +159,8 @@ Group by: Date Histogram (@timestamp, Auto)
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.event_type.keyword, 20)
-Columns: suricata.eve.event_type, Count
+Group by: Terms (event_type.keyword, 20)
+Columns: event_type, Count
 ```
 
 ##### Panel 3: Protocol Distribution
@@ -140,7 +168,7 @@ Columns: suricata.eve.event_type, Count
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.proto.keyword, 10)
+Group by: Terms (proto.keyword, 10)
 ```
 
 ##### Panel 4: Top Source IPs
@@ -148,8 +176,8 @@ Group by: Terms (suricata.eve.proto.keyword, 10)
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.src_ip.keyword, 20)
-Columns: suricata.eve.src_ip, Count
+Group by: Terms (src_ip.keyword, 20)
+Columns: src_ip, Count
 Sort: Count (descending)
 ```
 
@@ -158,7 +186,7 @@ Sort: Count (descending)
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.dest_ip.keyword, 20)
+Group by: Terms (dest_ip.keyword, 20)
 ```
 
 ##### Panel 6: Top Destination Ports
@@ -166,39 +194,39 @@ Group by: Terms (suricata.eve.dest_ip.keyword, 20)
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.dest_port, 20)
+Group by: Terms (dest_port, 20)
 ```
 
 ##### Panel 7: TLS Server Names (SNI)
 ```
 Type: Table
-Query: suricata.eve.event_type:tls
+Query: event_type:tls
 Metrics: Count
-Group by: Terms (suricata.eve.tls.sni.keyword, 20)
+Group by: Terms (tls.sni.keyword, 20)
 ```
 
 ##### Panel 8: DNS Queries
 ```
 Type: Table
-Query: suricata.eve.event_type:dns
+Query: event_type:dns
 Metrics: Count
-Group by: Terms (suricata.eve.dns.rrname.keyword, 20)
+Group by: Terms (dns.rrname.keyword, 20)
 ```
 
 ##### Panel 9: HTTP Hosts
 ```
 Type: Table
-Query: suricata.eve.event_type:http
+Query: event_type:http
 Metrics: Count
-Group by: Terms (suricata.eve.http.hostname.keyword, 20)
+Group by: Terms (http.hostname.keyword, 20)
 ```
 
 ##### Panel 10: Security Alerts
 ```
 Type: Table
-Query: suricata.eve.event_type:alert
+Query: event_type:alert
 Metrics: Count
-Group by: Terms (suricata.eve.alert.signature.keyword, 20)
+Group by: Terms (alert.signature.keyword, 20)
 Columns: Alert Signature, Count, Severity
 ```
 
@@ -209,8 +237,8 @@ Query: *
 Metrics: Count
 Group by: 
   - Date Histogram (@timestamp, Auto)
-  - Terms (suricata.eve.event_type.keyword, 10)
-Legend: {{suricata.eve.event_type.keyword}}
+  - Terms (event_type.keyword, 10)
+Legend: {{event_type.keyword}}
 ```
 
 ##### Panel 12: Interface Distribution
@@ -218,14 +246,15 @@ Legend: {{suricata.eve.event_type.keyword}}
 Type: Table
 Query: *
 Metrics: Count
-Group by: Terms (suricata.eve.in_iface.keyword, 10)
+Group by: Terms (in_iface, 10)
 ```
 
 **3. Configure Dashboard Settings**
 - Click **Dashboard settings** (gear icon)
 - General:
   - Name: `Suricata IDS/IPS Dashboard`
-  - UID: `suricata-complete`
+  - UID: anything unique — the shipped dashboard uses `suricata_ids_ips`, so pick a
+    different UID (e.g. `suricata-custom`) if you import that one too
 - Time options:
   - Timezone: Browser Time
   - Auto refresh: 30s
@@ -245,6 +274,44 @@ If panels show "No data":
 - Check time range (top right) - try "Last 24 hours"
 - Verify events in OpenSearch: `curl http://localhost:9200/suricata-*/_count`
 - Check datasource connection: Dashboard settings → Data sources
+
+## Adapting the pfSense System Dashboard to Your NIC Names
+
+`dashboards/pfsense_pfblockerng_system.json` is not tied to any particular NIC naming
+(igb*, ix*, em*, re*, vtnet*, hn*, ovpnc*, wg*, ...). Its interface pickers are Grafana
+template variables that query InfluxDB, so they adapt to your hardware without editing JSON:
+
+| Variable | Query (InfluxQL) | Notes |
+|----------|------------------|-------|
+| `WAN` | `SHOW TAG VALUES FROM "gateways" WITH KEY = "interface" WHERE "host" =~ /^$Host$/` | WAN = any interface that has a gateway in **System → Routing → Gateways** |
+| `LAN_Interfaces` | `SHOW TAG VALUES FROM "net" WITH KEY = "interface" WHERE "host" =~ /^$Host$/` with regex `/^(?!enc0$)/` | Everything Telegraf's `net` input sees except the `enc0` IPsec pseudo-interface |
+
+The InfluxDB database name is **`pfsense`** (not `telegraf`); the InfluxDB datasource must
+point at it or every variable comes back empty.
+
+**Checks after import**
+
+1. **WAN dropdown** (top-left) lists your real WAN NIC(s), e.g. `ix0` or `igb0`. Select them.
+2. **LAN dropdown** lists bridges, VLANs and internal NICs, and does *not* list the WAN NICs.
+3. WAN Statistics, Gateway Status and Network Traffic panels show data for the selected interfaces.
+
+**If the WAN dropdown is empty**: no gateway is defined on the WAN interface, or Telegraf
+is not sending the `gateways` measurement. Verify on the SIEM server:
+
+```bash
+influx -database pfsense -execute 'SHOW TAG VALUES FROM gateways WITH KEY = interface'
+```
+
+**If a physical NIC shows up under LAN**: it has no gateway configured. That is correct for
+an internal interface; for a WAN interface, add its gateway in pfSense.
+
+**If nothing has data**: confirm Telegraf is running on pfSense (`service telegraf status`,
+`telegraf --test --input-filter net`) — see
+[Telegraf pfBlockerNG Setup](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md) and
+[Telegraf on pfSense](../pfsense/TELEGRAF_ON_PFSENSE.md).
+
+If you run several pfSense boxes, the `Host` variable switches all of the above per firewall,
+so one dashboard serves every deployment.
 
 ## Dashboard Features
 
@@ -268,11 +335,11 @@ Add dashboard variables for filtering:
 
 1. Click **Dashboard settings** → **Variables** → **Add variable**
 2. Create variables:
-   - `interface` - suricata.eve.in_iface.keyword
-   - `event_type` - suricata.eve.event_type.keyword
-   - `src_ip` - suricata.eve.src_ip.keyword
+   - `interface` - in_iface
+   - `event_type` - event_type.keyword
+   - `src_ip` - src_ip.keyword
 
-3. Use in queries: `suricata.eve.in_iface:$interface`
+3. Use in queries: `in_iface:$interface`
 
 ## Customization
 
@@ -330,10 +397,10 @@ curl -s http://localhost:9200/suricata-*/_count | jq .count
 
 # 2. Check index pattern
 curl -s http://localhost:9200/_cat/indices/suricata-* | head -5
-# Should list indices like: suricata-2025.11.24
+# Should list daily indices like: suricata-YYYY.MM.dd
 
 # 3. Check latest event
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source | {"@timestamp", "event_type": .suricata.eve.event_type}'
+curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source | {"@timestamp", "event_type": .event_type}'
 # Should return recent event
 
 # 4. Test datasource in Grafana
@@ -344,15 +411,21 @@ curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" |
 
 Check field mapping in OpenSearch:
 ```bash
-curl -s "http://localhost:9200/suricata-*/_mapping" | jq '.["suricata-2025.11.24"].mappings.properties.suricata.properties.eve.properties | keys'
+# Top-level (flat) fields in the newest index
+curl -s "http://localhost:9200/suricata-*/_mapping" | jq '.[].mappings.properties | keys' | head -40
+
+# geoip_src.location must be geo_point for the map panel
+curl -s "http://localhost:9200/suricata-*/_mapping" | jq '.[].mappings.properties.geoip_src.properties.location'
 ```
 
-Expected fields:
-- `event_type`
-- `src_ip`
-- `dest_ip`
-- `proto`
-- `timestamp`
+Expected fields at the root of the mapping (flat structure, no `suricata.eve.*` prefix):
+- `event_type`, `src_ip`, `dest_ip`, `src_port`, `dest_port`, `proto`, `in_iface`, `app_proto`
+- `alert` (with `alert.signature`, `alert.severity`, `alert.category`)
+- `http`, `dns`, `tls` (with `http.hostname`, `dns.rrname`, `tls.sni`)
+- `geoip_src`, `geoip_dest` (with `.location` of type `geo_point`)
+
+If `geoip_src.location` is not `geo_point`, install the index template
+(`./scripts/install-opensearch-config.sh`); it applies to indices created afterwards.
 
 If fields missing, check Logstash is parsing correctly:
 ```bash
@@ -363,7 +436,7 @@ sudo journalctl -u logstash -n 50 | grep -i error
 
 1. **Check query filter**: Edit panel → Query → Verify lucene query syntax
 2. **Check aggregation**: Metrics → Should be "Count" for most panels
-3. **Check field name**: Use `.keyword` suffix for string fields (e.g., `suricata.eve.event_type.keyword`)
+3. **Check field name**: Use `.keyword` suffix for string fields (e.g., `event_type.keyword`)
 
 ### Dashboard Performance Issues
 
@@ -379,7 +452,7 @@ If dashboard is slow:
 ```bash
 # Get dashboard JSON via API
 curl -s -H "Authorization: Bearer YOUR_API_KEY" \
-  http://localhost:3000/api/dashboards/uid/suricata-complete | \
+  http://localhost:3000/api/dashboards/uid/suricata_ids_ips | \
   jq .dashboard > suricata-dashboard-backup.json
 
 # Or export from UI:
@@ -395,35 +468,35 @@ Common Lucene query examples for panels:
 *
 
 # Specific event type
-suricata.eve.event_type:alert
+event_type:alert
 
 # Multiple event types
-suricata.eve.event_type:(alert OR dns)
+event_type:(alert OR dns)
 
 # Specific IP
-suricata.eve.src_ip:"192.168.1.100"
+src_ip:"192.168.1.100"
 
 # Port range
-suricata.eve.dest_port:[1 TO 1024]
+dest_port:[1 TO 1024]
 
 # Protocol
-suricata.eve.proto:TCP
+proto:TCP
 
 # Exclude internal IPs
-NOT suricata.eve.dest_ip:192.168.*
+NOT dest_ip:192.168.*
 
 # High severity alerts
-suricata.eve.event_type:alert AND suricata.eve.alert.severity:[1 TO 2]
+event_type:alert AND alert.severity:[1 TO 2]
 
 # TLS with specific SNI
-suricata.eve.event_type:tls AND suricata.eve.tls.sni:*.google.com
+event_type:tls AND tls.sni:*.google.com
 ```
 
 ## Next Steps
 
 - **[Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Configuration Reference](../reference/CONFIGURATION.md)** - Detailed configuration options
-- Explore OpenSearch indices: `http://YOUR_SIEM_IP:9200/_cat/indices`
+- Explore OpenSearch indices: `http://<SIEM_IP>:9200/_cat/indices`
 
 ## Dashboard Sharing
 

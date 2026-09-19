@@ -1,275 +1,220 @@
-# PfBlockerNG Optimization Guide
+# pfBlockerNG Optimization Guide
 
 ## Overview
 
-PfBlockerNG is a powerful package for pfSense that provides DNS-based and IP-based blocklisting to reduce attack surface and noise **before traffic reaches Suricata**. Proper configuration reduces load on your IDS/IPS and improves detection quality.
+pfBlockerNG is the pfSense package for DNS-based (DNSBL) and IP-based blocklisting. Used well, it removes known-bad traffic **before Suricata ever inspects it**, which cuts IDS/IPS load and makes the alerts that remain more meaningful.
+
+This is the **strategy** guide: why to run pfBlockerNG alongside Suricata, which handful of feeds matter most, how to set actions and update cadence, how to order rules, and how to check it is working. The exhaustive feed catalog — every pre-configured IP and DNSBL feed worth enabling, grouped by priority, plus the whitelisting guide and privacy notes — is in **[PFBLOCKERNG_FEED_REFERENCE.md](PFBLOCKERNG_FEED_REFERENCE.md)**. Read this one first, then use the reference to build out your groups.
+
+It applies to any pfSense box. Only the [Dashboard Panels](#3-dashboard-panels) section depends on this repository's SIEM stack.
 
 ---
 
-## Why Use PfBlockerNG with Suricata?
+## Why Use pfBlockerNG with Suricata?
 
-1. **Upstream Filtering**: Block known bad actors before they generate Suricata alerts
-2. **Reduced Noise**: Fewer false positives from known malicious sources
-3. **Performance**: Less traffic to inspect = better Suricata performance
-4. **Layered Defense**: Multiple detection mechanisms (DNS, IP, IDS signatures)
+1. **Upstream filtering**: block known bad actors before they generate Suricata alerts
+2. **Reduced noise**: fewer alerts from addresses everyone already knows are hostile
+3. **Performance**: less traffic to inspect means less Suricata CPU
+4. **Layered defence**: reputation (pfBlockerNG) + signatures (Suricata) catch different things
+
+**Division of labour:**
+
+| pfBlockerNG handles | Suricata handles |
+|---------------------|------------------|
+| IP reputation (scanners, botnet C2, spam sources) | Exploit attempts and protocol attacks |
+| DNS blocking (ads, trackers, malware domains) | Signature-based malware detection |
+| GeoIP country blocking | Anything reputation lists cannot see |
+
+Disable Suricata's own IP-reputation categories (`emerging-drop`, `emerging-dshield`, `emerging-ciarmy` if you like) once pfBlockerNG carries those feeds; keeping both just doubles the work.
 
 ---
 
 ## Recommended Blocklists
 
-### IP Blocklists (High Priority)
+A short list of high-value feeds. The full catalog with URLs and pre-configured feed names is in the [feed reference](PFBLOCKERNG_FEED_REFERENCE.md#ip-block-lists). **Verify a feed's URL before adding it**; several once-popular sources have gone offline or moved.
 
-**Abuse.ch Feodo Tracker**
-- **Feed**: https://feodotracker.abuse.ch/downloads/ipblocklist.txt
-- **Purpose**: C&C servers for banking trojans
-- **Action**: Deny Inbound + Deny Outbound
-- **Update**: Every 1 hour
+### IP Blocklists (high priority)
+
+**Abuse.ch Feodo Tracker** (pre-configured)
+- Purpose: banking-trojan and botnet C2 servers
+- Action: **Deny Both**
+- Update: **every hour**
+
+**Abuse.ch SSL Blacklist** (pre-configured / `sslbl.abuse.ch`)
+- Purpose: IPs serving known-malicious TLS certificates
+- Action: **Deny Both**
+- Update: **every hour**
 
 **Abuse.ch URLhaus**
-- **Feed**: https://urlhaus.abuse.ch/downloads/text_ips/
-- **Purpose**: Malware distribution servers
-- **Action**: Deny Both
-- **Update**: Every 4 hours
+- Purpose: malware distribution servers
+- Action: **Deny Both**
+- Update: **every hour**
 
-**Spamhaus DROP/EDROP**
-- **Feed**: Built-in
-- **Purpose**: Hijacked netblocks, botnets, spam sources
-- **Action**: Deny Inbound
-- **Update**: Daily
+**Spamhaus DROP** (pre-configured)
+- Purpose: hijacked netblocks, bulletproof hosting
+- Action: **Deny Inbound**
+- Update: **every 4 hours**
 
-**Emerging Threats**
-- **Feeds**: 
-  - Compromised IPs
-  - Known scanners
-  - Tor exit nodes (optional, depending on policy)
-- **Action**: Deny Inbound (or log/alert only for Tor)
-- **Update**: Every 12 hours
+**Emerging Threats Compromised / ET Block** (pre-configured)
+- Purpose: compromised hosts and known attackers
+- Action: **Deny Inbound**
+- Update: **every 4 hours**
 
-### DNS Blocklists (Optional but Recommended)
+**Scanner lists** (Maltrail scanners, ISC Shodan/Shadowserver — pre-configured)
+- Purpose: internet-wide scanners; blocking them mostly reduces log noise
+- Action: **Deny Inbound**
+- Update: **daily**
 
-**Steven Black's Unified Hosts**
-- **Purpose**: Ads, malware, tracking domains
-- **Action**: NXDOMAIN or redirect to sinkhole
-- **Use Case**: Reduce outbound noise and protect internal clients
+### DNS Blocklists (optional but recommended)
 
-**Abuse.ch ThreatFox**
-- **Purpose**: Malware C&C domains
-- **Action**: NXDOMAIN
-- **Update**: Every 4 hours
+**OISD** (pre-configured, "Compilation" category) — ads, trackers and malware domains with a low false-positive rate. Pick this **one** all-in-one list first; add others only after it has run cleanly for a week.
+
+**Abuse.ch URLhaus / OpenPhish / PhishTank** (pre-configured) — malware and phishing domains.
+
+Update: **daily** for all DNSBL groups.
 
 ---
 
 ## Configuration Best Practices
 
-### 1. PfBlockerNG IP Settings
+### 1. Update cadence
 
-**Firewall → pfBlockerNG → IP → IPv4**
+One rule, used consistently here and in the [feed reference](PFBLOCKERNG_FEED_REFERENCE.md#performance-tuning):
 
-- **Enable Suppression**: YES
-  - Whitelist your trusted networks (RFC1918 ranges you control)
-  - Whitelist upstream DNS (1.1.1.1, 8.8.8.8, your ISP DNS)
-  - Whitelist your SIEM server to prevent accidental blocks
+| Feed type | Frequency | Why |
+|-----------|-----------|-----|
+| C2 / malware infrastructure (Feodo, SSLBL, URLhaus) | **Every hour** | Short-lived infrastructure |
+| General inbound reputation (Spamhaus, ET, BlockList.de, FireHOL) | **Every 4 hours** | Changes daily, not hourly |
+| Scanner lists | **Daily** | Scanner IPs are stable |
+| DNSBL | **Daily** | Domain lists are stable and large |
 
-- **Logging**:
-  - Enable logging for "Deny Both" rules
-  - Log to local syslog
-  - Optional: Forward to SIEM server for centralized alerting
+On low-end hardware (2 cores / 2 GB) drop the hourly tier to every 4 hours; the update process is PHP-heavy.
 
-- **Alias Update Frequency**:
-  - Critical feeds (Feodo, URLhaus): 1-4 hours
-  - General feeds (Spamhaus, ET): 12-24 hours
-  - Balance between freshness and update load
+### 2. pfBlockerNG IP settings
 
-### 2. List Action Configuration
+**Firewall → pfBlockerNG → IP**
 
-| Feed Type | Action | Reason |
+- **Enable suppression** and whitelist:
+  - the RFC 1918 ranges you use internally
+  - your upstream DNS servers
+  - your SIEM/monitoring server (an accidental block here silences your dashboards)
+- **Logging**: enable on Deny rules; the logs are what feed the [dashboard panels](#3-dashboard-panels)
+- **De-duplication**: on (drops entries already covered by another enabled list)
+
+### 3. List actions
+
+| Feed type | Action | Reason |
 |-----------|--------|--------|
-| C&C Servers | Deny Both | Prevent inbound attacks AND outbound beaconing |
-| Scanners/Bruteforce | Deny Inbound | Block reconnaissance, allow your traffic out |
-| Spam Sources | Deny Inbound | Block spam, allow your mail servers out |
-| Malware Distribution | Deny Both | Prevent downloads AND prevent infected hosts from calling home |
+| C2 servers | Deny Both | Stop inbound attacks **and** outbound beaconing from infected hosts |
+| Scanners / brute-force | Deny Inbound | Block reconnaissance; your outbound traffic is unaffected |
+| Spam sources | Deny Inbound | Block spam; let your mail server talk out |
+| Malware distribution | Deny Both | Stop downloads and stop callbacks |
 
-### 3. Suricata Integration
+### 4. Rule order relative to Suricata
 
-**Ensure proper rule order:**
+pfBlockerNG creates its own firewall rules (aliases prefixed `pfB_`) and, by default, places them **at the top** of each interface's rule set. Suricata in inline mode sits in the packet path *before* pf, so strictly speaking it sees everything — but connections pfBlockerNG rejects never complete, so Suricata's stateful inspection has nothing to alert on. The net effect is the one you want: reputation blocks first, signatures on what is left.
 
-1. **PfBlockerNG rules** (top of firewall rules)
-   - Applied BEFORE Suricata sees traffic
-   - Blocks known bad IPs immediately
+Check the rules exist:
 
-2. **Floating Rules for Suricata**
-   - Applied to interfaces where Suricata is running
-   - Ensure traffic flows through Suricata AFTER pfBlockerNG
-
-**Check rule order:**
 ```bash
-# SSH to pfSense
-ssh root@192.168.1.1
-
-# View firewall rules (simplified)
-pfctl -sr | grep -E 'pfB|suricata'
+ssh admin@<PFSENSE_IP> "pfctl -sr | grep -c pfB_"
 ```
 
-Expected order: pfBlockerNG rules → Suricata inline → Regular rules
+Anything greater than zero means the lists are loaded into pf.
 
 ---
 
 ## Monitoring & Validation
 
-### 1. Check Blocklist Status
+### 1. Blocklist status
 
-**Firewall → pfBlockerNG → Reports → Alerts**
+**Firewall → pfBlockerNG → Reports → Alerts** — recent blocks, per feed. Review weekly for false positives and add them to the suppression/whitelist rather than disabling the feed.
 
-- Review blocked connections
-- Identify false positives (add to whitelist if needed)
-- Monitor top blocked sources
+**Firewall → pfBlockerNG → Update → View Update Status** — download failures show up here as `Download FAIL`; fix or remove the feed.
 
-### 2. Verify Suricata Load Reduction
+### 2. Suricata load reduction
 
-Before PfBlockerNG:
+Compare the alert rate on the WAN instance before and after enabling the IP groups:
+
 ```bash
-# Check Suricata alert rate
-tail -f /var/log/suricata/suricata_ix055721/eve.json | grep -c alert
+ssh admin@<PFSENSE_IP> "grep -c '\"event_type\":\"alert\"' /var/log/suricata/suricata_<iface><id>/eve.json"
 ```
 
-After PfBlockerNG (expect 20-40% reduction):
-```bash
-# Repeat same check, compare rates
-```
+A 20-40% drop in raw WAN alerts is typical once the C2 and scanner feeds are active, mostly from `ET SCAN` and `ET DROP` signatures that no longer fire.
 
-### 3. Dashboard Integration
+### 3. Dashboard Panels
 
-**pfBlockerNG panels are pre-built in the pfSense System Dashboard:**
+*(SIEM stack only)*
 
-The `pfsense_pfblockerng_system.json` dashboard includes 16 pfBlockerNG panels using the **OpenSearch-pfBlockerNG** datasource:
-- IP Block Events Over Time
-- DNSBL Block Events Over Time
-- Top Blocked Source IPs
-- Top Blocked Destination Ports
-- Blocks by Country / Feed / Protocol
-- DNSBL Blocked Domains, Source IPs, and Groups
-- Combined Block Log tables
+pfBlockerNG's `ip_block.log` and `dnsbl.log` are tailed by Telegraf on the firewall and written straight to OpenSearch (`pfblockerng-*` indices), where the `pfsense_pfblockerng_system.json` dashboard reads them through the OpenSearch-pfBlockerNG datasource: blocks over time, top blocked sources and destinations, ports, protocols, countries, feeds, and DNSBL domains and clients.
 
-> **Data Pipeline:** Telegraf `[[outputs.opensearch]]` → OpenSearch `pfblockerng-*` indices → Grafana OpenSearch-pfBlockerNG datasource
->
-> See [Telegraf pfBlockerNG Setup](TELEGRAF_PFBLOCKER_SETUP.md) for configuration details.
+- Pipeline setup: [TELEGRAF_PFBLOCKER_SETUP.md](TELEGRAF_PFBLOCKER_SETUP.md)
+- Panel list and import: [dashboards/README.md](../../dashboards/README.md)
 
 ---
 
 ## Troubleshooting
 
-### Issue: Legitimate Site Blocked
+### A legitimate site is blocked
 
-**Solution:**
-1. Identify blocking list: **Firewall → pfBlockerNG → Reports**
-2. Add to whitelist: **Firewall → pfBlockerNG → IP → IPv4 → {Feed} → Custom List → Add IP**
-3. Force update: **Firewall → pfBlockerNG → Update → Run**
+1. Find the list: **Firewall → pfBlockerNG → Reports → Alerts** (IP) or **DNSBL → Reports** (DNS)
+2. Whitelist: for IP, add the address to the group's **Custom List** with *Permit*, or to the IP **Suppression** list; for DNSBL, add the domain to a **Whitelist** group (the `+` icon next to the alert does this for you)
+3. **Firewall → pfBlockerNG → Update → Reload**
 
-### Issue: pfBlockerNG Not Blocking
+The [whitelisting guide](PFBLOCKERNG_FEED_REFERENCE.md#whitelisting-guide) lists the CDNs, identity providers and conferencing domains that break most often.
 
-**Check:**
-1. pfBlockerNG enabled: **Firewall → pfBlockerNG → General → Enable**
-2. Feeds updated: **Firewall → pfBlockerNG → Update → View Update Status**
-3. Rule order: pfBlockerNG rules must be ABOVE other rules
+### pfBlockerNG is not blocking
 
-**Verify rules exist:**
-```bash
-pfctl -sr | grep pfB | head -10
-```
+1. **Firewall → pfBlockerNG → General → Enable** is checked
+2. Feeds downloaded: **Update → View Update Status**
+3. Rules present: `pfctl -sr | grep pfB_ | head`
+4. For DNSBL: the DNS Resolver (Unbound) is enabled and clients actually use the firewall for DNS (devices with hard-coded 8.8.8.8 or DoH bypass DNSBL entirely)
 
-Should see pfB_* rules at the top.
+### Updates are slow or CPU-heavy
 
-### Issue: High Update Load
+- Move feeds down a tier in the [update cadence](#1-update-cadence) table
+- Consolidate: one aggregated feed (FireHOL level1, OISD) instead of five overlapping ones
+- Remove low-value lists; quality beats quantity
 
-**Solution:**
-- Reduce update frequency for non-critical feeds
-- Use MaxMind GeoIP blocking instead of large IP lists
-- Consolidate feeds (e.g., use Steven Black Unified instead of multiple DNS lists)
+### Firewall table limit exceeded
+
+`pfctl` reports `table-entries limit ... exceeded`: raise **System → Advanced → Firewall & NAT → Firewall Maximum Table Entries** (2,000,000 is plenty for 30+ lists on a box with 8 GB), or drop lists.
 
 ---
 
 ## Performance Tips
 
-1. **Use Aliases, Not Inline Rules**
-   - pfBlockerNG uses aliases (more efficient than thousands of individual rules)
-   - Verify: **Firewall → Aliases → IP** should show pfB_* aliases
-
-2. **Limit List Size**
-   - Don't enable every possible list
-   - Prioritize quality over quantity (Feodo > random "bad IPs" lists)
-
-3. **Schedule Updates Off-Peak**
-   - **Firewall → pfBlockerNG → Update → Cron Settings**
-   - Run updates during low-traffic hours (3-5 AM)
-
-4. **Monitor Memory Usage**
-   - Large blocklists consume RAM
-   - **Diagnostics → System Activity → Memory**
-   - Keep usage under 80%
+1. **Aliases, not rules** — pfBlockerNG already packs each list into one pf table; check **Firewall → Aliases → IP** for the `pfB_*` aliases
+2. **Fewer, better lists** — Feodo, SSLBL, Spamhaus and OISD carry most of the value
+3. **Stagger update times** — **Firewall → pfBlockerNG → General → CRON Settings**; run the daily tier at 03:00-05:00 so it does not coincide with Suricata rule updates
+4. **Watch memory** — **Diagnostics → System Activity**; each loaded list lives in kernel memory, and DNSBL with several large lists adds a few hundred MB to Unbound
 
 ---
 
-## Integration with This Project
+## Quick Setup
 
-PfBlockerNG works **upstream** of the Suricata forwarder:
+1. Install pfBlockerNG-devel, enable it, enable CRON
+2. Create IP suppression/whitelist entries for your subnets, DNS servers and SIEM
+3. Add one IP group **"Critical"**: Feodo, SSLBL, URLhaus — *Deny Both*, hourly
+4. Add one IP group **"Inbound"**: Spamhaus DROP, ET Compromised — *Deny Inbound*, every 4 hours
+5. Add one DNSBL group with OISD — daily
+6. **Update → Reload → All**, then watch **Reports → Alerts** for 48 hours
+7. Expand using the [feed reference](PFBLOCKERNG_FEED_REFERENCE.md#implementation-checklist)
 
-```
-Internet
-  ↓
-PfBlockerNG (block known bad IPs)
-  ↓
-Suricata (inspect remaining traffic)
-  ↓
-Forwarder (send to SIEM)
-  ↓
-OpenSearch/Grafana
-```
+Validation:
 
-**Result**: Cleaner Suricata logs, fewer alerts, better signal-to-noise ratio.
-
----
-
-## Recommended Configuration for This Stack
-
-**Quick Setup (High Security):**
-
-1. Enable feeds:
-   - Abuse.ch Feodo (C&C)
-   - Abuse.ch URLhaus (Malware)
-   - Spamhaus DROP (Hijacked netblocks)
-   - ET Compromised IPs
-
-2. Action: **Deny Both** for all
-
-3. Update frequency: **4 hours**
-
-4. Enable suppression, whitelist:
-   - Your LAN subnets
-   - Your SIEM server IP
-   - Upstream DNS servers
-
-5. Enable logging, forward to SIEM (optional)
-
-**Validation:**
 ```bash
-# Check if pfBlockerNG is blocking
-pfctl -s rules | grep pfB | wc -l
-# Should show >0 rules
-
-# Check blocked connections
-pfctl -s states | grep pfB | head
-# Should show blocked states if under attack
+ssh admin@<PFSENSE_IP> "pfctl -sr | grep -c pfB_"      # > 0: rules loaded
+ssh admin@<PFSENSE_IP> "pfctl -t pfB_Critical_v4 -T show | wc -l"   # entries in a table
 ```
 
 ---
 
 ## Further Reading
 
-- **pfBlockerNG Official Docs**: https://docs.netgate.com/pfsense/en/latest/packages/pfblocker.html
-- **Abuse.ch Feeds**: https://abuse.ch/
-- **Spamhaus Lists**: https://www.spamhaus.org/drop/
-- **Emerging Threats Intelligence**: https://rules.emergingthreats.net/
-
----
-
-**Next Steps**: Combine with [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md) for complete threat detection stack.
+- **[PFBLOCKERNG_FEED_REFERENCE.md](PFBLOCKERNG_FEED_REFERENCE.md)** — full feed catalog, whitelisting, privacy notes
+- **[SURICATA_OPTIMIZATION_GUIDE.md](SURICATA_OPTIMIZATION_GUIDE.md)** — the other half of the detection stack
+- **[TELEGRAF_PFBLOCKER_SETUP.md](TELEGRAF_PFBLOCKER_SETUP.md)** — getting pfBlockerNG logs into OpenSearch
+- pfBlockerNG official docs: https://docs.netgate.com/pfsense/en/latest/packages/pfblocker.html
+- Abuse.ch feeds: https://abuse.ch/
+- Spamhaus DROP: https://www.spamhaus.org/drop/

@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3.11
+#!/usr/bin/env python3
 """
 Suricata EVE JSON Forwarder for pfSense
 ========================================
@@ -46,6 +46,10 @@ GEOIP_DB_PATHS = [
     "/var/db/GeoIP/GeoLite2-City.mmdb",
     "/usr/share/GeoIP/GeoLite2-City.mmdb",
 ]
+
+# An explicit GEOIP_DB_PATH (config.env / environment) is tried first
+if os.getenv("GEOIP_DB_PATH"):
+    GEOIP_DB_PATHS.insert(0, os.getenv("GEOIP_DB_PATH"))
 
 # How often to check for log rotation (N idle cycles × 0.1s sleep = ~5 seconds)
 ROTATION_CHECK_CYCLES = 50

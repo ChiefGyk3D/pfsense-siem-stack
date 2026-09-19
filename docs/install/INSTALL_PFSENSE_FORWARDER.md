@@ -1,152 +1,201 @@
 # pfSense Forwarder Installation Guide
 
-Complete guide for deploying the Python-based Suricata log forwarder on pfSense 2.8.1+.
+Complete guide for deploying the Python-based Suricata log forwarder on pfSense.
+
+> **Use `./setup.sh`.** Step 4 of `setup.sh` deploys the forwarder, the watchdog, the cron
+> entry and the rc.d service to pfSense over SSH, and starts it. Everything below the
+> [Configuration](#configuration) section is reference material and a manual fallback for
+> when you cannot run `setup.sh`. Do not mix the two: if you installed manually, re-running
+> `./setup.sh` later is safe and will replace your manual copies.
 
 ## Prerequisites
 
-- pfSense 2.8.1 or later (includes Python 3.11 and maxminddb)
+- pfSense 2.7.2 or later (2.8.1 tested; 2.9.0 supported with the caveats in the
+  [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md))
 - Suricata installed and running on at least one interface
-- SSH access to pfSense (enable in System > Advanced > Secure Shell)
-- Network connectivity between pfSense and SIEM server
+- SSH access to pfSense (enable in System > Advanced > Secure Shell), key-based
+  (`ssh-copy-id admin@<PFSENSE_IP>`) — the scripts never prompt for passwords
+- Network connectivity from pfSense to the SIEM server on UDP 5140
 
-> **Note**: No pip installation required! The forwarder uses `maxminddb` which is pre-installed with pfSense 2.8.1+ (via Suricata package).
+> **Python**: pfSense ships Python 3 with the Suricata package (python3.11 on 2.8.x).
+> `setup.sh` detects the interpreter on pfSense and rewrites the forwarder's shebang to
+> match, so the commands in this guide use `/usr/local/bin/python3` generically.
+> `maxminddb` (for GeoIP) comes with the Suricata/pfBlockerNG packages; no pip install is
+> needed, and the forwarder runs without GeoIP if the module is missing.
 
 ## Overview
 
-The forwarder consists of two components:
-1. **Python Forwarder** (`forward-suricata-eve.py`) - Reads Suricata EVE JSON, enriches with GeoIP, sends to Logstash via UDP
-2. **Watchdog Script** (`suricata-forwarder-watchdog.sh`) - Monitors forwarder and restarts if stopped
+`setup.sh` installs four pieces on pfSense:
+
+1. **Python forwarder** — `/usr/local/bin/forward-suricata-eve.py`. Tails every
+   `/var/log/suricata/suricata_*/eve.json`, enriches with GeoIP, sends events to Logstash
+   over UDP.
+2. **rc.d service** — `/usr/local/etc/rc.d/suricata_forwarder.sh`. Starts the forwarder at
+   boot under `daemon(8)` with a pidfile in `/var/run/suricata_forwarder.pid` and stdout/stderr
+   in `/var/log/suricata-forwarder.log`. pfSense only auto-starts rc.d scripts whose name
+   ends in `.sh`, hence the suffix. Control it with
+   `service suricata_forwarder.sh start|stop|restart|status`.
+3. **Watchdog** — `/usr/local/bin/suricata-forwarder-watchdog.sh`. Checks whether the
+   forwarder process exists and restarts the service if it is gone.
+4. **Cron entry** — `* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh` in **root's
+   crontab** (`crontab -l`, stored in `/var/cron/tabs/root`). Runs the watchdog every
+   minute.
 
 ### Features
-- **Multi-interface support**: Monitors ALL Suricata instances automatically
-- **GeoIP enrichment**: Adds country/city data using maxminddb (no pip install needed)
-- **Auto-restart**: Watchdog ensures forwarder stays running
-- **Low overhead**: Uses ~2-5% CPU on typical deployments
+- **Multi-interface support**: monitors ALL Suricata instances automatically
+- **GeoIP enrichment**: adds country/city data using maxminddb (no pip install needed)
+- **Auto-restart**: rc.d service at boot, watchdog every minute
+- **Low overhead**: usually well under 5% CPU
+
+### What survives a reboot, upgrade or restore
+
+Only `config.xml` is guaranteed to survive a pfSense reinstall or configuration restore.
+The files above live outside `config.xml`: they normally survive a reboot and an in-place
+upgrade, but they are **not** part of pfSense backups and can be removed by an upgrade or a
+package reinstall. Do not edit `/etc/crontab` directly — pfSense regenerates that file and
+your entry will be lost; the root crontab that `setup.sh` uses is the right place.
+
+**After upgrading pfSense, re-run `./setup.sh` and then `./scripts/status.sh`.** Details in
+the [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
 
 ## Quick Installation (Recommended)
 
-The easiest way to install is using the scripts from this repository:
+From the workstation or SIEM server where you cloned the repository:
 
 ```bash
-# From your workstation (not pfSense)
-cd /path/to/pfsense-siem-stack
-
-# Copy forwarder scripts to pfSense
-scp scripts/forward-suricata-eve.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
-scp scripts/suricata-forwarder-watchdog.sh admin@YOUR_PFSENSE_IP:/usr/local/bin/
-
-# Make executable
-ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve.py /usr/local/bin/suricata-forwarder-watchdog.sh'
-
-# Add watchdog to cron (runs every minute)
-ssh admin@YOUR_PFSENSE_IP 'grep -q suricata-forwarder-watchdog /etc/crontab || echo "* * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh" >> /etc/crontab'
-
-# Restart cron and start forwarder
-ssh admin@YOUR_PFSENSE_IP 'service cron restart && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
-
-# Verify it's running
-ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
+cp config.env.example config.env     # set SIEM_HOST, PFSENSE_HOST, PFSENSE_USER
+./scripts/preflight.sh               # SSH, Python on pfSense, OpenSearch, GeoIP
+./setup.sh                           # runs preflight again, then deploys everything
 ```
 
-The forwarder will:
-- Auto-detect all Suricata EVE log files
-- Load GeoIP database from pfSense (Suricata/pfBlockerNG/ntopng)
-- Send enriched events to <SIEM_IP>:5140 (default, configurable via environment variables)
+`setup.sh` bakes `SIEM_HOST` and `LOGSTASH_UDP_PORT` from `config.env` into the copy of the
+forwarder it uploads, so no editing on pfSense is required. Verify:
+
+```bash
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
+ssh admin@<PFSENSE_IP> 'crontab -l | grep watchdog'
+./scripts/status.sh
+```
 
 ## Configuration
 
 ### SIEM Server IP (Environment Variables)
 
-The forwarder reads configuration from environment variables with sensible defaults:
+The forwarder reads configuration from environment variables with defaults that `setup.sh`
+replaces at deploy time:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SIEM_HOST` | `<SIEM_IP>` | SIEM/Logstash server IP |
+| `SIEM_HOST` | value of `SIEM_HOST` in config.env | SIEM/Logstash server IP |
 | `LOGSTASH_UDP_PORT` | `5140` | UDP port for Logstash |
 | `DEBUG_ENABLED` | `False` | Enable debug logging |
 | `DEBUG_LOG` | `/var/log/suricata_forwarder_debug.log` | Debug log path |
 
-To change the SIEM server, either:
+To change the SIEM server:
 
-**Option 1: Edit the script** (persistent)
+**Option 1: Edit config.env and re-run `./setup.sh`** (recommended, persistent)
+
+**Option 2: Edit the script on pfSense** (persistent until the next `setup.sh`)
 ```bash
-ssh admin@YOUR_PFSENSE_IP
+ssh admin@<PFSENSE_IP>
 vi /usr/local/bin/forward-suricata-eve.py
-# Change: SIEM_HOST = os.getenv("SIEM_HOST", "YOUR_NEW_IP")
+# Change: SIEM_HOST = os.getenv("SIEM_HOST", "<SIEM_IP>")
+service suricata_forwarder.sh restart
 ```
 
-**Option 2: Use environment variables** (for testing)
+**Option 3: Environment variable for a one-off test run** (stop the service first so two
+copies do not run)
 ```bash
-ssh admin@YOUR_PFSENSE_IP
-SIEM_HOST=10.0.0.100 /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py
+ssh admin@<PFSENSE_IP>
+service suricata_forwarder.sh stop
+SIEM_HOST=198.51.100.20 /usr/local/bin/python3 /usr/local/bin/forward-suricata-eve.py
+# Ctrl+C when done, then:
+service suricata_forwarder.sh start
 ```
 
 ### GeoIP Database Priority
 
-The forwarder searches for GeoIP databases in this order:
-1. `/usr/local/share/ntopng/GeoLite2-City.mmdb` (ntopng - best for geomaps)
+The forwarder searches for a GeoLite2 database in this order and uses the first that exists:
+
+1. `/usr/local/share/ntopng/GeoLite2-City.mmdb` (ntopng — best for geomaps)
 2. `/usr/local/share/suricata/GeoLite2/GeoLite2-City.mmdb`
-3. `/usr/local/share/suricata/GeoLite2/GeoLite2-Country.mmdb` (Suricata default)
+3. `/usr/local/share/suricata/GeoLite2/GeoLite2-Country.mmdb`
 4. `/usr/local/share/GeoIP/GeoLite2-City.mmdb` (pfBlockerNG)
-5. `/usr/local/share/GeoIP/GeoLite2-Country.mmdb`
+5. `/usr/local/share/GeoIP/GeoLite2-Country.mmdb` (pfBlockerNG)
+6. `/var/unbound/usr/local/share/GeoIP/GeoLite2-City.mmdb`
+7. `/var/unbound/usr/local/share/GeoIP/GeoLite2-Country.mmdb`
+8. `/var/db/GeoIP/GeoLite2-City.mmdb`
+9. `/usr/share/GeoIP/GeoLite2-City.mmdb`
 
 **Country vs City database:**
-- **Country**: Provides country_code, country_name, continent_code
-- **City**: Also provides city_name, region_name, latitude/longitude (required for geomap panels)
+- **Country**: provides country_code, country_name, continent_code
+- **City**: also provides city_name, region_name, latitude/longitude (required for geomap panels)
 
-## Manual Installation Steps
+The forwarder needs no MaxMind account; the package that downloads the database (ntopng or
+pfBlockerNG) needs a free license key. See [GeoIP Setup](GEOIP_SETUP.md).
 
-Replace `<SIEM_IP>` with your actual SIEM server IP.
-If you prefer to install step-by-step instead of using the quick install above:
+## Manual Installation (fallback)
 
-### 1. Copy Scripts to pfSense
+Use this only if you cannot run `setup.sh` (for example, no SSH from the SIEM host to
+pfSense). Replace `<SIEM_IP>` with your SIEM server IP. All commands run **on pfSense**
+after `ssh admin@<PFSENSE_IP>` unless noted.
+
+### 1. Copy the forwarder and watchdog
+
+From your workstation:
 
 ```bash
-# Copy Python forwarder
-scp scripts/forward-suricata-eve.py admin@YOUR_PFSENSE_IP:/usr/local/bin/
-ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/forward-suricata-eve.py'
-
-# Copy watchdog script
-scp scripts/suricata-forwarder-watchdog.sh admin@YOUR_PFSENSE_IP:/usr/local/bin/
-ssh admin@YOUR_PFSENSE_IP 'chmod +x /usr/local/bin/suricata-forwarder-watchdog.sh'
+scp scripts/forward-suricata-eve.py admin@<PFSENSE_IP>:/usr/local/bin/
+scp scripts/suricata-forwarder-watchdog.sh admin@<PFSENSE_IP>:/usr/local/bin/
+ssh admin@<PFSENSE_IP> 'chmod +x /usr/local/bin/forward-suricata-eve.py /usr/local/bin/suricata-forwarder-watchdog.sh'
 ```
 
-### 2. Start the Forwarder
+On pfSense, set the SIEM address and make sure the shebang matches the installed interpreter:
 
 ```bash
-# SSH to pfSense
-ssh admin@YOUR_PFSENSE_IP
+sed -i '' 's/"SIEM_HOST", "[^"]*"/"SIEM_HOST", "<SIEM_IP>"/' /usr/local/bin/forward-suricata-eve.py
+PY=$(for p in /usr/local/bin/python3 /usr/local/bin/python3.13 /usr/local/bin/python3.12 /usr/local/bin/python3.11 /usr/bin/python3; do [ -x "$p" ] && echo "$p" && break; done)
+sed -i '' "1s|^#!.*|#!${PY}|" /usr/local/bin/forward-suricata-eve.py
+```
 
-# Start forwarder in background
-nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
+### 2. Install the rc.d service
 
-# Verify it's running
-pgrep -fl forward-suricata
+`setup.sh` generates the service script; the simplest manual route is to copy it from a host
+where `setup.sh` has already run, or write it yourself with these properties:
 
-# Check syslog for startup message
+- Path `/usr/local/etc/rc.d/suricata_forwarder.sh` (mode 755; the `.sh` suffix is required
+  for pfSense to run it at boot)
+- `name="suricata_forwarder"`, `rcvar="suricata_forwarder_enable"`
+- Starts `/usr/local/bin/forward-suricata-eve.py` via
+  `/usr/sbin/daemon -f -p /var/run/suricata_forwarder.pid -o /var/log/suricata-forwarder.log`
+- `stop` kills the pid in the pidfile; `status` reports on it
+
+Then enable and start it:
+
+```bash
+sysrc suricata_forwarder_enable=YES
+service suricata_forwarder.sh start
+service suricata_forwarder.sh status
 grep suricata-forwarder /var/log/system.log | tail -5
 ```
 
-Expected output in syslog:
+Expected syslog lines:
 ```
-Jan 24 12:32:15 firewall suricata-forwarder: Loaded GeoIP database from /usr/local/share/GeoIP/GeoLite2-Country.mmdb
-Jan 24 12:32:15 firewall suricata-forwarder: Starting forwarder for 13 interface(s) to <SIEM_IP>:5140 (GeoIP: enabled)
+suricata-forwarder: Loaded GeoIP from /usr/local/share/ntopng/GeoLite2-City.mmdb
+suricata-forwarder: Starting forwarder for 13 interface(s) to <SIEM_IP>:5140 (GeoIP: enabled)
 ```
 
-### 3. Install Watchdog Cron Job
+### 3. Install the watchdog cron job
+
+Add the entry to **root's crontab** — not `/etc/crontab`, which pfSense regenerates:
 
 ```bash
-# SSH to pfSense
-ssh admin@YOUR_PFSENSE_IP
-
-# Add cron job directly to /etc/crontab (persists across reboots)
-grep -q suricata-forwarder-watchdog /etc/crontab || echo "* * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh" >> /etc/crontab
-
-# Restart cron to pick up changes
-service cron restart
+(crontab -l 2>/dev/null | grep -v suricata-forwarder-watchdog; echo "* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh") | crontab -
+crontab -l | grep watchdog
 ```
 
-**Alternative (GUI method)**: Use pfSense web UI at **System > Cron** to add the job.
+The GUI alternative is **Services > Cron** (Cron package), which stores the job in
+`config.xml` and therefore *does* survive backups and restores.
 
 ## Verification
 
@@ -154,29 +203,29 @@ service cron restart
 
 ```bash
 # On pfSense
-ssh admin@YOUR_PFSENSE_IP
+service suricata_forwarder.sh status
+pgrep -fl forward-suricata-eve
 
-# Check if process is running
-pgrep -fl forward-suricata
-
-# Check system log for forwarder messages
+# Recent forwarder messages
 grep suricata-forwarder /var/log/system.log | tail -10
 
-# Check watchdog is running (wait 1 minute after cron job installation)
-grep -i watchdog /var/log/system.log | tail -5
+# Watchdog activity (only logs when it has to restart something)
+grep suricata-watchdog /var/log/system.log | tail -5
 ```
 
 ### Enable Debug Mode (Troubleshooting)
 
 ```bash
-# Kill current forwarder
-pkill -f forward-suricata-eve.py
+# Stop the service so the watchdog does not start a second copy alongside your debug run
+service suricata_forwarder.sh stop
 
-# Start with debug logging
-DEBUG_ENABLED=true nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &
-
-# View debug log
+# Run in the foreground with debug logging (Ctrl+C to stop)
+DEBUG_ENABLED=true /usr/local/bin/python3 /usr/local/bin/forward-suricata-eve.py &
 tail -f /var/log/suricata_forwarder_debug.log
+
+# When finished
+pkill -f forward-suricata-eve.py
+service suricata_forwarder.sh start
 ```
 
 Debug output shows:
@@ -194,18 +243,18 @@ On your SIEM server:
 curl -s http://localhost:9200/suricata-*/_count | jq .count
 
 # Check latest events
-curl -s "http://localhost:9200/suricata-*/_search?size=3&sort=@timestamp:desc" | jq -r '.hits.hits[] | ._source | {timestamp: ."@timestamp", event_type: .suricata.eve.event_type, src_ip: .suricata.eve.src_ip}'
+curl -s "http://localhost:9200/suricata-*/_search?size=3&sort=@timestamp:desc" | jq -r '.hits.hits[] | ._source | {timestamp: ."@timestamp", event_type: .event_type, src_ip: .src_ip}'
 
 # Monitor real-time (press Ctrl+C to stop)
 watch -n 2 'curl -s http://localhost:9200/suricata-*/_count | jq .count'
 ```
 
-Expected output - event count should increase every few seconds:
+Expected output — event count should increase every few seconds:
 ```
 {
-  "timestamp": "2025-11-24T17:38:24.348Z",
+  "timestamp": "2026-09-19T17:38:24.348Z",
   "event_type": "tls",
-  "src_ip": "75.188.212.77"
+  "src_ip": "203.0.113.45"
 }
 ```
 
@@ -218,13 +267,13 @@ Generate test traffic on pfSense:
 nslookup google.com
 
 # From pfSense, generate HTTPS connection
-fetch https://www.pfsense.org
+fetch -o /dev/null https://www.pfsense.org
 
 # Wait 5 seconds
 sleep 5
 
 # Check SIEM for new events
-curl -s "http://YOUR_SIEM_IP:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source.suricata.eve.event_type'
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source.event_type'
 ```
 
 ## Troubleshooting
@@ -232,33 +281,33 @@ curl -s "http://YOUR_SIEM_IP:9200/suricata-*/_search?size=1&sort=@timestamp:desc
 ### Forwarder Not Starting
 
 ```bash
-# Check if Python exists
-which python3.11
-# Should output: /usr/local/bin/python3.11
+# Check the interpreter the shebang points at exists
+head -1 /usr/local/bin/forward-suricata-eve.py
+ls -l /usr/local/bin/python3*
 
-# Try running manually to see errors
+# Run it in the foreground to see errors
+service suricata_forwarder.sh stop
 /usr/local/bin/forward-suricata-eve.py
 
-# Check file permissions
-ls -la /usr/local/bin/forward-suricata-eve*
-# All should be executable (rwxr-xr-x)
+# Check service log and permissions
+tail -20 /var/log/suricata-forwarder.log
+ls -la /usr/local/bin/forward-suricata-eve.py /usr/local/etc/rc.d/suricata_forwarder.sh
 ```
 
 ### No Events in SIEM
 
 ```bash
-# 1. Check if Suricata is generating events
-tail -f /var/log/suricata/suricata_*/eve.json
-# Should see JSON events appearing
+# 1. Check if Suricata is generating events (the number is instance-specific)
+tail -f /var/log/suricata/suricata_igc012345/eve.json
 
 # 2. Check if forwarder is actually running
-ps aux | grep forward-suricata-eve.py
+service suricata_forwarder.sh status
 
 # 3. Test UDP connectivity from pfSense to SIEM
-echo '{"test":"event"}' | nc -u -w1 YOUR_SIEM_IP 5140
+echo '{"test":"event"}' | nc -u -w1 <SIEM_IP> 5140
 
 # 4. Check SIEM received test event
-curl -s "http://YOUR_SIEM_IP:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq
+curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq
 ```
 
 ### Events Have Wrong Timestamp
@@ -268,15 +317,14 @@ The forwarder preserves Suricata's original timestamp. Check pfSense timezone:
 ```bash
 # On pfSense
 date
-cat /etc/localtime
 
 # Suricata timestamps include timezone offset
-tail -1 /var/log/suricata/suricata_*/eve.json | jq .timestamp
+tail -1 /var/log/suricata/suricata_igc012345/eve.json | jq .timestamp
 ```
 
 ### High CPU Usage
 
-The Python forwarder should use <1% CPU normally. If higher:
+The forwarder should use a few percent CPU at most. If higher:
 
 ```bash
 # Check process stats
@@ -286,47 +334,43 @@ ps aux | grep forward-suricata-eve.py
 wc -l /var/log/suricata/suricata_*/eve.json
 
 # Check network connectivity issues
-netstat -s | grep -i udp
+netstat -s -p udp
 ```
 
 ### Watchdog Not Running
 
 ```bash
-# Check cron configuration
-crontab -l -u root | grep watchdog
+# Check root's crontab
+crontab -l | grep watchdog
 
 # Run watchdog manually to test
 /usr/local/bin/suricata-forwarder-watchdog.sh
 
 # Check syslog for watchdog output
-grep watchdog /var/log/system.log | tail -20
+grep suricata-watchdog /var/log/system.log | tail -20
 ```
+
+If the entry is missing after a pfSense upgrade, re-run `./setup.sh`.
 
 ## Maintenance
 
 ### Restart Forwarder
 
 ```bash
-# SSH to pfSense
-ssh root@YOUR_PFSENSE_IP
-
-# Kill current process
-pkill -f forward-suricata-eve.py
-
-# Watchdog will auto-restart within 1 minute
-# Or start manually:
-nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'
 ```
+
+If you kill the process instead (`pkill -f forward-suricata-eve.py`), the watchdog restarts
+it within a minute.
 
 ### Update Configuration
 
-```bash
-# Edit Python script to change SIEM IP or port
-vi /usr/local/bin/forward-suricata-eve.py
+Edit `config.env` and re-run `./setup.sh`; it uploads a fresh copy of the forwarder and
+restarts the service. To change only the script on pfSense:
 
-# Restart forwarder
-pkill -f forward-suricata-eve.py
-nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
+```bash
+vi /usr/local/bin/forward-suricata-eve.py
+service suricata_forwarder.sh restart
 ```
 
 ### Monitor Performance
@@ -335,31 +379,41 @@ nohup /usr/local/bin/forward-suricata-eve.sh > /dev/null 2>&1 &
 # Check forwarder resource usage
 ps aux | grep forward-suricata-eve.py
 
-# Check network traffic
-netstat -s | grep -A 10 "Udp:"
+# Check UDP statistics
+netstat -s -p udp
 
-# Check event rate in syslog
-grep suricata-forwarder-watchdog /var/log/system.log | tail -20
+# Watchdog restarts (frequent entries mean the forwarder is crashing)
+grep suricata-watchdog /var/log/system.log | tail -20
 ```
+
+For deeper monitoring (alerting on forwarder silence, unified watchdog) see
+[Suricata Forwarder Monitoring](../operations/SURICATA_FORWARDER_MONITORING.md).
 
 ## Files Summary
 
-| File | Location | Purpose |
-|------|----------|---------|
+| File | Location on pfSense | Purpose |
+|------|---------------------|---------|
 | `forward-suricata-eve.py` | `/usr/local/bin/` | Main forwarder (Python) |
-| `forward-suricata-eve.sh` | `/usr/local/bin/` | Wrapper script |
-| `suricata-forwarder-watchdog.sh` | `/usr/local/bin/` | Monitoring/restart script |
-| Cron job | System > Cron | Runs watchdog every minute |
+| `suricata_forwarder.sh` | `/usr/local/etc/rc.d/` | rc.d service; starts at boot, `service suricata_forwarder.sh ...` |
+| `suricata-forwarder-watchdog.sh` | `/usr/local/bin/` | Restarts the forwarder if the process is gone |
+| Cron job (`* * * * *`) | root's crontab (`/var/cron/tabs/root`) | Runs the watchdog every minute |
+| `suricata_forwarder.pid` | `/var/run/` | Pidfile written by the rc.d service |
+| `suricata-forwarder.log` | `/var/log/` | stdout/stderr of the daemonized forwarder |
+| `suricata_forwarder_debug.log` | `/var/log/` | Debug log (only with `DEBUG_ENABLED=true`) |
+
+None of these are in `config.xml`; re-run `./setup.sh` after a pfSense upgrade or reinstall.
 
 ## Next Steps
 
 Continue to:
-- **[Dashboard Installation](INSTALL_DASHBOARD.md)** - Set up Grafana dashboard
+- **[Dashboard Installation](INSTALL_DASHBOARD.md)** - Set up Grafana dashboards
+- **[GeoIP Setup](GEOIP_SETUP.md)** - Get the attack map working
 - **[Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Why Python Instead of Shell Scripts?
 
-The original approach used shell scripts with `tail | while read | nc` but this was **fundamentally broken** on pfSense:
+The original approach used shell scripts with `tail | while read | nc` but this was
+**fundamentally broken** on pfSense:
 - Shell while-read loops have buffering issues
 - Pipe chaining corrupts data
 - Manual tests worked but automated scripts failed
@@ -369,5 +423,5 @@ The Python solution:
 - ✅ Single reliable process
 - ✅ No pipe/buffer issues
 - ✅ Proper error handling
-- ✅ Built-in to pfSense 2.8.1+
+- ✅ Uses the Python already on pfSense
 - ✅ Easy to debug and maintain

@@ -1,5 +1,7 @@
 # CrowdSec Phase 1 for pfSense SIEM Stack
 
+> **Status: exploratory plan; not yet integrated into this stack.** Nothing in the installer, dashboards or Logstash pipeline consumes CrowdSec data yet. Treat this as a design note.
+
 ## Why
 
 CrowdSec can aggregate repeated hostile behavior and produce ban decisions with TTL, reducing noisy one-off firewall events.
@@ -20,6 +22,8 @@ Reference: CrowdSec pfSense install doc
 fetch https://raw.githubusercontent.com/crowdsecurity/pfSense-pkg-crowdsec/refs/heads/main/install-crowdsec.sh
 sh install-crowdsec.sh
 ```
+
+> **Warning:** this `fetch | sh` style install adds a third-party package repository and installs outside pfSense's own package manager. Packages installed this way are **not recorded in `config.xml`**, so they are not restored from a configuration backup and are likely to be removed or broken by a pfSense upgrade — expect to re-run the installer afterwards. Read the script before running it. If CrowdSec ever appears in the official pfSense package list, prefer that route.
 
 After install:
 

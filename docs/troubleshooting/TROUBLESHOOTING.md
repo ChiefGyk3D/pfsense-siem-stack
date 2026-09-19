@@ -1,9 +1,15 @@
 # Troubleshooting Guide
 
-Common issues and solutions for the pfSense Suricata monitoring stack.
+Common issues and solutions for the pfSense Suricata monitoring stack. This is
+the master runbook; the other files in this directory go deep on single issues
+and are linked from the relevant sections.
+
+Placeholders: `<PFSENSE_IP>` is your firewall, `<SIEM_IP>` the server running
+OpenSearch/Logstash/Grafana. Commands prefixed `sudo` run on the SIEM server;
+commands wrapped in `ssh admin@<PFSENSE_IP> '...'` run on pfSense.
 
 ## Table of Contents
-- [Quick Diagnostic Commands](#quick-diagnostic-commands)
+- [Start Here](#start-here)
 - [No Data in Dashboard](#no-data-in-dashboard)
 - [Forwarder Issues](#forwarder-issues)
 - [OpenSearch Issues](#opensearch-issues)
@@ -11,592 +17,480 @@ Common issues and solutions for the pfSense Suricata monitoring stack.
 - [Grafana Issues](#grafana-issues)
 - [Performance Issues](#performance-issues)
 - [Network Issues](#network-issues)
+- [Common Error Messages](#common-error-messages)
+- [After a pfSense Upgrade](#after-a-pfsense-upgrade)
+- [Getting Help](#getting-help)
+- [Preventive Maintenance](#preventive-maintenance)
 
-## Quick Diagnostic Commands
+## Start Here
 
-Run these commands to quickly check system health:
+Two scripts do most of the work. Run them from your repo checkout (they read
+`config.env`):
 
 ```bash
-# Check all services status
+./scripts/status.sh                 # read-only health report: services, indices, forwarder, watchdog
+./scripts/diagnose-and-repair.sh    # walks the whole chain and fixes the safe things itself
+```
+
+`diagnose-and-repair.sh` checks connectivity → OpenSearch → Logstash → forwarder
+→ Grafana, then sends a test event end to end. It will enable auto-create,
+install a missing index template, and restart the forwarder service on its own;
+for everything else it prints the exact command. If neither script points at the
+problem, use the manual checks below.
+
+```bash
+# Services on the SIEM server
 sudo systemctl status opensearch logstash grafana-server
 
-# Check event count
-curl -s http://localhost:9200/suricata-*/_count | jq .count
+# Event count and latest event
+curl -s 'http://localhost:9200/suricata-*/_count' | jq .count
+curl -s 'http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc' \
+  | jq '.hits.hits[0]._source | {ts: ."@timestamp", event_type, src_ip, in_iface}'
 
-# Check latest event
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source | {timestamp: ."@timestamp", event_type: .event_type, src: .src_ip}'
+# Forwarder on pfSense
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
 
-# Check forwarder on pfSense
-ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata-eve'
-
-# Check Logstash is listening
-sudo netstat -ulnp | grep 5140
+# Logstash is listening
+sudo ss -ulnp | grep 5140
 ```
 
 ## No Data in Dashboard
 
-### Symptom
-Grafana dashboard shows "No data" for all panels.
+**Symptom:** panels show "No data".
 
-### Diagnosis
+Work out which of three situations you are in:
 
-**1. Verify events exist in OpenSearch:**
 ```bash
-curl -s http://localhost:9200/suricata-*/_count | jq .count
+curl -s 'http://localhost:9200/suricata-*/_count' | jq .count
+curl -s 'http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc' | jq -r '.hits.hits[0]._source."@timestamp"'
 ```
 
-If count is 0:
-- Continue to [Forwarder Issues](#forwarder-issues)
-- Check [Logstash Issues](#logstash-issues)
+1. **Count is 0** – nothing is being indexed. Go to [Forwarder Issues](#forwarder-issues) and [Logstash Issues](#logstash-issues).
+2. **Count is growing but the latest event is old** – the flow stopped. If it
+   stopped at exactly midnight UTC, read
+   [OPENSEARCH_AUTO_CREATE.md](OPENSEARCH_AUTO_CREATE.md). Otherwise check the
+   forwarder and Logstash logs.
+3. **Recent events exist but panels are empty** – a Grafana-side problem: time
+   range, datasource, or field names. Confirm the datasource
+   (Connections → Data sources → the OpenSearch one: index `suricata-*`, time
+   field `@timestamp`, "Save & test" green) and that documents are flat
+   (`jq '.hits.hits[0]._source | keys'` should list `event_type`, `src_ip`, ...
+   at the top level, not a `suricata` wrapper).
 
-If count > 0 but dashboard shows no data:
-- Continue to [Grafana Issues](#grafana-issues)
-
-**2. Check time range:**
-- Dashboard time range (top right) might be too narrow
-- Try "Last 24 hours" or "Last 7 days"
-- Check latest event timestamp:
-```bash
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | jq -r '.hits.hits[0]._source."@timestamp"'
-```
-
-**3. Check field structure:**
-```bash
-curl -s "http://localhost:9200/suricata-*/_search?size=1" | jq '.hits.hits[0]._source | keys'
-```
-
-Should include: `@timestamp`, `event_type`, `src_ip`, `dest_ip`
-
-**4. Check datasource configuration:**
-- Grafana → Connections → Data sources → OpenSearch-Suricata
-- Click "Save & test" - should show green checkmark
-- Verify:
-  - URL: `http://localhost:9200`
-  - Index: `suricata-*`
-  - Time field: `@timestamp`
-
-### Solutions
-
-**If events exist but panels show no data:**
-```bash
-# Check panel queries
-# 1. Edit panel → Query inspector
-# 2. Check for field name errors (missing .keyword suffix)
-# 3. Verify query syntax (Lucene format)
-
-# Re-import dashboard
-# Dashboard settings → JSON Model → Copy
-# Dashboards → New → Import → Paste JSON
-```
-
-**If no events exist:**
-- See [Forwarder Issues](#forwarder-issues)
-- See [Logstash Issues](#logstash-issues)
+The full triage for case 3, including the older nested-layout migration, lives
+in [DASHBOARD_NO_DATA_FIX.md](DASHBOARD_NO_DATA_FIX.md). It is not repeated here.
 
 ## Forwarder Issues
 
+The forwarder is `/usr/local/bin/forward-suricata-eve.py`, run as the rc.d
+service `suricata_forwarder.sh` under `daemon(8)`, with a cron watchdog every
+minute that restarts the service if the process is gone. Logs:
+`/var/log/suricata-forwarder.log` (stdout/stderr) and syslog tags
+`suricata-forwarder` / `suricata-watchdog` in `/var/log/system.log`.
+
 ### Forwarder Not Running
 
-**Symptom:** No process found when checking:
+**Symptom:**
 ```bash
-ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata'
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
+# suricata_forwarder is not running.
 ```
 
 **Diagnosis:**
 ```bash
-# Check if script exists and is executable
-ssh admin@YOUR_PFSENSE_IP 'ls -la /usr/local/bin/forward-suricata-eve.py'
+# Service and script present?
+ssh admin@<PFSENSE_IP> 'ls -l /usr/local/etc/rc.d/suricata_forwarder.sh /usr/local/bin/forward-suricata-eve.py'
 
-# Try running manually to see errors
-ssh admin@YOUR_PFSENSE_IP '/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py'
+# Why did it stop?
+ssh admin@<PFSENSE_IP> 'tail -30 /var/log/suricata-forwarder.log'
+ssh admin@<PFSENSE_IP> 'grep -E "suricata-(forwarder|watchdog)" /var/log/system.log | tail -20'
 
-# Check syslog for errors
-ssh admin@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -20'
+# Run it in the foreground to see errors directly (stop the service first)
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh stop; python3 /usr/local/bin/forward-suricata-eve.py'
 
-# Check if maxminddb is available (should be pre-installed)
-ssh admin@YOUR_PFSENSE_IP 'python3.11 -c "import maxminddb; print(\"OK\")"'
+# Is the watchdog installed?
+ssh admin@<PFSENSE_IP> 'crontab -l | grep watchdog'
+# expected: * * * * * /usr/local/bin/suricata-forwarder-watchdog.sh
 ```
+
+Typical causes: `ERROR: No EVE JSON files found` (Suricata is not running on any
+interface, enable it first); `interpreter ... not found — re-run setup.sh`
+(a pfSense upgrade replaced Python, see
+[After a pfSense Upgrade](#after-a-pfsense-upgrade)); the rc.d script or crontab
+entry missing (setup.sh was never run, or was run before the `.sh` service
+existed).
 
 **Solutions:**
 ```bash
-# Start forwarder manually
-ssh admin@YOUR_PFSENSE_IP 'nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh start'
 
-# Verify watchdog is configured
-ssh admin@YOUR_PFSENSE_IP 'grep watchdog /etc/crontab'
-# Should show: * * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh
-
-# If missing, add cron entry
-ssh admin@YOUR_PFSENSE_IP 'echo "* * * * * root /usr/local/bin/suricata-forwarder-watchdog.sh" >> /etc/crontab && service cron restart'
+# If the service files are missing or stale, redeploy everything from your workstation:
+./setup.sh
 ```
 
 ### Forwarder Running But No Events
 
-**Symptom:** Process running but OpenSearch event count not increasing.
+**Symptom:** `status` says running, OpenSearch count is not increasing.
 
 **Diagnosis:**
 ```bash
-# 1. Check if Suricata is generating events
-ssh admin@YOUR_PFSENSE_IP 'tail -5 /var/log/suricata/suricata_*/eve.json'
-# Should show JSON events
+# 1. Is Suricata writing events at all?
+ssh admin@<PFSENSE_IP> 'tail -3 /var/log/suricata/*/eve.json'
 
-# 2. Test UDP connectivity
-echo '{"test":"event"}' | ssh admin@YOUR_PFSENSE_IP "nc -u -w1 YOUR_SIEM_IP 5140"
+# 2. Which files does the forwarder have open? (should be eve.json, not eve.json.*)
+ssh admin@<PFSENSE_IP> 'lsof -p $(cat /var/run/suricata_forwarder.child.pid) | grep eve.json'
 
-# 3. Check for network/firewall blocking
-ssh admin@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
+# 3. Where is it sending?
+ssh admin@<PFSENSE_IP> 'grep "^SIEM_HOST\|^LOGSTASH_PORT" /usr/local/bin/forward-suricata-eve.py'
 
-# 4. Check SIEM firewall allows UDP 5140
+# 4. Can pfSense reach Logstash?
+ssh admin@<PFSENSE_IP> 'echo "{\"event_type\":\"test\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000000+0000)\"}" | nc -u -w1 <SIEM_IP> 5140'
+curl -s 'http://localhost:9200/suricata-*/_search?q=event_type:test&size=1' | jq .hits.total.value
+
+# 5. Firewall on the SIEM server
 sudo ufw status | grep 5140
 ```
 
 **Solutions:**
 ```bash
-# Restart forwarder
-ssh admin@YOUR_PFSENSE_IP 'pkill -f forward-suricata-eve.py; sleep 1; nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
-
-# Check SIEM server IP in forwarder script (or use DEBUG_ENABLED)
-ssh admin@YOUR_PFSENSE_IP 'grep SIEM_HOST /usr/local/bin/forward-suricata-eve.py | head -1'
-
-# Allow UDP 5140 on SIEM
-sudo ufw allow 5140/udp
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'   # also picks up newly enabled interfaces
+sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp
+./setup.sh                                                          # if SIEM_HOST/port baked into the script are wrong
 ```
+
+If the forwarder holds a rotated file (`eve.json.*`) open for more than a few
+seconds, see [LOG_ROTATION_FIX.md](LOG_ROTATION_FIX.md).
+
+### Duplicate Forwarders
+
+Two forwarder processes send every event twice. This happens when a forwarder
+started by hand (or by one of the legacy scripts) runs alongside the service.
+
+```bash
+ssh admin@<PFSENSE_IP> 'pgrep -fl forward-suricata-eve.py'
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh stop; pkill -f forward-suricata-eve.py; sleep 1; service suricata_forwarder.sh start'
+```
+
+Do not leave the legacy cron entries from `setup_forwarder_monitoring.sh` or
+`unified-monitoring-watchdog.sh` in place; they fight the service.
 
 ### Events Have _jsonparsefailure Tag
 
-**Symptom:** Events in OpenSearch but tagged with `_jsonparsefailure`.
-
 **Diagnosis:**
 ```bash
-# Check event structure
-curl -s "http://localhost:9200/suricata-*/_search?q=tags:_jsonparsefailure&size=1" | jq '.hits.hits[0]._source'
-
-# Check what's in event.original or message field
-curl -s "http://localhost:9200/suricata-*/_search?q=tags:_jsonparsefailure&size=1" | jq -r '.hits.hits[0]._source.event.original'
+curl -s 'http://localhost:9200/suricata-*/_search?q=tags:_jsonparsefailure&size=1' | jq '.hits.hits[0]._source'
 ```
 
-**Solutions:**
-
-If event.original contains valid JSON:
-```bash
-# Logstash config should parse from event.original
-# Check /etc/logstash/conf.d/suricata.conf has:
-# json {
-#   source => "[event][original]"
-#   ...
-# }
-
-# Restart Logstash
-sudo systemctl restart logstash
-```
-
-If event.original is garbage ("X" or malformed):
-```bash
-# Forwarder is broken - redeploy Python version
-# See docs/install/INSTALL_PFSENSE_FORWARDER.md
-```
+If `message` holds valid JSON, the deployed pipeline is not the shipped one;
+redeploy `config/logstash-suricata.conf` (see [Logstash Issues](#logstash-issues)).
+If `message` is truncated, the event exceeded the 64 KB UDP datagram limit
+(large `fileinfo`/`http` payloads); these are rare and safe to ignore, or
+disable that EVE type in Suricata.
 
 ## OpenSearch Issues
 
-### OpenSearch Not Starting
+`install.sh` puts OpenSearch in `/opt/opensearch` (config
+`/opt/opensearch/config/opensearch.yml`, JVM `/opt/opensearch/config/jvm.options`,
+data `/opt/opensearch/data`, logs `/opt/opensearch/logs`).
 
-**Symptom:**
-```bash
-sudo systemctl status opensearch
-# Shows: failed or inactive
-```
+### OpenSearch Not Starting
 
 **Diagnosis:**
 ```bash
-# Check logs
 sudo journalctl -u opensearch -n 100
-
+sudo tail -100 /opt/opensearch/logs/pfsense-monitoring.log
 # Common errors:
-# - "OutOfMemoryError" → Increase heap or reduce heap size
-# - "max virtual memory" → vm.max_map_count too low
-# - "unable to lock JVM memory" → bootstrap.memory_lock issue
+# - "OutOfMemoryError"                → heap too large for the machine, or too small for the data
+# - "max virtual memory areas ... too low" → vm.max_map_count
+# - "failed to obtain node locks"     → another instance running or stale lock
 ```
 
 **Solutions:**
 
-**Insufficient memory:**
+Heap (min and max must match; never above 31 GB):
 ```bash
-# Reduce heap size (edit to 50% of available RAM)
-sudo vi /etc/opensearch/jvm.options.d/heap.options
-# Change to: -Xms4g and -Xmx4g
-
+sudo sed -i 's/^-Xms.*/-Xms4g/; s/^-Xmx.*/-Xmx4g/' /opt/opensearch/config/jvm.options
 sudo systemctl restart opensearch
 ```
 
-**vm.max_map_count too low:**
+`vm.max_map_count`:
 ```bash
 sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/90-opensearch.conf
 sudo systemctl restart opensearch
 ```
 
-**Port already in use:**
+Port in use:
 ```bash
-# Check what's using port 9200
-sudo netstat -tlnp | grep 9200
-
-# If another service, either stop it or change OpenSearch port
-sudo vi /etc/opensearch/opensearch.yml
-# Change: http.port: 9201
-sudo systemctl restart opensearch
+sudo ss -tlnp | grep 9200
 ```
 
 ### OpenSearch Running Slow
 
-**Symptom:** Queries take >5 seconds, dashboard slow to load.
-
-**Diagnosis:**
 ```bash
-# Check cluster health
 curl -s http://localhost:9200/_cluster/health | jq
-
-# Check heap usage
-curl -s http://localhost:9200/_cat/nodes?v&h=heap.percent,heap.current,heap.max
-
-# Check index sizes
-curl -s http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc
+curl -s 'http://localhost:9200/_cat/nodes?v&h=heap.percent,heap.current,heap.max'
+curl -s 'http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc' | head
 ```
 
-**Solutions:**
-
-**Delete old indices:**
-```bash
-# Delete indices older than 30 days
-curl -X DELETE "http://localhost:9200/suricata-2025.10.*"
-
-# Or use Index Lifecycle Management
-```
-
-**Increase heap:**
-```bash
-sudo vi /etc/opensearch/jvm.options.d/heap.options
-# Increase to 50% of RAM (max 31GB)
-# -Xms8g
-# -Xmx8g
-
-sudo systemctl restart opensearch
-```
-
-**Optimize indices:**
-```bash
-# Force merge old indices
-curl -X POST "http://localhost:9200/suricata-2025.11.*/_forcemerge?max_num_segments=1"
-```
+Fixes, in order of effort: shorten the Grafana time range; set retention so old
+indices are deleted (`./scripts/configure-retention-policy.sh 30`); raise the heap
+(above); force-merge indices that are no longer written to
+(`curl -X POST 'http://localhost:9200/suricata-YYYY.MM.*/_forcemerge?max_num_segments=1'`).
 
 ## Logstash Issues
 
-### Logstash Not Starting
+Pipeline: `/etc/logstash/conf.d/suricata.conf` (from
+`config/logstash-suricata.conf`). Log: `/var/log/logstash/logstash-plain.log`.
 
-**Symptom:**
-```bash
-sudo systemctl status logstash
-# Shows: failed or inactive
-```
+### Logstash Not Starting
 
 **Diagnosis:**
 ```bash
-# Check logs
-sudo tail -f /var/log/logstash/logstash-plain.log
-
-# Common errors:
-# - "Address already in use" → Port 5140 taken
-# - "Plugin not found" → logstash-output-opensearch not installed
-# - "Pipeline error" → Syntax error in config
+sudo tail -50 /var/log/logstash/logstash-plain.log
+# - "Address already in use"                              → UDP 5140 taken
+# - "Couldn't find any output plugin named 'opensearch'"  → plugin lost in an upgrade
+# - "Expected one of ..." / pipeline error                → config syntax
+# - "Permission denied ... /usr/share/logstash/data"      → ownership after upgrade
 ```
 
 **Solutions:**
-
-**Port in use:**
 ```bash
-# Check what's using UDP 5140
-sudo netstat -ulnp | grep 5140
+# Plugin missing (happens after apt upgrade of logstash)
+sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
 
-# Kill conflicting process or change Logstash port
-sudo vi /etc/logstash/conf.d/suricata.conf
-# Change: port => 5141
-```
+# Data dir ownership
+sudo chown -R logstash:logstash /usr/share/logstash/data
 
-**Plugin missing:**
-```bash
-cd /usr/share/logstash
-sudo bin/logstash-plugin install logstash-output-opensearch
+# Config test
+sudo /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/suricata.conf
+
 sudo systemctl restart logstash
 ```
 
-**Config syntax error:**
-```bash
-# Test config
-sudo /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/suricata.conf
-
-# If errors, fix syntax in /etc/logstash/conf.d/suricata.conf
-```
+More post-upgrade fixes (including the Gemfile.lock case) are in
+[CONFIGURATION.md → Logstash maintenance](../reference/CONFIGURATION.md#logstash-maintenance).
 
 ### Logstash Not Receiving Data
 
-**Symptom:** Logstash running but event count not increasing in OpenSearch.
-
-**Diagnosis:**
 ```bash
-# Check if Logstash is listening
-sudo netstat -ulnp | grep 5140
-
-# Check Logstash logs for incoming data
-sudo tail -f /var/log/logstash/logstash-plain.log
-
-# Test sending data
-echo '{"test":"data"}' | nc -u -w1 localhost 5140
+sudo ss -ulnp | grep 5140
+echo '{"event_type":"test","timestamp":"2026-09-19T12:00:00.000000+0000"}' | nc -u -w1 localhost 5140
+sleep 3; curl -s 'http://localhost:9200/suricata-*/_search?q=event_type:test&size=1' | jq .hits.total.value
+curl -s localhost:9600/_node/stats/pipelines | jq '.pipelines.main.events'
 ```
 
-**Solutions:**
+If the local test works but nothing arrives from pfSense, it is the network or
+the forwarder's baked-in target (see [Forwarder Running But No Events](#forwarder-running-but-no-events)).
 
-**UDP buffer size too small:**
+**UDP buffer too small** (bursts dropped; `netstat -su | grep -i 'receive errors'`
+climbs):
 ```bash
-# Increase system UDP buffer
-echo "net.core.rmem_max=33554432" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-# Verify Logstash config has:
-# receive_buffer_bytes => 33554432
-
-sudo systemctl restart logstash
+echo 'net.core.rmem_max=33554432' | sudo tee /etc/sysctl.d/90-logstash-udp.conf
+sudo sysctl --system
+sudo systemctl restart logstash    # pipeline already requests receive_buffer_bytes => 33554432
 ```
 
-**Firewall blocking:**
+### Nested-Layout Config Still Deployed
+
+If `grep -c 'suricata\]\[eve' /etc/logstash/conf.d/suricata.conf` returns more
+than 0, the SIEM server is running the old pipeline. Redeploy:
 ```bash
-sudo ufw allow 5140/udp
-sudo ufw status
+./setup.sh      # step 3 copies config/logstash-suricata.conf and restarts Logstash
 ```
+Then read the appendix in [DASHBOARD_NO_DATA_FIX.md](DASHBOARD_NO_DATA_FIX.md)
+about the data written before the switch.
 
 ## Grafana Issues
 
 ### Can't Login to Grafana
 
-**Default credentials:**
-- Username: `admin`
-- Password: `admin`
-
-**Reset admin password:**
+The default credentials are `admin` / `admin` and Grafana asks you to change the
+password on first login; do so, and put the new value in `GRAFANA_ADMIN_PASS` in
+`config.env` so the scripts keep working. Reset if lost:
 ```bash
-sudo grafana-cli admin reset-admin-password newpassword
-sudo systemctl restart grafana-server
+sudo grafana-cli admin reset-admin-password '<newpassword>'
 ```
 
 ### OpenSearch Datasource Fails Test
 
-**Symptom:** "Data source is not working" error when saving datasource.
-
-**Diagnosis:**
 ```bash
-# Test OpenSearch from Grafana server
-curl http://localhost:9200
-
-# Check Grafana logs
-sudo tail -f /var/log/grafana/grafana.log
+curl http://localhost:9200                     # from the Grafana host
+sudo tail -50 /var/log/grafana/grafana.log
+sudo grafana-cli plugins ls | grep opensearch  # plugin present?
 ```
 
-**Solutions:**
+Fixes: install the plugin (`sudo grafana-cli plugins install grafana-opensearch-datasource && sudo systemctl restart grafana-server`);
+set the datasource URL to `http://localhost:9200` when Grafana and OpenSearch
+share a host; set Flavor to *OpenSearch* and the version to what `curl` reports.
 
-**OpenSearch not accessible:**
-```bash
-# If OpenSearch is on different host, update URL
-# Datasource URL should be: http://OPENSEARCH_IP:9200
+### Dashboard Imported But Panels Reference a Missing Datasource
 
-# Check network connectivity
-ping OPENSEARCH_IP
-curl http://OPENSEARCH_IP:9200
-```
+`setup.sh` rewrites the datasource uid in every panel when it imports
+`dashboards/Suricata_IDS_IPS.json` and `dashboards/Suricata_Per_Interface.json`.
+If you imported through the Grafana UI instead, pick your OpenSearch datasource
+in the import dialog's dropdown; no manual JSON editing is required. Re-import
+through `./setup.sh` if in doubt.
 
-**Plugin not installed:**
-```bash
-sudo grafana-cli plugins install grafana-opensearch-datasource
-sudo systemctl restart grafana-server
-```
+### Panels Show "Unknown Visualization" or Odd Results
 
-### Panels Show "Unknown Visualization"
-
-**Symptom:** Some panels show "Unknown visualization" or don't render.
-
-**Solution:**
-- Stat panels and pie charts don't work reliably with OpenSearch datasource
-- Convert to **Table** or **Time series** visualizations
-- Edit panel → Change visualization type → Apply
+Some panel types behave poorly with the OpenSearch datasource (notably stat
+panels driven by raw-document queries). `tests/test-panel-compatibility.sh`
+exercises the combinations that are known to work. Switch the panel to *Table*
+or *Time series* as a workaround. For the pf information panel on the pfSense
+system dashboard see [Telegraf on pfSense → Troubleshooting](../pfsense/TELEGRAF_ON_PFSENSE.md);
+for Telegraf interface-name quirks see
+[TELEGRAF_PFBLOCKER_SETUP.md](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md).
 
 ## Performance Issues
 
 ### High CPU Usage
 
-**OpenSearch:**
-```bash
-# Check query performance
-curl -s "http://localhost:9200/_nodes/stats/thread_pool" | jq
+OpenSearch: usually queries over too wide a time range or too many indices.
+Check `curl -s 'http://localhost:9200/_tasks?actions=*search&detailed' | jq`;
+shorten ranges and retention.
 
-# Check active queries
-curl -s "http://localhost:9200/_tasks" | jq
+Logstash: `curl -s localhost:9600/_node/stats/pipelines | jq`. Add
+`pipeline.workers: 4` to `/etc/logstash/logstash.yml` if `filtered` lags `in`.
 
-# Solution: Reduce query complexity or increase resources
-```
-
-**Logstash:**
-```bash
-# Check pipeline stats
-curl -s "http://localhost:9600/_node/stats/pipelines" | jq
-
-# Solution: Reduce filter complexity or add more workers
-sudo vi /etc/logstash/logstash.yml
-# Add: pipeline.workers: 4
-```
+Forwarder on pfSense: `ssh admin@<PFSENSE_IP> 'ps -o %cpu,rss,etime -p $(cat /var/run/suricata_forwarder.child.pid)'`.
+A few percent is normal; sustained high CPU with debug enabled means turn debug
+off (`DEBUG_ENABLED=false` in `config.env`, re-run `./setup.sh`).
 
 ### High Memory Usage
 
-**OpenSearch using too much RAM:**
 ```bash
-# Check current heap
-curl -s http://localhost:9200/_cat/nodes?v&h=heap.percent,heap.max
-
-# Reduce heap if >80% used
-sudo vi /etc/opensearch/jvm.options.d/heap.options
+curl -s 'http://localhost:9200/_cat/nodes?v&h=heap.percent,heap.max'
 ```
+Above ~85 % sustained: raise the heap (see above), or reduce retention.
 
 ### Disk Space Issues
 
-**Symptom:** Disk full or nearly full.
-
-**Solutions:**
 ```bash
-# Check index sizes
-curl -s http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc | head -20
-
-# Delete old indices (careful!)
-curl -X DELETE "http://localhost:9200/suricata-2025.10.*"
-
-# Set up index lifecycle policy for auto-deletion
-# Or use curator to manage indices
+df -h /opt/opensearch/data
+curl -s 'http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc' | head -20
 ```
+
+Set or shorten retention rather than deleting by hand:
+```bash
+./scripts/configure-retention-policy.sh 30                # suricata-*
+./scripts/configure-retention-policy.sh 30 'pfblockerng-*'
+```
+
+Emergency: `curl -X DELETE 'http://localhost:9200/suricata-YYYY.MM.*'` for a
+month you no longer need.
 
 ## Network Issues
 
 ### Can't Access Grafana from Browser
 
-**Diagnosis:**
 ```bash
-# Check Grafana is running
 sudo systemctl status grafana-server
-
-# Check Grafana is listening
-sudo netstat -tlnp | grep 3000
-
-# Check firewall
+sudo ss -tlnp | grep 3000
 sudo ufw status | grep 3000
-```
-
-**Solutions:**
-```bash
-# Allow port 3000
-sudo ufw allow 3000/tcp
-
-# If accessing from remote host, check router/firewall rules
+sudo ufw allow from 203.0.113.0/24 to any port 3000 proto tcp
 ```
 
 ### pfSense Can't Reach SIEM Server
 
-**Diagnosis:**
 ```bash
-# From pfSense, test connectivity
-ssh admin@YOUR_PFSENSE_IP 'ping -c 3 YOUR_SIEM_IP'
-ssh admin@YOUR_PFSENSE_IP 'nc -vzu YOUR_SIEM_IP 5140'
+ssh admin@<PFSENSE_IP> 'ping -c 3 <SIEM_IP>'
+sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp
 ```
 
-**Solutions:**
-- Check SIEM server firewall: `sudo ufw allow from PFSENSE_IP to any port 5140 proto udp`
-- Check pfSense firewall rules (Firewall → Rules)
-- Verify routing between pfSense and SIEM server
+Also check pfSense's own outbound rules on the interface facing the SIEM server,
+and that nothing NATs the source (the ufw rule matches on `<PFSENSE_IP>`).
 
 ## Common Error Messages
 
 ### "max file descriptors [4096] for opensearch process is too low"
 
-```bash
-echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
-echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
-# Reboot or restart OpenSearch
-```
+`install.sh` writes the `nofile 65536` limits to `/etc/security/limits.conf`,
+and the systemd unit sets `LimitNOFILE=65536`. If you see this, the unit was
+edited; `sudo systemctl edit opensearch` and restore it.
 
 ### "flood stage disk watermark [95%] exceeded"
 
+OpenSearch has made every index read-only. Free space (delete old indices, set
+retention), then clear the block:
 ```bash
-# Delete old indices or add more disk space
-curl -X DELETE "http://localhost:9200/suricata-OLD_DATE"
+curl -X PUT 'http://localhost:9200/_all/_settings' -H 'Content-Type: application/json' \
+  -d '{"index.blocks.read_only_allow_delete": null}'
 ```
 
 ### "failed to obtain node locks"
 
 ```bash
-# OpenSearch already running or crashed
 sudo systemctl stop opensearch
-sudo rm -rf /var/lib/opensearch/nodes/*/node.lock
+sudo pgrep -f org.opensearch.bootstrap && echo "still running; kill it first"
+sudo rm -f /opt/opensearch/data/nodes/*/node.lock
 sudo systemctl start opensearch
 ```
 
-## Getting Help
+### "index_not_found_exception: no such index [suricata-YYYY.MM.DD]"
 
-If issues persist:
+Auto-create is off. [OPENSEARCH_AUTO_CREATE.md](OPENSEARCH_AUTO_CREATE.md).
+
+### "Could not index event ... mapper_parsing_exception ... geoip_src.location"
+
+An index was created before the template was applied, so `location` was mapped
+as a float array instead of `geo_point`. Apply the template
+(`./scripts/install-opensearch-config.sh`); today's index must be deleted or
+reindexed for the fix to take effect.
+
+## After a pfSense Upgrade
+
+pfSense upgrades can change the Python interpreter path, reset the crontab, or
+remove `/usr/local/etc/rc.d/suricata_forwarder.sh`. Symptoms are a forwarder
+that never comes back after reboot, or `suricata-watchdog: FAILED to start`
+every minute in `system.log`.
+
+```bash
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status; crontab -l | grep watchdog; ls /usr/local/bin/python3*'
+./setup.sh      # re-detects the interpreter and regenerates the service, watchdog and cron entry
+```
+
+The full checklist (Suricata package, Telegraf, GeoIP databases, SSH keys) is in
+[PFSENSE_UPGRADE_GUIDE.md](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
+
+## Getting Help
 
 1. **Gather diagnostic info:**
 ```bash
-# Save to file
-sudo systemctl status opensearch logstash grafana-server > /tmp/status.txt
+./scripts/diagnose-and-repair.sh > /tmp/diagnose.txt 2>&1
 sudo journalctl -u opensearch -n 100 > /tmp/opensearch.log
 sudo journalctl -u logstash -n 100 > /tmp/logstash.log
-curl -s http://localhost:9200/_cluster/health > /tmp/cluster-health.json
-curl -s http://localhost:9200/suricata-*/_count > /tmp/event-count.json
+ssh admin@<PFSENSE_IP> 'tail -50 /var/log/suricata-forwarder.log; grep -E "suricata-(forwarder|watchdog)" /var/log/system.log | tail -50' > /tmp/forwarder.log
 ```
+Scrub public IPs before sharing.
 
 2. **Check documentation:**
    - OpenSearch: https://opensearch.org/docs/
    - Logstash: https://www.elastic.co/guide/en/logstash/current/index.html
-   - Grafana: https://grafana.com/docs/
+   - Grafana OpenSearch plugin: https://grafana.com/grafana/plugins/grafana-opensearch-datasource/
 
-3. **Open GitHub issue** with diagnostic info
+3. **Open a GitHub issue** at https://github.com/ChiefGyk3D/pfsense-siem-stack/issues with the diagnostic output.
 
 ## Preventive Maintenance
 
-### Regular Tasks
-
-**Weekly:**
+**Weekly**
 ```bash
-# Check disk space
-df -h
-
-# Check event count growth
-curl -s http://localhost:9200/suricata-*/_count | jq .count
-
-# Check service status
-sudo systemctl status opensearch logstash grafana-server
+./scripts/status.sh
+df -h /opt/opensearch/data
 ```
 
-**Monthly:**
+**Monthly**
 ```bash
-# Delete old indices (>90 days)
-curl -X DELETE "http://localhost:9200/suricata-2025.08.*"
-
-# Check OpenSearch cluster health
-curl -s http://localhost:9200/_cluster/health | jq
-
-# Review Grafana dashboard performance
+curl -s http://localhost:9200/_cluster/health | jq .status
+curl -s 'http://localhost:9200/_plugins/_ism/explain/suricata-*' | jq '.[] | select(type=="object") | .policy_id' | sort | uniq -c
+sudo apt list --upgradable 2>/dev/null | grep -E 'logstash|grafana'   # read "Logstash maintenance" before upgrading
 ```
 
-**After pfSense Updates:**
-```bash
-# Verify forwarder still running
-ssh admin@YOUR_PFSENSE_IP 'pgrep -fl forward-suricata-eve'
+**After any pfSense or Suricata package update:** see
+[After a pfSense Upgrade](#after-a-pfsense-upgrade).
 
-# Check cron job still exists (System → Cron in pfSense UI)
-
-# Check syslog for forwarder messages
-ssh admin@YOUR_PFSENSE_IP 'grep suricata-forwarder /var/log/system.log | tail -10'
-```
+**Related runbooks:** [DASHBOARD_NO_DATA_FIX.md](DASHBOARD_NO_DATA_FIX.md) ·
+[OPENSEARCH_AUTO_CREATE.md](OPENSEARCH_AUTO_CREATE.md) ·
+[LOG_ROTATION_FIX.md](LOG_ROTATION_FIX.md) (Suricata eve.json rotation) ·
+[PFSENSE_FILTERLOG_ROTATION_FIX.md](PFSENSE_FILTERLOG_ROTATION_FIX.md) (pfSense filter.log rotation, affects pfBlockerNG panels) ·
+[Telegraf on pfSense → Troubleshooting](../pfsense/TELEGRAF_ON_PFSENSE.md)

@@ -1,14 +1,27 @@
 # SIEM Stack Installation Guide
 
-Complete guide for installing OpenSearch, Logstash, and Grafana on Ubuntu 24.04 LTS.
+Manual, step-by-step installation of OpenSearch, Logstash, and Grafana on Ubuntu 24.04 LTS.
+
+> **Most users should run `sudo ./install.sh` instead.** It performs every step on this
+> page (same versions, same paths, same settings) with interactive prompts. This guide is
+> the manual alternative — use it when you want to understand what the installer does, need
+> to adapt a step to your environment, or are recovering a partially installed host. The
+> layout documented here matches `install.sh`: OpenSearch from the official **tarball** in
+> `/opt/opensearch`, Logstash from the Elastic apt repo, Grafana from the Grafana apt repo.
 
 ## Prerequisites
 
-- Ubuntu 24.04 LTS server
+- Ubuntu 24.04 LTS server (tested; 22.04 should work)
 - Root or sudo access
-- 16GB+ RAM (32GB recommended)
-- 500GB+ storage
+- 16 GB RAM minimum, 32 GB recommended (see [Hardware Requirements](HARDWARE_REQUIREMENTS.md))
+- 100 GB+ SSD (500 GB+ for 30-day retention on busy networks)
 - Static IP address configured
+
+Versions installed by `install.sh` and documented here: **OpenSearch 2.19.4**, **Logstash 8.19.7**, **Grafana 12.3.0**.
+
+InfluxDB and Prometheus are **not** installed by `install.sh` and are not required for the
+Suricata dashboards. They are optional, separate installs used only by the pfSense system /
+pfBlockerNG dashboard (see [Telegraf pfBlockerNG Setup](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md)).
 
 ## Installation Steps
 
@@ -19,24 +32,30 @@ Complete guide for installing OpenSearch, Logstash, and Grafana on Ubuntu 24.04 
 sudo apt update && sudo apt upgrade -y
 
 # Install required packages
-sudo apt install -y curl wget gnupg2 apt-transport-https software-properties-common
+sudo apt install -y curl wget gnupg2 apt-transport-https software-properties-common \
+                    jq python3 python3-pip net-tools
 
 # Set system limits for OpenSearch
-echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
-echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
-echo "* soft memlock unlimited" | sudo tee -a /etc/security/limits.conf
-echo "* hard memlock unlimited" | sudo tee -a /etc/security/limits.conf
+sudo tee -a /etc/security/limits.conf > /dev/null <<EOF
+# OpenSearch/Logstash limits
+* soft nofile 65536
+* hard nofile 65536
+* soft memlock unlimited
+* hard memlock unlimited
+EOF
 
-# Disable swap for better performance
-sudo swapoff -a
-sudo sed -i '/ swap / s/^/#/' /etc/fstab
-
-# Set vm.max_map_count for OpenSearch
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+# Kernel parameters for OpenSearch (install.sh keeps swap but sets swappiness=1)
+sudo tee -a /etc/sysctl.conf > /dev/null <<EOF
+# OpenSearch requirements
+vm.max_map_count=262144
+vm.swappiness=1
+EOF
 sudo sysctl -p
 ```
 
-### 2. Install Java (Required for OpenSearch and Logstash)
+### 2. Install Java (Required for Logstash)
+
+OpenSearch bundles its own JDK; Logstash uses the system JDK.
 
 ```bash
 # Install OpenJDK 21
@@ -46,60 +65,89 @@ sudo apt install -y openjdk-21-jdk
 java -version
 ```
 
-### 3. Install OpenSearch 2.19.4
+### 3. Install OpenSearch 2.19.4 (tarball to /opt/opensearch)
 
 ```bash
-# Download and install OpenSearch
+# Download and unpack the tarball
 cd /tmp
-wget https://artifacts.opensearch.org/releases/bundle/opensearch/2.19.4/opensearch-2.19.4-linux-x64.deb
-sudo dpkg -i opensearch-2.19.4-linux-x64.deb
+wget https://artifacts.opensearch.org/releases/bundle/opensearch/2.19.4/opensearch-2.19.4-linux-x64.tar.gz
+tar -xzf opensearch-2.19.4-linux-x64.tar.gz
+sudo mv opensearch-2.19.4 /opt/opensearch
 
-# Configure OpenSearch
-sudo tee /etc/opensearch/opensearch.yml > /dev/null <<EOF
-cluster.name: suricata-cluster
-node.name: node-1
-path.data: /var/lib/opensearch
-path.logs: /var/log/opensearch
+# Dedicated service user
+sudo useradd -r -s /bin/bash -d /opt/opensearch opensearch || true
+sudo chown -R opensearch:opensearch /opt/opensearch
+
+# Configure OpenSearch (single node, security plugin disabled)
+sudo tee /opt/opensearch/config/opensearch.yml > /dev/null <<EOF
+cluster.name: pfsense-monitoring
+node.name: siem-node-1
+path.data: /opt/opensearch/data
+path.logs: /opt/opensearch/logs
 network.host: 0.0.0.0
 http.port: 9200
 discovery.type: single-node
-
-# Disable security for simplicity (enable in production)
 plugins.security.disabled: true
-
-# Performance settings
-bootstrap.memory_lock: true
 EOF
 
-# Set heap size (50% of RAM, max 31GB)
-# For 32GB RAM system, use 16GB
-sudo tee /etc/opensearch/jvm.options.d/heap.options > /dev/null <<EOF
--Xms6g
--Xmx6g
+# Set heap size: 50% of RAM, capped at 16 GB by install.sh (never exceed 31 GB)
+# Example for a 16 GB host:
+sudo sed -i 's/-Xms1g/-Xms8g/; s/-Xmx1g/-Xmx8g/' /opt/opensearch/config/jvm.options
+
+# systemd unit (this is what install.sh writes)
+sudo tee /etc/systemd/system/opensearch.service > /dev/null <<EOF
+[Unit]
+Description=OpenSearch
+Documentation=https://opensearch.org/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=opensearch
+Group=opensearch
+Environment=OPENSEARCH_HOME=/opt/opensearch
+Environment=OPENSEARCH_PATH_CONF=/opt/opensearch/config
+WorkingDirectory=/opt/opensearch
+ExecStart=/opt/opensearch/bin/opensearch
+LimitNOFILE=65536
+LimitNPROC=4096
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 # Enable and start OpenSearch
 sudo systemctl daemon-reload
-sudo systemctl enable opensearch
-sudo systemctl start opensearch
+sudo systemctl enable --now opensearch
 
-# Wait for OpenSearch to start
+# Wait for OpenSearch to start, then verify
 sleep 30
-
-# Verify OpenSearch is running
-curl -X GET http://localhost:9200
+curl -s http://localhost:9200
 ```
 
 Expected output:
 ```json
 {
-  "name" : "node-1",
-  "cluster_name" : "suricata-cluster",
+  "name" : "siem-node-1",
+  "cluster_name" : "pfsense-monitoring",
   "version" : {
     "number" : "2.19.4"
   }
 }
 ```
+
+> **Security warning.** With `network.host: 0.0.0.0` and `plugins.security.disabled: true`
+> — the defaults `install.sh` uses — OpenSearch on port 9200 is reachable from the network
+> **without authentication**. Restrict it with ufw to trusted hosts (see step 6) or enable
+> the security plugin. Hardening this default is tracked in
+> [ROADMAP.md, Phase A](../../ROADMAP.md).
+
+> **.deb install instead?** If you install OpenSearch from the `.deb` package rather than
+> the tarball, the config lives in `/etc/opensearch/opensearch.yml`, data in
+> `/var/lib/opensearch`, logs in `/var/log/opensearch`, and heap is set in
+> `/etc/opensearch/jvm.options.d/`. Adjust the paths in this guide accordingly.
 
 ### 4. Install Logstash 8.19.7
 
@@ -113,91 +161,36 @@ sudo apt update
 sudo apt install -y logstash
 
 # Install OpenSearch output plugin
-cd /usr/share/logstash
-sudo bin/logstash-plugin install logstash-output-opensearch
+sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
+```
 
-# Create Suricata pipeline configuration
-sudo tee /etc/logstash/conf.d/suricata.conf > /dev/null <<'EOF'
-input {
-  udp {
-    port => 5140
-    codec => plain
-    buffer_size => 65536
-    receive_buffer_bytes => 33554432
-  }
-}
+**Deploy the Suricata pipeline.** Do not hand-write the pipeline: the file
+`config/logstash-suricata.conf` in this repository is the single source of truth. It parses
+each EVE JSON event to **flat root-level fields** (`event_type`, `src_ip`, `dest_ip`,
+`alert.signature`, `in_iface`, `geoip_src.location`, ...), which is what the shipped
+dashboards and the index template expect. Nothing is nested under `suricata.eve.*`.
 
-filter {
-  # Parse JSON from event.original (UDP codec => plain populates this)
-  if [event][original] {
-    json {
-      source => "[event][original]"
-      target => "suricata_raw"
-      tag_on_failure => ["_jsonparsefailure"]
-    }
-  } else if [message] {
-    # Fallback to message field if event.original not present
-    json {
-      source => "message"
-      target => "suricata_raw"
-      tag_on_failure => ["_jsonparsefailure"]
-    }
-  }
-  
-  # Nest parsed data under suricata.eve
-  if [suricata_raw] {
-    ruby {
-      code => '
-        raw = event.get("suricata_raw")
-        if raw.is_a?(Hash)
-          event.set("[suricata][eve]", raw)
-        end
-      '
-    }
-    
-    # Parse timestamp from Suricata event
-    if [suricata][eve][timestamp] {
-      date {
-        match => [ "[suricata][eve][timestamp]", "ISO8601" ]
-        target => "@timestamp"
-      }
-    }
-    
-    # Clean up temporary fields
-    mutate {
-      remove_field => ["message", "suricata_raw", "[event][original]"]
-    }
-  }
-  
-  # Add index date metadata
-  mutate {
-    add_field => { "[@metadata][index_date]" => "%{+YYYY.MM.dd}" }
-  }
-}
+```bash
+# From your clone of the repository
+sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf
 
-output {
-  opensearch {
-    hosts => ["http://localhost:9200"]
-    index => "suricata-%{[@metadata][index_date]}"
-    ssl => false
-    ssl_certificate_verification => false
-  }
-}
-EOF
-
-# Set UDP buffer size in system
+# Larger UDP receive buffer for bursty EVE traffic
 echo "net.core.rmem_max=33554432" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
 # Enable and start Logstash
-sudo systemctl enable logstash
-sudo systemctl start logstash
+sudo systemctl enable --now logstash
 
-# Wait for Logstash to start
+# Wait for Logstash to start, then check status
 sleep 30
-
-# Check Logstash status
 sudo systemctl status logstash
+```
+
+The pipeline listens on **UDP 5140** and writes daily indices named `suricata-YYYY.MM.dd`.
+Also install the index template so `geoip_src.location` is mapped as `geo_point`:
+
+```bash
+./scripts/install-opensearch-config.sh    # or let setup.sh do it (step 2)
 ```
 
 ### 5. Install Grafana 12.3.0
@@ -211,28 +204,32 @@ echo "deb [signed-by=/usr/share/keyrings/grafana-keyring.gpg] https://packages.g
 sudo apt update
 sudo apt install -y grafana
 
-# Enable and start Grafana
-sudo systemctl enable grafana-server
-sudo systemctl start grafana-server
-
 # Install OpenSearch datasource plugin
 sudo grafana-cli plugins install grafana-opensearch-datasource
 
-# Restart Grafana to load plugin
-sudo systemctl restart grafana-server
-
-# Check Grafana status
+# Enable and start Grafana
+sudo systemctl enable --now grafana-server
 sudo systemctl status grafana-server
 ```
 
 ### 6. Configure Firewall
 
+`install.sh` opens 9200/tcp, 5140/udp, 3000/tcp and SSH, then enables ufw. Because
+OpenSearch has no authentication by default, tighten 9200 to the hosts that need it
+(the SIEM server itself, and the workstation you run `setup.sh` from):
+
 ```bash
-# Allow Grafana (3000), OpenSearch (9200), and Logstash UDP (5140)
-sudo ufw allow 3000/tcp comment "Grafana"
-sudo ufw allow 5140/udp comment "Logstash Suricata"
-# Only allow OpenSearch from localhost (security)
-# sudo ufw allow from 127.0.0.1 to any port 9200
+# SSH first, or you lock yourself out when ufw is enabled
+sudo ufw allow OpenSSH
+
+# Grafana web UI
+sudo ufw allow 3000/tcp comment "Grafana Web UI"
+
+# Logstash input — only from pfSense
+sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp comment "Logstash Suricata input"
+
+# OpenSearch — only from trusted hosts (install.sh opens this to everyone; narrow it)
+sudo ufw allow from <WORKSTATION_IP> to any port 9200 proto tcp comment "OpenSearch HTTP"
 
 # Enable firewall if not already enabled
 sudo ufw --force enable
@@ -254,29 +251,30 @@ sudo netstat -ulnp | grep 5140
 curl -s http://localhost:3000/api/health
 
 # View service logs
-sudo journalctl -u opensearch -f       # OpenSearch logs
-sudo journalctl -u logstash -f         # Logstash logs
-sudo journalctl -u grafana-server -f   # Grafana logs
+sudo journalctl -u opensearch -f       # OpenSearch (also /opt/opensearch/logs/)
+sudo journalctl -u logstash -f         # Logstash
+sudo journalctl -u grafana-server -f   # Grafana
 ```
 
 ### Test Logstash Pipeline
 
 ```bash
 # Send a test Suricata event
-echo '{"timestamp":"2025-11-24T12:00:00.000000-0500","flow_id":123456,"event_type":"test","src_ip":"192.168.1.100","dest_ip":"8.8.8.8","proto":"UDP"}' | nc -u -w1 localhost 5140
+echo '{"timestamp":"2026-09-19T12:00:00.000000-0500","flow_id":123456,"event_type":"test","src_ip":"192.168.1.100","dest_ip":"203.0.113.10","proto":"UDP"}' | nc -u -w1 localhost 5140
 
 # Wait 5 seconds for processing
 sleep 5
 
 # Check if event was indexed
-curl -s "http://localhost:9200/suricata-*/_search?size=1" | jq '.hits.hits[0]._source.suricata.eve'
+curl -s "http://localhost:9200/suricata-*/_search?q=event_type:test&size=1" | jq '.hits.hits[0]._source'
 ```
 
-Expected output should show the test event with properly nested fields.
+The returned document should have `event_type`, `src_ip`, `dest_ip` and `proto` at the
+root level (flat), with `@timestamp` taken from the event's own `timestamp`.
 
 ## Access Grafana
 
-1. Open browser to `http://YOUR_SERVER_IP:3000`
+1. Open browser to `http://<SIEM_IP>:3000`
 2. Default credentials: `admin` / `admin`
 3. Change password when prompted
 4. Proceed to [Dashboard Installation Guide](INSTALL_DASHBOARD.md)
@@ -289,8 +287,8 @@ After installation, verify resource usage:
 # Check memory usage
 free -h
 
-# Check disk usage
-df -h
+# Check disk usage (OpenSearch data lives here)
+df -h /opt/opensearch/data
 
 # Check service resource consumption
 sudo systemctl status opensearch
@@ -298,10 +296,10 @@ sudo systemctl status logstash
 sudo systemctl status grafana-server
 ```
 
-Expected resource usage:
-- OpenSearch: ~7-8GB RAM (6GB heap + overhead)
-- Logstash: ~1-1.5GB RAM
-- Grafana: ~200-500MB RAM
+Expected resource usage on a 16 GB host:
+- OpenSearch: ~9-10 GB RAM (8 GB heap + overhead)
+- Logstash: ~1-1.5 GB RAM
+- Grafana: ~200-500 MB RAM
 
 ## Troubleshooting
 
@@ -309,10 +307,12 @@ Expected resource usage:
 ```bash
 # Check logs
 sudo journalctl -u opensearch -n 100
+sudo tail -n 100 /opt/opensearch/logs/pfsense-monitoring.log
 
 # Common issues:
-# - Insufficient memory: Reduce heap size in /etc/opensearch/jvm.options.d/heap.options
-# - vm.max_map_count too low: Run sudo sysctl -w vm.max_map_count=262144
+# - Insufficient memory: reduce -Xms/-Xmx in /opt/opensearch/config/jvm.options
+# - vm.max_map_count too low: sudo sysctl -w vm.max_map_count=262144
+# - Wrong ownership after manual edits: sudo chown -R opensearch:opensearch /opt/opensearch
 ```
 
 ### Logstash not receiving data
@@ -343,11 +343,17 @@ ls -la /var/lib/grafana/plugins/
 
 Continue to:
 - **[pfSense Forwarder Installation](INSTALL_PFSENSE_FORWARDER.md)** - Set up log forwarding
-- **[Dashboard Installation](INSTALL_DASHBOARD.md)** - Import Grafana dashboard
+- **[Dashboard Installation](INSTALL_DASHBOARD.md)** - Import Grafana dashboards
 
 ## Configuration Files Location
 
-- OpenSearch config: `/etc/opensearch/opensearch.yml`
-- OpenSearch heap: `/etc/opensearch/jvm.options.d/heap.options`
-- Logstash pipeline: `/etc/logstash/conf.d/suricata.conf`
+Tarball layout (what `install.sh` creates):
+
+- OpenSearch config: `/opt/opensearch/config/opensearch.yml`
+- OpenSearch heap: `/opt/opensearch/config/jvm.options`
+- OpenSearch data / logs: `/opt/opensearch/data`, `/opt/opensearch/logs`
+- OpenSearch systemd unit: `/etc/systemd/system/opensearch.service`
+- Logstash pipeline: `/etc/logstash/conf.d/suricata.conf` (copied from `config/logstash-suricata.conf`)
 - Grafana config: `/etc/grafana/grafana.ini`
+
+A `.deb` install of OpenSearch uses `/etc/opensearch` and `/var/lib/opensearch` instead.

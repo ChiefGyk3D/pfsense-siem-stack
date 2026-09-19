@@ -2,7 +2,9 @@
 
 > **Audience**: Homelabbers running pfSense who need QoS for streaming, gaming, VoIP, or other latency-sensitive workloads alongside bulk traffic (NAS sync, P2P, backups).
 
-> **Prerequisites**: pfSense 2.7+ or pfSense CE 2.7+, SSH access to firewall, basic familiarity with firewall rules.
+> **Prerequisites**: pfSense CE 2.7+ / pfSense Plus 23.x+, SSH access to the firewall, basic familiarity with firewall rules.
+
+> **Scope**: This is generic pfSense material. Nothing in it depends on the SIEM stack in this repository; it applies to any pfSense box. Interface names (`igc0`), VLAN numbers and addresses are examples from one deployment — substitute your own.
 
 ---
 
@@ -563,7 +565,7 @@ pass out quick on WAN from wanip → WANUpDefault (weight 3)
 
 ```bash
 # SSH to pfSense
-ssh admin@your-pfsense-ip
+ssh admin@<PFSENSE_IP>
 
 # Show all pipes with bandwidth and scheduler
 dnctl pipe show

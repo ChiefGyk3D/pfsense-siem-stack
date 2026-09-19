@@ -1,493 +1,291 @@
-# Suricata EVE JSON Forwarder Monitoring
+# Suricata Forwarder: Running, Watchdog and Recovery
 
-This document explains how to ensure the Suricata log forwarder (`forward-suricata-eve.py`) continues running reliably and automatically recovers from failures.
+How the Suricata EVE JSON forwarder (`forward-suricata-eve.py`) runs on pfSense, how
+it is kept alive, and the day-2 commands you will actually use.
+
+Everything described here is installed by `./setup.sh`. You do not need to hand-edit
+crontabs or write your own keepalive loop.
 
 ## Table of Contents
-- [Problem Statement](#problem-statement)
-- [Monitoring Options](#monitoring-options)
-- [Option Comparison](#option-comparison)
-- [Installation Instructions](#installation-instructions)
-- [Verification](#verification)
+- [How the forwarder runs](#how-the-forwarder-runs)
+- [The watchdog](#the-watchdog)
+- [What setup.sh installs](#what-setupsh-installs)
+- [Day-2 quick reference](#day-2-quick-reference)
+- [Verifying data flow end to end](#verifying-data-flow-end-to-end)
+- [After Suricata restarts or rule reloads](#after-suricata-restarts-or-rule-reloads)
+- [What survives reboot and upgrade](#what-survives-reboot-and-upgrade)
+- [Uninstall](#uninstall)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-## Problem Statement
+## How the forwarder runs
 
-The Suricata EVE JSON forwarder reads log files from `/var/log/suricata/*/eve.json` and forwards them to OpenSearch/Logstash. Under certain conditions, the forwarder may:
+The forwarder is a single Python process that tails every `/var/log/suricata/*/eve.json`
+(one thread per file), enriches events with GeoIP, and sends each event as a UDP
+datagram to Logstash on `SIEM_HOST:LOGSTASH_UDP_PORT` (default 5140). It detects log
+rotation itself (inode change, truncation, file disappearing) and reopens files without
+a restart.
 
-1. **Crash unexpectedly** - Process dies, logs stop flowing
-2. **Get stuck on old files** - After Suricata restart, forwarder continues reading old eve.json files
-3. **Stop processing** - Process runs but doesn't forward new events
+On pfSense it runs as an rc.d service:
 
-Without monitoring, these issues cause **gaps in your security logs** that can last hours or days.
+| Component | Path |
+|-----------|------|
+| Forwarder | `/usr/local/bin/forward-suricata-eve.py` |
+| rc.d service | `/usr/local/etc/rc.d/suricata_forwarder.sh` |
+| PID files | `/var/run/suricata_forwarder.pid` (the `daemon(8)` supervisor) and `/var/run/suricata_forwarder.child.pid` (the forwarder itself) |
+| Daemon log (stdout/stderr) | `/var/log/suricata-forwarder.log` |
+| Syslog tags | `suricata-forwarder` (forwarder), `suricata-watchdog` (watchdog) in `/var/log/system.log` |
+| Debug log (only when `DEBUG_ENABLED=true`) | `/var/log/suricata_forwarder_debug.log` |
+
+Two pfSense-specific details explain the design:
+
+- **The service file ends in `.sh`.** pfSense only auto-starts `*.sh` scripts in
+  `/usr/local/etc/rc.d/` at boot (via `rc.start_packages`); a plain `suricata_forwarder`
+  file would be ignored on reboot.
+- **It is supervised by FreeBSD `daemon(8)`.** The rc.d script runs
+  `daemon -f -P <supervisor pidfile> -p <child pidfile> -o <logfile> -r <python> <forwarder>`, which detaches the process from your SSH
+  session, writes the PID file, captures output to `/var/log/suricata-forwarder.log` and
+  restarts the child if it exits. This replaces the earlier unsupervised
+  `nohup python3.11 ... &` start.
+
+setup.sh detects the pfSense Python interpreter (`/usr/local/bin/python3.11` or
+`/usr/local/bin/python3`) at deploy time and bakes it into the forwarder's shebang, so a
+pfSense release that ships a different Python only requires re-running `./setup.sh`.
 
 ---
 
-## Monitoring Options
+## The watchdog
 
-We provide **three monitoring strategies** that can be used individually or combined. Choose based on your environment:
+The rc.d service covers boot. The watchdog covers crashes.
 
-### Option 1: Simple Keepalive (Crash Recovery)
+`/usr/local/bin/suricata-forwarder-watchdog.sh` runs from **root's crontab every minute**:
 
-**Best for:** Most users, simple setups, low-maintenance environments
-
-**What it does:** Checks every 5 minutes if forwarder is running. If not, starts it.
-
-**Cron entry:**
-```bash
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
+```
+* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh
 ```
 
-**Pros:**
-- ✅ Simplest solution (one line)
-- ✅ Low overhead (just process check)
-- ✅ Handles process crashes
-- ✅ Safe (won't restart if already running)
-- ✅ Works 24/7
+Each run checks for a `forward-suricata-eve.py` process; if none exists it runs
+`service suricata_forwarder.sh start` and logs the result to syslog under the
+`suricata-watchdog` tag. Otherwise it exits, so the cost is one `pgrep` per minute.
 
-**Cons:**
-- ❌ Doesn't detect stuck/frozen processes
-- ❌ Doesn't handle Suricata restart scenario
-- ❌ Up to 5-minute recovery delay
+The recovery chain, in order of what catches what:
 
-**Resource usage:** Negligible (runs 288 times/day, ~0.1s each)
+```
+pfSense boot          -> rc.d (/usr/local/etc/rc.d/suricata_forwarder.sh) starts it
+Process crash/kill    -> watchdog cron restarts it within 60 seconds
+pfSense upgrade       -> re-run ./setup.sh (see "What survives reboot and upgrade")
+```
+
+Check the watchdog is installed and see what it has done recently:
+
+```bash
+ssh admin@<PFSENSE_IP> 'crontab -l | grep suricata-forwarder-watchdog'
+ssh admin@<PFSENSE_IP> 'grep suricata-watchdog /var/log/system.log | tail -20'
+```
+
+Test it deliberately:
+
+```bash
+ssh admin@<PFSENSE_IP> 'pkill -f forward-suricata-eve.py'
+sleep 70
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
+# expected: suricata_forwarder is running (pid=NNNN)
+```
+
+Use `pkill -f forward-suricata-eve.py` when you really need to kill the process by hand.
+Do **not** use `killall python3.11`: it kills every Python process on the firewall and
+silently does nothing at all once pfSense ships a different interpreter version.
 
 ---
 
-### Option 2: Event-Driven Hook (Suricata Restart Handler)
+## What setup.sh installs
 
-**Best for:** Frequent Suricata restarts, advanced users, testing/development environments
+Everything below is deployed by `./setup.sh` (Step 4, "Deploy Forwarder to pfSense")
+and is idempotent, so re-running it is always safe:
 
-**What it does:** Automatically restarts forwarder whenever Suricata restarts (rule updates, config changes)
+| Installed | Purpose |
+|-----------|---------|
+| `/usr/local/bin/forward-suricata-eve.py` | the forwarder, with `SIEM_HOST`, `LOGSTASH_UDP_PORT`, `DEBUG_ENABLED` from `config.env` baked in |
+| `/usr/local/etc/rc.d/suricata_forwarder.sh` (enabled by default — pfSense does not manage `/etc/rc.conf`, so no `sysrc` is needed) | boot start, `service` control |
+| `/usr/local/bin/suricata-forwarder-watchdog.sh` | crash recovery |
+| root crontab line `* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh` | runs the watchdog (installed with `crontab -`, old line removed first) |
 
-**Requirements:**
-- pfSense `shellcmd` package installed
+Nothing else is required. The following exist in the repository but are **not**
+installed by setup.sh:
 
-**Installation:**
+- `scripts/setup_forwarder_monitoring.sh`: legacy interactive installer, superseded by
+  setup.sh's watchdog. It writes cron lines that start the forwarder with a hardcoded
+  `python3.11` and recover with `killall python3.11`. Do not run it on a system deployed
+  with setup.sh; the two schemes will fight over the process.
+- `scripts/suricata-restart-hook.sh`: legacy post-Suricata-restart hook. Same problems
+  (`killall python3.11`, hardcoded interpreter), which is why setup.sh does not install
+  it. See [After Suricata restarts or rule reloads](#after-suricata-restarts-or-rule-reloads).
+- The pfSense `shellcmd` package: not needed. The rc.d script handles boot.
 
-1. Install shellcmd package:
+---
+
+## Day-2 quick reference
+
+All commands run on pfSense (`ssh admin@<PFSENSE_IP>`) unless noted. From the SIEM
+server, `./pfsense-siem` options 9-11 wrap the most common ones.
+
+| Task | Command |
+|------|---------|
+| Is it running? | `service suricata_forwarder.sh status` |
+| Start / stop / restart | `service suricata_forwarder.sh start` / `stop` / `restart` |
+| PID and start time | `ps -p $(cat /var/run/suricata_forwarder.child.pid) -o pid,lstart,%cpu,%mem,command` |
+| Which eve.json files it has open | `procstat -f $(cat /var/run/suricata_forwarder.child.pid) \| grep eve.json` (`lsof` is not in pfSense base) |
+| Forwarder syslog (startup, rotation, errors) | `grep suricata-forwarder /var/log/system.log \| tail -50` |
+| Follow live | `tail -f /var/log/system.log \| grep suricata` |
+| Daemon stdout/stderr (Python tracebacks) | `tail -50 /var/log/suricata-forwarder.log` |
+| Watchdog activity | `grep suricata-watchdog /var/log/system.log \| tail -20` |
+| Watchdog cron line present? | `crontab -l \| grep suricata-forwarder-watchdog` |
+| Boot start enabled? | `ls /usr/local/etc/rc.d/suricata_forwarder.sh` — pfSense runs every `*.sh` there at boot; the script defaults `suricata_forwarder_enable=YES` |
+| Duplicate processes? | `pgrep -fl forward-suricata-eve.py` (expect exactly one line) |
+| Hard kill (last resort) | `pkill -f forward-suricata-eve.py` then `service suricata_forwarder.sh start` |
+| Run in the foreground to see errors | `service suricata_forwarder.sh stop; /usr/local/bin/forward-suricata-eve.py` (Ctrl+C, then `start` again) |
+| Redeploy after editing the script or config.env | on the SIEM server: `./setup.sh` |
+| Full health check | on the SIEM server: `./scripts/status.sh` |
+
+A healthy startup looks like this in `/var/log/system.log` (N = number of Suricata
+interfaces):
+
+```
+suricata-forwarder: Loaded GeoIP from /usr/local/share/GeoIP/GeoLite2-City.mmdb
+suricata-forwarder: Starting — N interface(s), target=<SIEM_IP>:5140, GeoIP=enabled
+suricata-forwarder: Monitoring suricata_igc012345 (/var/log/suricata/suricata_igc012345/eve.json) — GeoIP: enabled
+suricata-forwarder: Monitoring suricata_igc167890 (/var/log/suricata/suricata_igc167890/eve.json) — GeoIP: enabled
+```
+
+---
+
+## Verifying data flow end to end
+
+1. **One command from the SIEM server.** `./scripts/status.sh` checks OpenSearch,
+   the Logstash UDP port, the forwarder process, the watchdog cron line, the eve.json
+   files and the age of the newest event, and exits non-zero if anything is wrong.
+
+2. **Event count and freshness in OpenSearch:**
+
    ```bash
-   pkg install pfSense-pkg-shellcmd
+   # Total events
+   curl -s "http://<SIEM_IP>:9200/suricata-*/_count" | jq .count
+
+   # Newest event timestamp (should be within the last few minutes on a busy network)
+   curl -s "http://<SIEM_IP>:9200/suricata-*/_search" -H 'Content-Type: application/json' \
+     -d '{"size":1,"sort":[{"@timestamp":"desc"}],"_source":["@timestamp","event_type","in_iface"]}' \
+     | jq '.hits.hits[0]._source'
    ```
 
-2. Add restart command via WebGUI:
-   - Navigate to **Services > Shellcmd**
-   - Click **Add**
-   - **Command:** `/usr/bin/killall python3.11; sleep 2; /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &`
-   - **Shellcmd Type:** `afterfilterchangeshellcmd`
-   - **Description:** `Restart Suricata log forwarder after filter changes`
-   - Click **Save**
+3. **Events per interface** (confirms every Suricata instance is being forwarded):
 
-**Pros:**
-- ✅ Event-driven (restarts when needed)
-- ✅ No delay (immediate restart)
-- ✅ Solves Suricata restart scenario
-- ✅ Low overhead (only runs during Suricata events)
-- ✅ Logical integration with Suricata lifecycle
+   ```bash
+   curl -s "http://<SIEM_IP>:9200/suricata-*/_search" -H 'Content-Type: application/json' \
+     -d '{"size":0,"query":{"range":{"@timestamp":{"gte":"now-1h"}}},
+          "aggs":{"by_iface":{"terms":{"field":"in_iface","size":50}}}}' \
+     | jq '.aggregations.by_iface.buckets'
+   ```
 
-**Cons:**
-- ❌ Requires additional package (shellcmd)
-- ❌ Doesn't handle standalone crashes
-- ❌ May not survive pfSense updates
-- ❌ Harder to troubleshoot
-- ❌ More complex setup
+4. **Generate a known alert.** From any host behind pfSense run `curl http://testmyids.com`
+   and look for the `GPL ATTACK_RESPONSE id check returned root` signature in Grafana
+   within about 30 seconds.
 
-**Resource usage:** Only runs during Suricata restarts (typically 1-5 times/day)
+Process running but the count not moving? Check, in order: Suricata is writing
+(`ls -l /var/log/suricata/*/eve.json`), the SIEM firewall allows UDP 5140, the baked-in
+target is right (`grep 'SIEM_HOST =' /usr/local/bin/forward-suricata-eve.py`), and Logstash
+is not tagging `_jsonparsefailure`
+([TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md#forwarder-issues)).
 
 ---
 
-### Option 3: Smart Activity Monitor (Stuck Process Detection)
+## After Suricata restarts or rule reloads
 
-**Best for:** Active 24/7 networks, business environments, comprehensive monitoring
+A Suricata restart (rule update, interface config change, pfSense package upgrade)
+rewrites the `eve.json` files. The forwarder handles the common case on its own: it
+notices the inode change or truncation and reopens the file, logging
+`Rotation detected, reopening`.
 
-**What it does:** Checks if eve.json files are being actively written. If no activity for X minutes, restarts forwarder.
+The one case it does not handle live is a **new interface**: the list of eve.json
+files is discovered at startup, so an interface added to Suricata after the forwarder
+started is picked up on the next forwarder start. Just restart it:
 
-**Cron entry (basic):**
 ```bash
-*/10 * * * * [ $(find /var/log/suricata/*/eve.json -mmin -10 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'
 ```
 
-**Variants:**
-
-**Conservative (20-minute window):**
-```bash
-*/20 * * * * [ $(find /var/log/suricata/*/eve.json -mmin -20 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
-**Business hours only (9 AM - 11 PM):**
-```bash
-*/15 9-23 * * * [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
-**Pros:**
-- ✅ Detects stuck/frozen processes
-- ✅ Handles Suricata restart scenario
-- ✅ Catches file-related issues
-- ✅ Self-healing
-- ✅ No additional packages required
-
-**Cons:**
-- ❌ Assumes constant network activity
-- ❌ Can false-trigger on quiet networks
-- ❌ May restart unnecessarily during idle periods
-- ❌ More aggressive than Option 1
-- ❌ 10-20 minute detection window
-
-**Resource usage:** Runs file system scan 144 times/day (10-min interval), ~0.5s each
+`scripts/suricata-restart-hook.sh` tried to automate this from Suricata's post-install
+hook. It is kept for reference but **not installed** by setup.sh: it recovers with
+`killall python3.11` and a hardcoded interpreter path. If you want automation, schedule
+`service suricata_forwarder.sh restart` in a pfSense Cron-package job after your rule
+updates instead.
 
 ---
 
-## Option Comparison
+## What survives reboot and upgrade
 
-| Feature | Option 1<br/>Keepalive | Option 2<br/>Hook | Option 3<br/>Activity Monitor |
-|---------|----------------------|------------------|----------------------------|
-| **Handles crashes** | ✅ Yes | ❌ No | ✅ Yes |
-| **Handles Suricata restart** | ❌ No | ✅ Yes | ✅ Yes |
-| **Detects stuck process** | ❌ No | ❌ No | ✅ Yes |
-| **False positives** | None | None | Possible (quiet networks) |
-| **Setup complexity** | Easy | Medium | Easy |
-| **Dependencies** | None | shellcmd pkg | None |
-| **Resource usage** | Very Low | Very Low | Low |
-| **Recovery time** | 0-5 min | Immediate | 0-20 min |
-| **24/7 safe** | ✅ Yes | ✅ Yes | ⚠️ Maybe |
+pfSense only guarantees `config.xml` across a reinstall or configuration restore. The
+forwarder pieces live on the filesystem, so:
+
+| Event | Forwarder + rc.d + watchdog cron | Notes |
+|-------|----------------------------------|-------|
+| Reboot | Survive | rc.d starts the forwarder; cron reloads root's crontab from `/var/cron/tabs/root` |
+| In-place pfSense upgrade (e.g. 2.7.x to 2.8.x) | Usually survive, not guaranteed | Files under `/usr/local/bin` and `/usr/local/etc/rc.d` and root's crontab can be removed or the Python version can change |
+| Reinstall or restore from backup | Lost | Not part of config.xml, so not in pfSense backups |
+
+After any pfSense upgrade, reinstall or restore:
+
+```bash
+./setup.sh          # redeploys forwarder, rc.d, watchdog; re-detects Python
+./scripts/status.sh # confirms everything is back
+```
+
+The full procedure, including what to check before upgrading, is in
+[PFSENSE_UPGRADE_GUIDE.md](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
+
+Two notes on cron:
+
+- Do not put the watchdog in `/etc/crontab`; pfSense regenerates that file from config.xml
+  and the line vanishes. setup.sh uses root's own crontab (`crontab -`) for this reason.
+- For a cron entry that is itself durable across reinstall, use the pfSense **Cron**
+  package (Services > Cron): those jobs are stored in config.xml and restored with
+  backups. Optional, since setup.sh already covers the common cases.
 
 ---
 
-## Installation Instructions
+## Uninstall
 
-### Recommended: Hybrid Approach (Option 1 + Option 3)
+On pfSense:
 
-For most environments, we recommend combining Option 1 (crash recovery) with Option 3 (activity monitoring during active hours).
-
-**Step 1: SSH into pfSense**
 ```bash
-ssh root@192.168.1.1
+service suricata_forwarder.sh stop
+rm -f /usr/local/etc/rc.d/suricata_forwarder.sh
+crontab -l | grep -v suricata-forwarder-watchdog | crontab -
+rm -f /usr/local/bin/suricata-forwarder-watchdog.sh /usr/local/bin/forward-suricata-eve.py
+rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid /var/log/suricata-forwarder.log /var/log/suricata_forwarder_debug.log
 ```
 
-**Step 2: Edit crontab**
-```bash
-crontab -e
-```
-
-**Step 3: Add both monitoring entries**
-```bash
-# Suricata Log Forwarder Monitoring
-# Option 1: Simple keepalive - handles crashes
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-
-# Option 3: Activity monitor - handles stuck processes during active hours (9 AM - 11 PM)
-*/15 9-23 * * * [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
-**Step 4: Save and exit**
-- In vi: Press `ESC`, type `:wq`, press `ENTER`
-- In nano: Press `CTRL+X`, then `Y`, then `ENTER`
-
-**Step 5: Verify cron installation**
-```bash
-crontab -l | grep forward-suricata
-```
-
-You should see both lines.
-
----
-
-### Alternative: Single Option Installation
-
-Choose one option if you prefer a simpler approach:
-
-#### Install Option 1 Only (Crash Recovery)
-```bash
-ssh root@192.168.1.1
-crontab -e
-# Add this line:
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
-#### Install Option 2 Only (Event Hook)
-```bash
-# Install shellcmd package
-ssh root@192.168.1.1
-pkg install pfSense-pkg-shellcmd
-
-# Then via WebGUI:
-# Services > Shellcmd > Add
-# Command: /usr/bin/killall python3.11; sleep 2; /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-# Type: afterfilterchangeshellcmd
-```
-
-#### Install Option 3 Only (Activity Monitor)
-```bash
-ssh root@192.168.1.1
-crontab -e
-# Add this line (choose your preferred variant):
-*/15 9-23 * * * [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
----
-
-## Environment-Specific Recommendations
-
-### Home Lab / Family Network
-**Recommended:** Option 1 + Option 3 (Hybrid, active hours only)
-
-**Why:**
-- Network activity varies (busy evenings, quiet nights)
-- Occasional Suricata restarts (rule updates)
-- Want automatic recovery without false alarms
-
-**Configuration:**
-```bash
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-*/15 9-23 * * * [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
----
-
-### Small Business (9-5 operation)
-**Recommended:** Option 1 + Option 3 (Business hours only)
-
-**Why:**
-- Active during business hours
-- Minimal weekend traffic
-- Need reliability during work hours
-
-**Configuration:**
-```bash
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-*/15 8-18 * * 1-5 [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
----
-
-### 24/7 Active Network (Data Center, Always-On Services)
-**Recommended:** Option 1 + Option 3 (24/7 monitoring)
-
-**Why:**
-- Constant traffic
-- Need immediate detection
-- False positives unlikely
-
-**Configuration:**
-```bash
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-*/10 * * * * [ $(find /var/log/suricata/*/eve.json -mmin -10 | wc -l) -eq 0 ] && killall python3.11 && sleep 2 && /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
----
-
-### Testing/Development (Frequent Config Changes)
-**Recommended:** Option 1 + Option 2
-
-**Why:**
-- Frequent Suricata restarts
-- Need immediate recovery
-- Want event-driven automation
-
-**Configuration:**
-```bash
-# Cron:
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-
-# Plus shellcmd hook (via WebGUI)
-```
-
----
-
-### Minimal Maintenance (Set and Forget)
-**Recommended:** Option 1 only
-
-**Why:**
-- Simplest approach
-- Handles most issues
-- Manual intervention acceptable for edge cases
-
-**Configuration:**
-```bash
-*/5 * * * * pgrep -f forward-suricata-eve.py > /dev/null || /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
----
-
-## Verification
-
-### Test Forwarder Restart
-After installing monitoring, verify it works:
-
-**Method 1: Kill forwarder and wait**
-```bash
-ssh root@192.168.1.1
-killall python3.11
-# Wait 5 minutes, then check:
-ps aux | grep forward-suricata-eve.py | grep -v grep
-```
-
-**Method 2: Check cron is running**
-```bash
-ssh root@192.168.1.1
-# Wait for cron to run (check at 5-minute mark)
-tail -f /var/log/cron
-# Look for: forward-suricata-eve.py entries
-```
-
-**Method 3: Verify logs are flowing**
-```bash
-# Check OpenSearch has recent events
-curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | \
-  python3 -c "import sys,json; print('Last event:', json.load(sys.stdin)['hits']['hits'][0]['_source']['suricata']['eve']['timestamp'])"
-```
-
-Expected: Timestamp within last few minutes
+If a legacy install (`setup_forwarder_monitoring.sh`) was ever used on this box, also
+remove its lines: `crontab -l | grep -v forward-suricata-eve.py | crontab -`.
 
 ---
 
 ## Troubleshooting
 
-### Logs Not Flowing After 15+ Minutes
-
-**Check forwarder status:**
-```bash
-ssh root@192.168.1.1
-ps aux | grep forward-suricata-eve.py | grep -v grep
-```
-
-**Check cron is configured:**
-```bash
-crontab -l | grep forward-suricata
-```
-
-**Manually restart forwarder:**
-```bash
-killall python3.11
-/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &
-```
-
-**Check for errors:**
-```bash
-tail -50 /var/log/suricata_forwarder_debug.log
-```
-
----
-
-### False Restarts (Option 3)
-
-If you see forwarder restarting during legitimate quiet periods:
-
-**Solution 1: Increase time threshold**
-```bash
-# Change from -10 to -20 minutes
-*/20 * * * * [ $(find /var/log/suricata/*/eve.json -mmin -20 | wc -l) -eq 0 ] && ...
-```
-
-**Solution 2: Limit to active hours**
-```bash
-# Only check during 8 AM - 11 PM
-*/15 8-23 * * * [ $(find /var/log/suricata/*/eve.json -mmin -15 | wc -l) -eq 0 ] && ...
-```
-
-**Solution 3: Disable Option 3, keep Option 1 only**
-```bash
-crontab -e
-# Comment out or delete the Option 3 line
-```
-
----
-
-### Cron Not Running
-
-**Check cron service:**
-```bash
-service cron status
-# If not running:
-service cron start
-service cron enable
-```
-
-**Check cron log:**
-```bash
-tail -f /var/log/cron
-```
-
----
-
-### Forwarder Starts But Immediately Dies
-
-**Check Python version:**
-```bash
-which python3.11
-# Should return: /usr/local/bin/python3.11
-```
-
-**Check script exists:**
-```bash
-ls -la /usr/local/bin/forward-suricata-eve.py
-```
-
-**Check dependencies:**
-```bash
-python3.11 -c "import maxminddb, socket, syslog, json, ipaddress"
-```
-
-**Run forwarder manually to see errors:**
-```bash
-/usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py
-# Leave running and check for errors
-```
-
----
-
-## Monitoring Effectiveness
-
-### Check Last Restart Time
-```bash
-ps aux | grep forward-suricata-eve.py | grep -v grep | awk '{print $2}'
-# Get PID, then:
-ps -p <PID> -o lstart=
-```
-
-### Count Restarts Per Day
-```bash
-grep "forward-suricata-eve.py" /var/log/cron | grep "$(date +%Y-%m-%d)" | wc -l
-```
-
-### Verify No Log Gaps
-```bash
-# Check OpenSearch for continuous timestamps
-curl -s "http://<SIEM_IP>:9200/suricata-*/_search?size=100&sort=@timestamp:desc" | \
-  python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for hit in data['hits']['hits']:
-    print(hit['_source']['suricata']['eve']['timestamp'])
-" | head -20
-```
-
-Look for any gaps > 10 minutes in timestamps.
+| Symptom | Cause / fix |
+|---------|-------------|
+| Watchdog restarts it every minute | It starts and dies. Run it in the foreground (`service suricata_forwarder.sh stop; /usr/local/bin/forward-suricata-eve.py`) and read the error: no `eve.json` files (Suricata not running), shebang pointing at a Python removed by an upgrade (re-run `./setup.sh`), or `maxminddb` missing (`python3 -c 'import maxminddb'`). |
+| More than one forwarder process | Leftover from a manual start or the legacy cron scheme. `pkill -f forward-suricata-eve.py`, remove any `forward-suricata-eve.py` lines from `crontab -l`, then `service suricata_forwarder.sh start`. |
+| Nothing restarts it after a crash | `crontab -l \| grep watchdog` must show the line; if not, re-run `./setup.sh`. Also `service cron status`. |
+| Not running after reboot | the file must be `/usr/local/etc/rc.d/suricata_forwarder.sh` (with `.sh` — older deployments installed it without the suffix and were never started at boot). Re-run `./setup.sh` if not. The watchdog starts it within a minute anyway, so this shows up as a 60 s gap. |
+| Events stop after a Suricata restart, process alive | `procstat -f $(cat /var/run/suricata_forwarder.child.pid) \| grep eve.json` listing rotated files (`eve.json.2026_...`) instead of the live `eve.json`: restart the service; see [LOG_ROTATION_FIX.md](../troubleshooting/LOG_ROTATION_FIX.md). |
 
 ---
 
 ## Related Documentation
 
-- [pfSense Forwarder Installation](../install/INSTALL_PFSENSE_FORWARDER.md) - Initial forwarder setup
-- [SIEM Stack Installation](../install/INSTALL_SIEM_STACK.md) - Backend log storage
-- [Dashboard Installation](../install/INSTALL_DASHBOARD.md) - Visualization
-- [Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md) - Common issues
-
----
-
-## Contributing
-
-Found a better approach? Have environment-specific recommendations? Please contribute!
-
-1. Fork the repository
-2. Create a branch: `git checkout -b feature/monitoring-improvement`
-3. Update this document
-4. Submit a pull request
-
----
-
-## Changelog
-
-- **2025-11-26**: Initial documentation with three monitoring options
-- **2025-11-26**: Added hybrid approach and environment-specific recommendations
+- [INSTALL_PFSENSE_FORWARDER.md](../install/INSTALL_PFSENSE_FORWARDER.md): initial deployment and manual install steps
+- [PFSENSE_UPGRADE_GUIDE.md](../pfsense/PFSENSE_UPGRADE_GUIDE.md): what to do around a pfSense upgrade
+- [MULTI_INTERFACE_RETENTION.md](MULTI_INTERFACE_RETENTION.md): per-interface fields and index retention
+- [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md): broader stack troubleshooting
+- [MANAGEMENT_CONSOLE.md](MANAGEMENT_CONSOLE.md): the `pfsense-siem` menu that wraps these commands

@@ -1,9 +1,12 @@
-# pfBlockerNG Recommended Configuration Guide
-**Updated:** December 2025  
-**Purpose:** Production-tested pfBlockerNG configuration for comprehensive threat blocking  
-**Author:** ChiefGyk3D
+# pfBlockerNG Feed Reference
 
-> **⚠️ Important:** This configuration is aggressive and may require whitelist adjustments for your specific environment. Test in stages and monitor logs for false positives. Always maintain a whitelist for critical services (CDNs, video conferencing, cloud services, etc.).
+**Purpose:** the exhaustive catalog behind the maintainer's pfBlockerNG deployment — every IP and DNSBL feed worth enabling, grouped by priority with actions and update cadence, plus the whitelisting guide and the privacy considerations that go with it.
+
+This is the **reference**. The short **strategy** guide — why run pfBlockerNG in front of Suricata, the half-dozen feeds that carry most of the value, rule ordering and validation — is [PFBLOCKERNG_OPTIMIZATION.md](PFBLOCKERNG_OPTIMIZATION.md). Read that first; come here when you are ready to build out groups.
+
+It applies to any pfSense box running pfBlockerNG-devel 3.x (tested on pfSense 2.8.x/2.9.0). Nothing in this file depends on the SIEM stack in this repository; the dashboard panels that visualise pfBlockerNG logs are described in the [strategy guide](PFBLOCKERNG_OPTIMIZATION.md#3-dashboard-panels).
+
+> **⚠️ Important:** This configuration is aggressive and will need whitelist adjustments for your environment. Test in stages, watch the logs for false positives, and always keep a whitelist for critical services (CDNs, video conferencing, cloud services). **Verify every feed URL before adding it** — feeds move and go offline; a `Download FAIL` in the update log means the feed is gone, not that pfBlockerNG is broken.
 
 ---
 
@@ -134,15 +137,17 @@
 
 ---
 
-### ⚠️ **Feeds to AVOID (Known Issues)**
+### ⚠️ **Feeds to AVOID or Verify First**
+
+Some feeds that still appear in pfBlockerNG's pre-configured list, or in older guides, have gone offline, moved without a working redirect, or serve broken TLS certificates. Check with `curl -I <feed_url>` before enabling anything not listed above, and remove any feed that shows `Download FAIL` in **Firewall → pfBlockerNG → Update** for more than a few days.
 
 | Feed Name | Issue | Recommendation |
 |-----------|-------|----------------|
-| **Talos/Cisco Blacklist** | Returns 404 | Remove/Skip |
-| **DangerRulez** | 301 redirect (moved) | Remove/Skip |
-| **NVT BlackList** | 301 redirect (moved) | Remove/Skip |
-| **MyIP.ms** | SSL certificate errors | Skip (use FireHOL instead) |
-| **Individual BlockList.de categories** | Redundant | Use "All" feed instead |
+| **Talos/Cisco Blacklist** | Source has gone offline | Skip |
+| **DangerRulez** | Moved; old URL no longer valid | Skip |
+| **NVT BlackList** | Moved; old URL no longer valid | Skip |
+| **MyIP.ms** | TLS certificate problems | Skip (FireHOL covers it) |
+| **Individual BlockList.de categories** | Redundant | Use the "All" feed instead |
 
 ---
 
@@ -156,7 +161,7 @@
 
 ---
 
-### **Top-Tier DNSBL Lists (2025)**
+### **Top-Tier DNSBL Lists**
 
 #### **Comprehensive All-in-One (Pick ONE)**
 
@@ -289,13 +294,17 @@ pfBlockerNG includes many pre-configured feeds accessible via `Firewall > pfBloc
 
 ### **Update Frequency Recommendations:**
 
+The same cadence is used in the [strategy guide](PFBLOCKERNG_OPTIMIZATION.md#1-update-cadence):
+
 | Group Type | Recommended Frequency | Reasoning |
 |------------|----------------------|-----------|
-| **Critical Threats** | Every hour | Fast-changing threat landscape |
-| **Inbound Protection** | Every 4 hours | Balance between freshness and load |
+| **Critical Threats** (C2 / malware infrastructure) | Every hour | Short-lived infrastructure |
+| **Inbound Protection** (general reputation) | Every 4 hours | Changes daily, not hourly |
 | **Scanners** | Every day | Scanner IPs change slowly |
-| **DNSBL** | Every day | Domain lists are relatively stable |
+| **DNSBL** | Every day | Domain lists are large and relatively stable |
 | **Cryptominers** | Every day | Mining pools don't change often |
+
+On low-end hardware, move the hourly tier to every 4 hours; the update run is PHP-heavy.
 
 ### **Hardware Considerations:**
 
@@ -347,7 +356,7 @@ pfctl -vvss | grep "table-entries"
 
 We provide a comprehensive, curated whitelist file that you can import directly into pfBlockerNG:
 
-📁 **File Location:** [`config/dnsbl_whitelist.txt`](dnsbl_whitelist.txt)
+📁 **File Location:** [`config/dnsbl_whitelist.txt`](../../config/dnsbl_whitelist.txt)
 
 **Format:** The file uses standard pfBlockerNG whitelist format:
 - One domain per line
@@ -552,7 +561,7 @@ The whitelist file includes `# PRIVACY NOTICE` comments for services with signif
 
 | Service | Owner | Concerns |
 |---------|-------|----------|
-| **TikTok** | ByteDance (China) | Potential government data access under Chinese national security laws; extensive data collection (device info, location, browsing, biometrics); algorithm manipulation concerns; banned on government devices in multiple countries; pending US legislation for ban/sale |
+| **TikTok** | ByteDance (China) | Potential government data access under Chinese national security laws; extensive data collection (device info, location, browsing, biometrics); algorithm manipulation concerns; banned on government devices in multiple countries; subject to ongoing regulatory action in several jurisdictions |
 
 **Recommendation:** Only whitelist if actively used and you accept the risks. Consider blocking on work/sensitive networks.
 
@@ -674,7 +683,7 @@ Before importing the whitelist, consider:
 **Solutions:**
 1. Check feed URL with curl: `curl -I <feed_url>`
 2. If 404/301/SSL error, remove or replace feed
-3. Known broken feeds: Talos, DangerRulez, NVT_BL, MyIP (SSL)
+3. Some sources listed in older guides (Talos, DangerRulez, NVT_BL, MyIP) have gone offline or moved; drop them rather than retrying
 
 ### **Issue: Internet Breaks After Enabling Lists**
 
@@ -720,7 +729,7 @@ Before importing the whitelist, consider:
 
 ## Integration with Suricata IPS
 
-If running Suricata alongside pfBlockerNG:
+If running Suricata alongside pfBlockerNG (see [SURICATA_OPTIMIZATION_GUIDE.md](SURICATA_OPTIMIZATION_GUIDE.md) and the [strategy guide](PFBLOCKERNG_OPTIMIZATION.md#why-use-pfblockerng-with-suricata)):
 
 ### **Recommended Division of Labor:**
 
@@ -749,7 +758,7 @@ If running Suricata alongside pfBlockerNG:
 
 ## Quick Reference: Feed Sources
 
-### **Trusted IP Feed Sources (2025):**
+### **Trusted IP Feed Sources:**
 - **Abuse.ch** - https://abuse.ch/ - Malware tracking (SSL, Feodo, URLhaus)
 - **FireHOL** - https://iplists.firehol.org/ - Aggregator of 400+ feeds (recommended)
 - **CINS Army** - https://cinsscore.com/ - C&C server tracking
@@ -757,7 +766,7 @@ If running Suricata alongside pfBlockerNG:
 - **Spamhaus** - https://www.spamhaus.org/drop/ - Known bad actors
 - **Stamparm** - https://github.com/stamparm/ - Maltrail, ipsum statistical blocking
 
-### **Trusted DNSBL Sources (2025):**
+### **Trusted DNSBL Sources:**
 - **OISD** - https://oisd.nl/ - All-in-one, low false positives (⭐ recommended)
 - **Hagezi** - https://github.com/hagezi/dns-blocklists - Top-tier, regularly updated
 - **1Hosts** - https://o0.pages.dev/ - Comprehensive, aggressive
@@ -821,10 +830,9 @@ If running Suricata alongside pfBlockerNG:
 
 ---
 
-**Version:** 1.1  
-**Last Updated:** December 2025  
-**Tested On:** pfSense 2.8.x with pfBlockerNG-devel 3.x  
-**License:** Mozilla Public License 2.0
+**Tested on:** pfSense 2.8.x / 2.9.0 with pfBlockerNG-devel 3.x  
+**License:** Mozilla Public License 2.0  
+**Companion:** [PFBLOCKERNG_OPTIMIZATION.md](PFBLOCKERNG_OPTIMIZATION.md) (strategy) · [config/dnsbl_whitelist.txt](../../config/dnsbl_whitelist.txt) (whitelist file)
 
 ---
 

@@ -204,7 +204,7 @@ restart_telegraf() {
     
     if [[ $restart_choice =~ ^[Yy]$ ]]; then
         print_info "Restarting Telegraf service..."
-        if ssh -p "${PFSENSE_PORT}" "${PFSENSE_USER}@${PFSENSE_HOST}" "service telegraf restart"; then
+        if ssh -p "${PFSENSE_PORT}" "${PFSENSE_USER}@${PFSENSE_HOST}" "/usr/local/etc/rc.d/telegraf.sh restart"; then
             print_success "Telegraf service restarted successfully"
         else
             print_warning "Failed to restart Telegraf service. You may need to restart it manually."

@@ -409,8 +409,8 @@ restart_forwarder() {
     echo "Restarting forwarder on ${PFSENSE_HOST}..."
 
     # Prefer the rc.d service installed by setup.sh; fall back to pkill + nohup
-    if ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder' 2>/dev/null; then
-        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'service suricata_forwarder restart' || true
+    if ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder.sh' 2>/dev/null; then
+        ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'service suricata_forwarder.sh restart' || true
     else
         # Stop existing forwarder
         ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" 'pkill -f forward-suricata-eve || true'
@@ -493,8 +493,8 @@ test_pfsense_connectivity() {
     fi
     
     # Python check
-    echo -n "  Python 3.11 available... "
-    PYTHON_CHECK=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "which python3.11" 2>/dev/null)
+    echo -n "  Python 3 available... "
+    PYTHON_CHECK=$(ssh "${PFSENSE_USER:-admin}@${PFSENSE_HOST}" "(which python3 || which python3.11)" 2>/dev/null)
     if [ -n "$PYTHON_CHECK" ]; then
         echo -e "${GREEN}✓${NC}"
     else

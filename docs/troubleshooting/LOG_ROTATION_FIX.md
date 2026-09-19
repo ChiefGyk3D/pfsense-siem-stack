@@ -1,205 +1,158 @@
-# Log Rotation Issue Resolution
+# Suricata EVE Log Rotation and the Forwarder
 
-## Problem
+This page explains how `forward-suricata-eve.py` copes with Suricata rotating
+`eve.json`, and how to verify it. It is about **Suricata's** log files on
+pfSense. The unrelated problem where pfSense's own `filterlog` daemon stops
+writing `filter.log` after `newsyslog` rotates it (which empties the pfBlockerNG
+panels) is covered in [PFSENSE_FILTERLOG_ROTATION_FIX.md](PFSENSE_FILTERLOG_ROTATION_FIX.md).
 
-The Suricata EVE forwarder was getting stuck on rotated log files, causing missing data in Grafana dashboards.
+## The Problem
 
-**Symptoms:**
-- Interface distribution panel missing data from specific interfaces (e.g., ix0/WAN)
-- Events visible in local eve.json but not appearing in OpenSearch
-- Forwarder showing old rotated files in `lsof` output (e.g., `eve.json.2025_1126_2040`)
+Suricata (via pfSense's log-management settings) periodically renames
+`eve.json` to `eve.json.<timestamp>` and starts a fresh `eve.json`. A naive
+tailer that opened the file once keeps reading the renamed file's inode
+forever: the local `eve.json` fills with new events, OpenSearch receives none,
+and one interface silently disappears from the dashboards.
 
-**Root Cause:**
-The forwarder used `open()` without inode tracking. When Suricata rotates logs:
-1. Old `eve.json` → `eve.json.2025_1126_2040` (inode unchanged)
-2. New `eve.json` created (new inode)
-3. Forwarder continued reading old inode → no new data forwarded
+**Symptoms of a stuck tailer:**
+- The Per-Interface dashboard is missing one or more interfaces while others update.
+- `lsof` on the forwarder shows `eve.json.*` (a rotated file) instead of `eve.json`.
+- New events are visible with `tail /var/log/suricata/<instance>/eve.json` on pfSense but never reach OpenSearch.
 
-## Solution: Inode Monitoring
+## How the Forwarder Handles It
 
-The forwarder now checks file inodes on every read cycle and automatically reopens files when rotation is detected.
+Each monitored file has its own thread (`tail_log_file()` in
+`scripts/forward-suricata-eve.py`). The thread:
 
-### Key Changes
+1. Waits for the path to exist, records its inode, opens it, and seeks to the end.
+2. Reads lines. When there is no new line it sleeps 0.1 s and counts an idle cycle.
+3. After `ROTATION_CHECK_CYCLES` (50) consecutive idle cycles, about **five
+   seconds of quiet**, it re-stats the path:
+   - **Inode changed or file gone** → logs `Rotation detected, reopening`, closes
+     the handle, and goes back to step 1, which opens the new `eve.json`.
+   - **File smaller than the current read position** → logs
+     `Truncation detected, reseeking` and seeks to the new end.
+4. If the file disappears mid-read (`FileNotFoundError`) it logs `File gone,
+   waiting...` and retries every five seconds.
 
-**Before:**
-```python
-def tail_log_file(eve_log, sock):
-    with open(eve_log, 'r') as f:
-        f.seek(0, 2)  # Seek to end
-        while True:
-            line = f.readline()
-            # Process line...
-```
+Two consequences worth knowing:
 
-**After:**
-```python
-def tail_log_file(eve_log, sock):
-    file_handle = None
-    last_inode = None
-    
-    while True:
-        # Check current inode
-        current_inode = os.stat(eve_log).st_ino
-        
-        # Reopen if inode changed (rotation detected)
-        if file_handle is None or last_inode != current_inode:
-            if file_handle:
-                file_handle.close()
-            file_handle = open(eve_log, 'r')
-            last_inode = current_inode
-        
-        line = file_handle.readline()
-        # Process line...
-```
+- The check is triggered by *idleness*, not by a timer. On a busy interface the
+  old file keeps being read until Suricata stops writing to it, which happens
+  at the moment of rotation, so in practice detection is still within seconds.
+- After a reopen the thread starts at the end of the new file. Events written to
+  the new `eve.json` between the rotation and the reopen (a few seconds at most)
+  are not forwarded. Events still being flushed to the *old* file after the
+  rename are read before the idle check fires, so nothing there is lost.
 
-### Benefits
-
-1. **Automatic recovery** - No manual restart needed after log rotation
-2. **No data loss** - Reads new file from start after rotation
-3. **Continuous monitoring** - Checks inode every read cycle (0.1s when idle)
-4. **Syslog alerts** - Logs rotation events for monitoring
+Rotation and truncation events are logged to syslog with tag
+`suricata-forwarder`. The unit tests in `tests/python/test_forwarder.py` cover
+both the inode-change and truncation paths with temporary files.
 
 ## Deployment
 
+Nothing to do by hand. `./setup.sh` deploys the forwarder and runs it as the
+`suricata_forwarder.sh` rc.d service under `daemon(8)`. To restart after an
+upgrade of the script:
+
 ```bash
-# 1. Copy updated script to pfSense
-scp scripts/forward-suricata-eve.py root@192.168.1.1:/usr/local/bin/
-
-# 2. Make executable
-ssh root@192.168.1.1 "chmod +x /usr/local/bin/forward-suricata-eve.py"
-
-# 3. Restart forwarder
-ssh root@192.168.1.1 "pkill -f forward-suricata-eve.py && sleep 2 && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &"
-
-# 4. Verify it's reading current files
-ssh root@192.168.1.1 "ps aux | grep forward-suricata-eve.py | grep -v grep | awk '{print \$2}' | xargs -I {} lsof -p {} 2>/dev/null | grep 'eve.json' | grep -v '2025_'"
+./setup.sh                                                       # redeploys and restarts
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'   # restart only
 ```
 
 ## Verification
 
-### Check Forwarder is Monitoring Current Files
+### The forwarder is reading current files
 
 ```bash
-# Get forwarder PID and check open files
-ssh root@192.168.1.1 "ps aux | grep forward-suricata-eve.py | grep -v grep | awk '{print \$2}' | xargs -I {} lsof -p {} 2>/dev/null | grep 'ix055721.*eve.json'"
+ssh admin@<PFSENSE_IP> 'lsof -p $(cat /var/run/suricata_forwarder.child.pid) 2>/dev/null | grep eve.json'
 ```
 
-**Good output (current file):**
+Good (one line per Suricata instance, all plain `eve.json`):
 ```
-python3.1 81984 root   6r  VREG ... /var/log/suricata/suricata_ix055721/eve.json
-```
-
-**Bad output (rotated file):**
-```
-python3.1 40727 root   6r  VREG ... /var/log/suricata/suricata_ix055721/eve.json.2025_1126_2040
+python3  81984 root  6r  VREG ... /var/log/suricata/suricata_igc012345/eve.json
+python3  81984 root  7r  VREG ... /var/log/suricata/suricata_igc167890/eve.json
 ```
 
-### Check Data Flowing to OpenSearch
+Bad (a rotated file still open more than a few seconds after rotation):
+```
+python3  40727 root  6r  VREG ... /var/log/suricata/suricata_igc012345/eve.json.2026_0919_0400
+```
+
+A quick filter for the bad case: append `| grep 'eve.json\.'`; it should print
+nothing.
+
+### Every interface is reaching OpenSearch
 
 ```bash
-# Check last 2 minutes for interface distribution
-curl -s -u admin:admin "http://<SIEM_IP>:9200/suricata-*/_search" -H 'Content-Type: application/json' -d '
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search' -H 'Content-Type: application/json' -d '
 {
   "size": 0,
-  "query": {
-    "range": {
-      "@timestamp": {
-        "gte": "now-2m",
-        "lte": "now"
-      }
-    }
-  },
-  "aggs": {
-    "interfaces": {
-      "terms": {
-        "field": "suricata.eve.in_iface.keyword",
-        "size": 20
-      }
-    }
-  }
+  "query": { "range": { "@timestamp": { "gte": "now-2m" } } },
+  "aggs":  { "interfaces": { "terms": { "field": "in_iface", "size": 20 } } }
 }' | jq '{total: .hits.total.value, interfaces: .aggregations.interfaces.buckets}'
 ```
 
-**Expected:** All active interfaces visible including ix0/WAN
+Every Suricata interface with traffic should appear. `in_iface` is mapped as
+`keyword` by the index template, so it is aggregated directly (no `.keyword`
+suffix).
 
-### Monitor Rotation Events
-
-```bash
-# Check syslog for rotation messages
-ssh root@192.168.1.1 "grep 'suricata-forwarder.*rotated' /var/log/system.log | tail -5"
-```
-
-### Check Debug Log
+### Rotation events in syslog
 
 ```bash
-# View forwarder debug log
-ssh root@192.168.1.1 "tail -50 /var/log/suricata_forwarder_debug.log | grep -i 'rotation\|inode'"
+ssh admin@<PFSENSE_IP> 'grep -E "suricata-forwarder.*(Rotation|Truncation|File gone)" /var/log/system.log | tail -5'
 ```
 
-## Suricata Log Rotation Schedule
+### Debug log (only when `DEBUG_ENABLED=true`)
 
-Suricata rotates logs based on:
-- **Size**: When eve.json reaches size threshold (default: varies by pfSense Suricata package)
-- **Time**: Scheduled rotations (check pfSense Suricata settings)
-
-Check rotation settings:
 ```bash
-ssh root@192.168.1.1 "grep -A 10 'max-file-size\|rotate' /usr/local/etc/suricata/suricata_*.yaml | head -30"
+ssh admin@<PFSENSE_IP> 'grep -iE "opened|inode|rotation" /var/log/suricata_forwarder_debug.log | tail -20'
 ```
 
-## Alternative Solutions (Not Implemented)
+## Forcing a Rotation to Test
 
-### Option 2: Systemd/rc.d Service with Restart Hook
-Create service that restarts on Suricata rotation signal (requires more pfSense integration).
+pfSense's Suricata package rotates logs from its own cron/GUI settings
+(Services → Suricata → Logs Mgmt), so the simplest test is to rotate a file by
+hand:
 
-### Option 3: Use pyinotify
-Monitor directory with inotify for CREATE events (adds dependency, more complex).
+```bash
+ssh admin@<PFSENSE_IP> '
+  cd /var/log/suricata/suricata_igc012345 &&
+  mv eve.json eve.json.$(date +%Y_%m%d_%H%M) &&
+  pkill -HUP -f "suricata.*igc0"      # Suricata reopens its log files on SIGHUP
+'
+sleep 10
+ssh admin@<PFSENSE_IP> 'lsof -p $(cat /var/run/suricata_forwarder.child.pid) | grep suricata_igc012345'
+ssh admin@<PFSENSE_IP> 'grep "Rotation detected" /var/log/system.log | tail -1'
+```
 
-### Option 4: Scheduled Restart
-Cron job to restart forwarder periodically (crude, causes brief data gaps).
-
-**Why inode monitoring is best:**
-- No dependencies
-- Zero data loss
-- Automatic recovery
-- Works with existing Suricata setup
+Within roughly five seconds of the interface going idle the forwarder should be
+holding the new `eve.json`.
 
 ## Troubleshooting
 
-### Forwarder Still Reading Old File
-
+**Still holding a rotated file long after rotation.** The interface may be so
+busy that the old file never goes idle before its next rotation, or the process
+is a stray copy started outside the service. Restart cleanly:
 ```bash
-# Force restart
-ssh root@192.168.1.1 "pkill -9 -f forward-suricata-eve.py && sleep 2 && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &"
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh stop; pkill -f forward-suricata-eve.py; sleep 1; service suricata_forwarder.sh start'
 ```
 
-### Interface Still Missing Data
+**An interface never appears.** The forwarder discovers `eve.json` files once at
+start-up. An interface enabled afterwards needs `service suricata_forwarder.sh restart`.
 
-1. Check Suricata is running on that interface
-2. Check local eve.json has recent events
-3. Check forwarder is monitoring that file
-4. Check OpenSearch for recent data from that interface
+**Interface appears but with gaps at rotation time.** Expected to be seconds at
+most. If gaps are minutes long, check `system.log` for `Error: ... restarting in
+5s` from the forwarder and for the watchdog restarting it.
 
-### Verify Fix is Working
+## Alternatives Considered
 
-Trigger a manual rotation and watch forwarder adapt:
-```bash
-# Cause rotation by sending HUP signal to Suricata
-ssh root@192.168.1.1 "pkill -HUP -f 'suricata.*ix0'"
+- **inotify/kqueue watching** – needs an extra module on pfSense; polling every
+  five idle seconds is cheap enough.
+- **Restart on Suricata's rotation signal** – tight coupling to the pfSense
+  Suricata package internals.
+- **Periodic scheduled restart** – causes gaps on every restart and hides other
+  bugs. This is what the legacy cron scripts did; do not reintroduce them.
 
-# Wait 5 seconds, then check forwarder still reading current file
-sleep 5
-ssh root@192.168.1.1 "ps aux | grep forward-suricata-eve.py | grep -v grep | awk '{print \$2}' | xargs -I {} lsof -p {} 2>/dev/null | grep 'ix055721.*eve.json' | grep -v '2025_'"
-```
-
-Should show the NEW `eve.json` (not dated file).
-
-## Prevention
-
-With this fix, the issue is **automatically prevented**. The forwarder will:
-1. Detect rotation within 0.1 seconds
-2. Reopen the new file
-3. Continue forwarding without data loss
-4. Log the rotation event for monitoring
-
-No manual intervention required after log rotations.
+Inode/size checking needs no dependencies, recovers on its own and is covered
+by unit tests, which is why it is the approach used.

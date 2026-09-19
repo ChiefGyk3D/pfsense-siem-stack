@@ -1,6 +1,6 @@
 # Configuration Files
 
-This directory contains all configuration files for the pfSense SIEM stack.
+This directory contains the SIEM-side configuration files for the pfSense SIEM stack (Logstash pipeline, OpenSearch index templates) plus the Suricata SID tuning lists and a pfBlockerNG DNSBL whitelist that live on the pfSense side.
 
 ---
 
@@ -11,18 +11,18 @@ This directory contains all configuration files for the pfSense SIEM stack.
 **Logstash pipeline for Suricata EVE JSON logs**
 
 **Purpose:**
-- Receives Suricata events via UDP from pfSense forwarder
-- Parses JSON to flat root-level fields (`event_type`, `src_ip`, `alert.*`, ...) — NOT nested under `suricata.eve.*`
+- Receives Suricata events via UDP from the pfSense forwarder
+- Parses the JSON to **flat root-level fields** (`event_type`, `src_ip`, `dest_ip`, `in_iface`, `alert.signature`, `geoip_src.location`, ...). Nothing is nested under a `suricata.eve.*` prefix; the dashboards query the flat names.
 - Indexes to OpenSearch with daily indices (`suricata-YYYY.MM.DD`)
 
 **Deployment:**
 ```bash
-sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/
+sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf
 sudo systemctl restart logstash
 ```
 
 **Configuration options:**
-- `port => 5140` - UDP listen port (must match forwarder)
+- `port => 5140` - UDP listen port (must match the forwarder)
 - `hosts => ["http://localhost:9200"]` - OpenSearch endpoint
 - `index => "suricata-%{[@metadata][index_date]}"` - Index naming pattern
 
@@ -30,12 +30,38 @@ sudo systemctl restart logstash
 
 ### opensearch-index-template.json
 
-**OpenSearch index template for suricata-* indices**
+**OpenSearch index template for `suricata-*` indices** — installed as `_index_template/suricata-template`
 
 **Purpose:**
-- Defines field mappings (geo_point, keyword, nested)
-- Configures analyzers and index settings
+- Defines field mappings (geo_point, keyword, ip, integer)
+- Configures index settings (1 shard, 0 replicas, 5 s refresh)
 - Ensures proper GeoIP mapping for geomap panels
+
+**Deployment:**
+```bash
+# Automated (recommended) — applies both templates and the auto-create setting
+./scripts/install-opensearch-config.sh
+
+# Manual
+curl -X PUT "http://localhost:9200/_index_template/suricata-template" \
+  -H 'Content-Type: application/json' \
+  -d @config/opensearch-index-template.json
+```
+
+**Key mappings (flat root-level fields):**
+- `geoip_src.location` / `geoip_dest.location` - geo_point (for geomap)
+- `in_iface`, `event_type`, `proto`, `alert.category`, `alert.action` - keyword (for aggregations)
+- `alert.signature` - text with a `.keyword` sub-field; `alert.signature_id` - integer
+- `src_ip`, `dest_ip` - ip
+
+### opensearch-pfblockerng-template.json
+
+**OpenSearch index template for `pfblockerng-*` indices** — installed as `_index_template/pfblockerng`
+
+**Purpose:**
+- Maps pfBlockerNG tag fields as `keyword` type for aggregations
+- Uses `dynamic_templates` for `tag.*`, `tail_ip_block_log.*` and `tail_dnsbl_log.*` fields
+- Ensures proper field types for the Grafana dashboard panels
 
 **Deployment:**
 ```bash
@@ -43,39 +69,14 @@ sudo systemctl restart logstash
 ./scripts/install-opensearch-config.sh
 
 # Manual
-curl -X PUT "http://localhost:9200/_index_template/suricata" \
-  -H 'Content-Type: application/json' \
-  -d @config/opensearch-index-template.json
-```
-
-**Key mappings (flat root-level fields):**
-- `geoip_src.location` - geo_point (for geomap)
-- `in_iface` - keyword (for aggregations)
-- `event_type`, `src_ip`, `dest_ip`, `alert.*` - root-level Suricata fields
-
-### opensearch-pfblockerng-template.json
-
-**OpenSearch index template for pfblockerng-* indices**
-
-**Purpose:**
-- Maps pfBlockerNG tag fields as `keyword` type for aggregations
-- Uses `dynamic_templates` for `tag.*`, `tail_ip_block_log.*`, and `tail_dnsbl_log.*` fields
-- Ensures proper field types for Grafana dashboard panels
-
-**Deployment:**
-```bash
-# Automated (recommended) — applies both templates
-./scripts/install-opensearch-config.sh
-
-# Manual
-curl -X PUT "http://localhost:9200/_index_template/pfblockerng-template" \
+curl -X PUT "http://localhost:9200/_index_template/pfblockerng" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-pfblockerng-template.json
 ```
 
-**Data pipeline:** Telegraf `[[outputs.opensearch]]` → OpenSearch `pfblockerng-*` indices
+**Data pipeline:** Telegraf `[[outputs.opensearch]]` on pfSense → OpenSearch `pfblockerng-*` indices. See [Telegraf pfBlockerNG Setup](../docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md).
 
-> **Important:** Do NOT use `[[outputs.elasticsearch]]` for pfBlockerNG data — it is incompatible with OpenSearch 2.x. Use `[[outputs.opensearch]]` instead.
+> **Important:** Do NOT use `[[outputs.elasticsearch]]` for pfBlockerNG data — it is incompatible with OpenSearch 2.x. Use `[[outputs.opensearch]]` (Telegraf ≥ 1.28).
 
 ---
 
@@ -83,9 +84,9 @@ curl -X PUT "http://localhost:9200/_index_template/pfblockerng-template" \
 
 ### dnsbl_whitelist.txt
 
-**DNS blocklist whitelist** - Domains to exclude from DNSBL blocking
+**DNS blocklist whitelist** - Domains to exclude from pfBlockerNG DNSBL blocking
 
-**Usage:** Reference list of domains whitelisted in pfBlockerNG DNSBL suppression to prevent false positives for legitimate services (Microsoft login, Google accounts, certificate authorities, Datadog monitoring, etc.)
+**Usage:** Curated list of domains whitelisted in the maintainer's pfBlockerNG DNSBL configuration to prevent false positives for legitimate services (identity providers, CDNs, certificate validation, streaming, gaming, productivity tools, ...). Review it and remove anything you do not use before importing.
 
 **Format:**
 ```
@@ -94,32 +95,30 @@ subdomain.example.com
 .example.com    # wildcard
 ```
 
-**Integration:** Applied in pfBlockerNG → DNSBL → DNSBL Whitelist
+**Integration:** Firewall → pfBlockerNG → DNSBL → create a group with List Action *Whitelist* and paste the contents (or point it at the raw GitHub URL). The categories and the privacy notes behind them are explained in [docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md](../docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md#whitelisting-guide).
 
-### pfblockerng_optimization.md
+### pfBlockerNG guides (moved)
 
-**PfBlockerNG configuration guide** - Moved to main docs
-
-**See:** [docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md](../docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md)
+The pfBlockerNG feed catalog that used to live in this directory as `pfblockerng_optimization.md` is now [docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md](../docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md). The shorter strategy guide is [docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md](../docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md).
 
 ---
 
 ## 🗂️ Subdirectories
 
-### suricata_inline_drop/
+### sid/
 
-**Suricata inline IPS drop configuration**
+**Suricata SID management lists** for the pfSense Suricata package:
 
-**Purpose:** Configuration files for enabling inline mode with drop rules
+```
+config/sid/
+├── README.md                       # What the lists do, how they were derived, how to build and apply your own
+├── disable/disablesid.conf         # 218 SIDs that are never loaded (protocol anomalies, chat/P2P, INFO noise, ...)
+├── drop/dropsid-minimal-safe.conf  # Six high-confidence classtypes to convert from alert to drop (start here)
+├── drop/dropsid-comprehensive.conf # Tiered classtype drop list for more aggressive inline IPS
+└── suppress/suppress.conf          # 2 example IP-specific suppressions (replace with your own)
+```
 
-**Contents:**
-- Drop rule examples
-- Suricata.yaml snippets for inline mode
-- Integration scripts
-
-**Usage:** Apply drop rules dynamically based on alert severity
-
-See subdirectory README for details.
+They are applied through **Services → Suricata → SID Mgmt** (and the **Suppress** tab), which stores them in `config.xml` so they survive rule updates and pfSense upgrades. See [sid/README.md](sid/README.md).
 
 ---
 
@@ -127,25 +126,20 @@ See subdirectory README for details.
 
 ### Index Templates
 
-Two index templates are used:
+| Template name | Index pattern | Source file | Purpose |
+|---------------|---------------|-------------|---------|
+| `suricata-template` | `suricata-*` | `opensearch-index-template.json` | Suricata EVE events (geo_point, keyword, ip mappings) |
+| `pfblockerng` | `pfblockerng-*` | `opensearch-pfblockerng-template.json` | pfBlockerNG IP block & DNSBL events (keyword mappings) |
 
-| Template | Index Pattern | Purpose |
-|----------|---------------|---------|
-| `suricata-template` | `suricata-*` | Suricata EVE events (geo_point mapping) |
-| `pfblockerng-template` | `pfblockerng-*` | pfBlockerNG IP block & DNSBL events |
-
-Apply both templates:
+Apply both:
 ```bash
 ./scripts/install-opensearch-config.sh
 ```
 
 ### Auto-Create Index Setting
 
-**CRITICAL:** OpenSearch must be configured to auto-create new daily indices for both Suricata and pfBlockerNG.
+**CRITICAL:** OpenSearch must be allowed to auto-create new daily indices for both `suricata-*` and `pfblockerng-*`, otherwise ingestion stops at midnight UTC when the index name changes. `install-opensearch-config.sh` sets this. To set or check it by hand:
 
-By default, OpenSearch has `action.auto_create_index` set to `false`, which prevents automatic index creation even when an index template exists.
-
-#### Enable auto-create:
 ```bash
 curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
@@ -154,51 +148,11 @@ curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
       "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
     }
   }'
-```
 
-#### Verify the setting:
-```bash
 curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
 ```
 
-Expected output:
-```json
-{
-  "persistent": {
-    "action": {
-      "auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-    }
-  }
-}
-```
-
-### Troubleshooting
-
-#### Symptom: Dashboard stops receiving data at midnight UTC
-
-**Cause:** New daily index not being auto-created
-
-**Check Logstash errors:**
-```bash
-ssh <user>@<SIEM_IP> 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
-```
-
-**Fix:** Verify auto-create setting includes both `pfblockerng-*` and `suricata-*`.
-
----
-
-## Logstash Configuration
-
-The `logstash-suricata.conf` file configures Logstash to:
-- Listen on UDP port 5140 for Suricata events
-- Parse timestamps
-- Forward to OpenSearch with daily index pattern `suricata-%{+YYYY.MM.dd}`
-
-Apply configuration:
-```bash
-sudo cp logstash-suricata.conf /etc/logstash/conf.d/
-sudo systemctl restart logstash
-```
+Background, symptoms and emergency recovery: [docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md).
 
 ---
 
@@ -227,7 +181,7 @@ sudo systemctl restart logstash
 **Logstash:**
 ```bash
 # Copy config
-sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/
+sudo cp config/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf
 
 # Test config
 sudo /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/suricata.conf --config.test_and_exit
@@ -242,21 +196,21 @@ tail -f /var/log/logstash/logstash-plain.log
 
 **OpenSearch:**
 ```bash
-# Apply both index templates
+# Apply both index templates and the auto-create setting
 ./scripts/install-opensearch-config.sh
 
 # Or manually:
-curl -X PUT "http://localhost:9200/_index_template/suricata" \
+curl -X PUT "http://localhost:9200/_index_template/suricata-template" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-index-template.json
 
-curl -X PUT "http://localhost:9200/_index_template/pfblockerng-template" \
+curl -X PUT "http://localhost:9200/_index_template/pfblockerng" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-pfblockerng-template.json
 
 # Verify templates
-curl -s "http://localhost:9200/_index_template/suricata" | jq
-curl -s "http://localhost:9200/_index_template/pfblockerng-template" | jq
+curl -s "http://localhost:9200/_index_template/suricata-template" | jq
+curl -s "http://localhost:9200/_index_template/pfblockerng" | jq
 
 # Check indices
 curl -s "http://localhost:9200/_cat/indices/suricata-*?v"
@@ -272,7 +226,7 @@ curl -s "http://localhost:9200/_cat/indices/pfblockerng-*?v"
 **Suricata:**
 ```bash
 # Send test event to Logstash
-echo '{"timestamp":"2025-11-27T12:00:00.000000-0500","event_type":"test","src_ip":"1.2.3.4","in_iface":"ix0"}' | nc -u localhost 5140
+echo '{"timestamp":"2025-11-27T12:00:00.000000-0500","event_type":"test","src_ip":"192.0.2.10","in_iface":"igc0"}' | nc -u localhost 5140
 
 # Check in OpenSearch (wait 2-3 seconds)
 curl -s "http://localhost:9200/suricata-*/_search?q=event_type:test" | jq '.hits.total.value'
@@ -280,15 +234,14 @@ curl -s "http://localhost:9200/suricata-*/_search?q=event_type:test" | jq '.hits
 
 **pfBlockerNG:**
 ```bash
-# Check pfBlockerNG events
 curl -s "http://localhost:9200/pfblockerng-*/_count" | jq '.count'
 ```
 
 ### Verify Field Mapping
 
 ```bash
-# Check suricata.eve.geoip_src.location is geo_point
-curl -s "http://localhost:9200/suricata-*/_mapping" | jq '.[].mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location'
+# geoip_src.location must be geo_point (flat structure, no suricata.eve prefix)
+curl -s "http://localhost:9200/suricata-*/_mapping" | jq '.[].mappings.properties.geoip_src.properties.location'
 ```
 
 Expected:
@@ -311,7 +264,7 @@ input {
     port => 5140  # Change to your port
 ```
 
-**Also update forwarder** on pfSense:
+**Also update the forwarder** on pfSense (`scripts/forward-suricata-eve.py`):
 ```python
 LOGSTASH_PORT = 5140  # Match Logstash port
 ```
@@ -337,10 +290,7 @@ output {
     index => "myindex-%{+YYYY.MM.dd}"  # Custom prefix
 ```
 
-**Also update Grafana queries:**
-```
-Index name: myindex-*
-```
+Then update the index pattern in `opensearch-index-template.json`, the `action.auto_create_index` list, and the Grafana datasource (`myindex-*`).
 
 ---
 
@@ -350,7 +300,7 @@ Index name: myindex-*
 
 ```bash
 # Check UDP listener
-sudo netstat -ulnp | grep 5140
+sudo ss -ulnp | grep 5140
 
 # Check firewall
 sudo ufw status | grep 5140
@@ -377,35 +327,20 @@ curl -s http://localhost:9200/_cluster/health
 
 ### Dashboard Stops at Midnight UTC
 
-**Cause:** New daily index not auto-created
-
-**Fix:** Enable auto-create for both index patterns:
-
-```bash
-curl -XPUT "http://localhost:9200/_cluster/settings" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "persistent": {
-      "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-    }
-  }'
-```
-
-See [docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md) for details.
+New daily index not auto-created. Re-run `./scripts/install-opensearch-config.sh` or apply the `action.auto_create_index` setting shown above, then check Logstash for `index_not_found_exception`. Full write-up: [docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md](../docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md).
 
 ### Index Template Not Applied
 
 ```bash
 # Delete and recreate both templates
-curl -X DELETE "http://localhost:9200/_index_template/suricata"
-curl -X DELETE "http://localhost:9200/_index_template/pfblockerng-template"
+curl -X DELETE "http://localhost:9200/_index_template/suricata-template"
+curl -X DELETE "http://localhost:9200/_index_template/pfblockerng"
 ./scripts/install-opensearch-config.sh
 
-# Delete indices to reapply (WARNING: deletes data!)
+# Templates only apply to indices created after them. To remap existing
+# indices you must delete them (WARNING: deletes data!)
 curl -X DELETE "http://localhost:9200/suricata-*"
 curl -X DELETE "http://localhost:9200/pfblockerng-*"
-
-# Wait for new indices to be created with correct mapping
 ```
 
 ---
@@ -415,6 +350,7 @@ curl -X DELETE "http://localhost:9200/pfblockerng-*"
 - **[Logstash Pipeline](logstash-suricata.conf)** - See inline comments for detailed config
 - **[Suricata Template](opensearch-index-template.json)** - Suricata field mappings
 - **[pfBlockerNG Template](opensearch-pfblockerng-template.json)** - pfBlockerNG field mappings
+- **[SID Management](sid/README.md)** - Suricata disable/drop/suppress lists
 - **[Telegraf pfBlockerNG Setup](../docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md)** - OpenSearch output config
 - **[Configuration Guide](../docs/reference/CONFIGURATION.md)** - All config.env options
 - **[SIEM Installation](../docs/install/INSTALL_SIEM_STACK.md)** - Full setup guide

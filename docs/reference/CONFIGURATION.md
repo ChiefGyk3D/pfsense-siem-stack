@@ -1,594 +1,393 @@
 # Configuration Reference
 
-Detailed reference for all configuration files in the Suricata monitoring stack.
+Every knob in the pfSense SIEM stack, where it lives, and which script reads it.
+This is a reference, not a tutorial; for the install order see
+[QUICK_START.md](../../QUICK_START.md). Field names and types for querying are in
+[FIELD_REFERENCE.md](FIELD_REFERENCE.md).
 
-## Table of Contents
-- [OpenSearch Configuration](#opensearch-configuration)
-- [Logstash Configuration](#logstash-configuration)
-- [Grafana Configuration](#grafana-configuration)
-- [pfSense Forwarder Configuration](#pfsense-forwarder-configuration)
+## Contents
 
-## OpenSearch Configuration
+- [config.env](#configenv)
+- [Forwarder (pfSense)](#forwarder-pfsense)
+- [Logstash pipeline](#logstash-pipeline)
+- [OpenSearch](#opensearch)
+- [Grafana datasources](#grafana-datasources)
+- [Tuning](#tuning)
+- [Logstash maintenance](#logstash-maintenance)
+- [Security](#security)
 
-### File Location
-`/etc/opensearch/opensearch.yml`
+---
 
-### Key Settings
+## config.env
+
+`config.env` lives in the repository root, is created from `config.env.example`,
+and is git-ignored. `setup.sh`, `preflight.sh`, `status.sh`,
+`diagnose-and-repair.sh`, `install-opensearch-config.sh`,
+`configure-retention-policy.sh` and the `tests/test-*.sh` scripts all `source`
+it. (`install.sh` does **not** read it; it asks its own questions interactively.)
+
+```bash
+cp config.env.example config.env
+nano config.env      # at minimum: SIEM_HOST, PFSENSE_HOST
+```
+
+| Variable | Default | Read by | Purpose |
+|----------|---------|---------|---------|
+| `SIEM_HOST` | `192.168.1.10` (example) | setup, preflight, status, diagnose, install-opensearch-config, configure-retention, tests | IP of the server running OpenSearch/Logstash/Grafana. **Required.** Baked into the forwarder as its UDP target. |
+| `OPENSEARCH_PORT` | `9200` | setup, preflight, status, diagnose, install-opensearch-config, configure-retention | OpenSearch HTTP port. |
+| `LOGSTASH_UDP_PORT` | `5140` | setup, status, diagnose | UDP port Logstash listens on. Must match `port =>` in the pipeline. Baked into the forwarder. |
+| `GRAFANA_PORT` | `3000` | setup, diagnose, tests | Grafana HTTP port. |
+| `GRAFANA_ADMIN_USER` | `admin` | setup, diagnose, tests | Grafana user used for API calls (datasource creation, dashboard import). |
+| `GRAFANA_ADMIN_PASS` | `admin` | setup, diagnose, tests | Password for that user. Change it in Grafana on first login and update here. |
+| `SIEM_SSH_USER` | your local username | setup, preflight, diagnose | SSH user on the SIEM server. Used by setup step 3 to deploy the Logstash pipeline and by step 5 to install the Grafana plugin; without SSH those steps print manual instructions instead. |
+| `PFSENSE_HOST` | `192.168.1.1` (example) | setup, preflight, status, diagnose, tests | pfSense IP. **Required.** |
+| `PFSENSE_USER` | `admin` | setup, preflight, status, diagnose, tests | SSH user on pfSense (`admin` on pfSense CE 2.7+, `root` on older releases). Key-based auth is required (`ssh-copy-id`). |
+| `DEBUG_ENABLED` | `false` | setup → forwarder | Baked into the forwarder as its `DEBUG_ENABLED` default. `true` writes the debug log below. |
+| `DEBUG_LOG` | `/var/log/suricata_forwarder_debug.log` | forwarder (env only) | Debug log path. Only honoured if exported into the forwarder's environment; `setup.sh` does not currently rewrite this default. |
+| `INDEX_PREFIX` | `suricata` | setup, status, diagnose | Prefix of the daily Suricata indices (`suricata-YYYY.MM.DD`). Changing it also requires editing `index =>` in the Logstash pipeline, the `index_patterns` in the template, `action.auto_create_index`, and the Grafana datasource pattern; the shipped files assume `suricata`. |
+| `RETENTION_DAYS` | `30` | setup (display only) | Shown in the setup banner. **Not applied automatically** by `setup.sh`; run `./scripts/configure-retention-policy.sh $RETENTION_DAYS` (default 90 if omitted). `install.sh` asks for its own value and applies it. |
+| `INFLUXDB_HOST` / `INFLUXDB_PORT` / `INFLUXDB_DATABASE` | `localhost` / `8086` / `pfsense` | none | Reference values for the InfluxDB datasource used by the pfSense system dashboard. No script reads them; see [Grafana datasources](#grafana-datasources). |
+| `INFLUXDB_USER` / `INFLUXDB_PASS` | commented out | none | Same, if your InfluxDB has auth. |
+| `GEOIP_DB_PATH` | commented out | none (yet) | Reserved for pointing the forwarder at a non-standard GeoIP database. The shipped forwarder finds databases by searching a fixed list (below); leave this commented unless a future `setup.sh` documents otherwise. |
+
+---
+
+## Forwarder (pfSense)
+
+Source: `scripts/forward-suricata-eve.py`. Deployed by `setup.sh` step 4 to
+`/usr/local/bin/forward-suricata-eve.py`.
+
+### What setup.sh does to it
+
+1. Rewrites the three `os.getenv(...)` defaults at the top of the file with your
+   `SIEM_HOST`, `LOGSTASH_UDP_PORT` and `DEBUG_ENABLED`.
+2. Rewrites the shebang to the interpreter it found on pfSense (it tries
+   `/usr/local/bin/python3`, then `python3.13`, `3.12`, `3.11`, then
+   `/usr/bin/python3`). The file in the repo has a generic `#!/usr/bin/env python3`.
+3. Installs an rc.d script at `/usr/local/etc/rc.d/suricata_forwarder.sh`. The
+   `.sh` suffix matters: pfSense's `rc.start_packages` only runs
+   `/usr/local/etc/rc.d/*.sh` at boot, and pfSense does not manage
+   `/etc/rc.conf`, so the script defaults `suricata_forwarder_enable` to `YES`
+   itself. It runs the forwarder under `daemon(8)` with `-r` (respawn on exit),
+   pid files `/var/run/suricata_forwarder.pid` (supervisor) and
+   `/var/run/suricata_forwarder.child.pid` (the forwarder), and stdout/stderr in
+   `/var/log/suricata-forwarder.log`.
+4. Installs `/usr/local/bin/suricata-forwarder-watchdog.sh` in root's crontab
+   (`* * * * *`). If no forwarder process exists it starts the service and logs
+   to syslog with tag `suricata-watchdog`.
+
+```bash
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'
+ssh admin@<PFSENSE_IP> 'tail -f /var/log/suricata-forwarder.log'
+ssh admin@<PFSENSE_IP> 'grep -E "suricata-(forwarder|watchdog)" /var/log/system.log | tail -20'
+```
+
+Re-run `./setup.sh` after a pfSense upgrade: the interpreter path may change and
+the rc.d script refuses to start with a clear message if it has. See
+[PFSENSE_UPGRADE_GUIDE.md](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
+
+### Runtime environment
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `SIEM_HOST` | `192.168.1.100` in the repo; your value after setup | Logstash host |
+| `LOGSTASH_UDP_PORT` | `5140` | Logstash UDP port |
+| `DEBUG_ENABLED` | `False` | `true` / `1` / `yes` enable |
+| `DEBUG_LOG` | `/var/log/suricata_forwarder_debug.log` | Written only when debug is on |
+
+Environment variables win over the baked-in defaults, which is handy for a
+one-off test: `SIEM_HOST=203.0.113.20 DEBUG_ENABLED=true python3 /usr/local/bin/forward-suricata-eve.py`
+(stop the service first, or you will have two forwarders).
+
+### Behaviour
+
+- **Discovery.** `find_eve_logs()` globs `/var/log/suricata/*/eve.json` once at
+  start and starts one thread per file, all sharing one UDP socket. An interface
+  enabled in Suricata *after* the forwarder started is picked up on the next
+  restart (`service suricata_forwarder.sh restart`). No files at all is a fatal
+  error.
+- **Tail semantics.** Each thread seeks to the end of its file on open, so
+  events written before start-up are never back-filled.
+- **Rotation.** Each thread sleeps 0.1 s when idle; after
+  `ROTATION_CHECK_CYCLES = 50` idle cycles (about five seconds without new lines)
+  it re-checks the file's inode and size. Inode changed or file gone → reopen;
+  size smaller than the read position → seek to the new end. A missing file is
+  polled every five seconds. Details in
+  [LOG_ROTATION_FIX.md](../troubleshooting/LOG_ROTATION_FIX.md).
+- **GeoIP.** If `import maxminddb` succeeds (bundled with pfSense 2.8.1+), the
+  first existing path from this list is opened, City databases first because
+  only they include coordinates:
+  `/usr/local/share/ntopng/GeoLite2-City.mmdb`,
+  `/usr/local/share/suricata/GeoLite2/GeoLite2-City.mmdb`,
+  `/usr/local/share/suricata/GeoLite2/GeoLite2-Country.mmdb`,
+  `/usr/local/share/GeoIP/GeoLite2-City.mmdb`,
+  `/usr/local/share/GeoIP/GeoLite2-Country.mmdb`,
+  `/var/unbound/usr/local/share/GeoIP/GeoLite2-{City,Country}.mmdb`,
+  `/var/db/GeoIP/GeoLite2-City.mmdb`, `/usr/share/GeoIP/GeoLite2-City.mmdb`.
+  Public `src_ip`/`dest_ip` get `geoip_src`/`geoip_dest` objects (`country_code`,
+  `country_name`, `continent_code`, and with a City DB `city_name`, `region_name`,
+  `location` as `[lon, lat]`). Private, loopback, link-local and reserved
+  addresses are skipped. Without a module or database the forwarder logs a
+  warning and runs unenriched. Setup: [GEOIP_SETUP.md](../install/GEOIP_SETUP.md).
+- **Transport.** One UDP datagram per event, raw JSON, no framing. Events over
+  64 KB (rare; large `fileinfo`/`http` bodies) will be truncated by the network
+  and dropped by Logstash as `_jsonparsefailure`.
+- **Logging.** Syslog tag `suricata-forwarder` for lifecycle and rotation
+  messages; debug log for per-1000-event progress and GeoIP hits.
+
+---
+
+## Logstash pipeline
+
+Source: `config/logstash-suricata.conf`. Deployed to
+`/etc/logstash/conf.d/suricata.conf` by `install.sh` (copy) and `setup.sh` step 3
+(copy with the `hosts =>` line rewritten to `http://<SIEM_HOST>:<OPENSEARCH_PORT>`,
+followed by `systemctl restart logstash`). The file is short and fully commented;
+read it rather than a copy here. `config/README.md` covers deploying and editing
+it by hand.
+
+The important design point: **events are indexed flat**. The `json` filter
+parses the datagram straight into the event root, so documents look like
+`{"@timestamp": ..., "event_type": "alert", "src_ip": ..., "alert": {"signature": ...}, "geoip_src": {...}}`.
+Nothing is nested under `suricata.eve.*`. The reasons:
+
+- Grafana's OpenSearch datasource builds terms/histogram aggregations far more
+  reliably on short keyword paths (`event_type`, `in_iface`, `alert.category`)
+  than on deep object paths, and its field picker stays usable.
+- The index template can map exactly the fields Suricata emits, with no wrapper
+  object to keep in sync.
+- Lucene queries in panels and alerts are shorter and match the field names in
+  Suricata's own documentation.
+
+An earlier revision of this project did nest under `suricata.eve`; if you are
+upgrading from it, see the appendix in
+[DASHBOARD_NO_DATA_FIX.md](../troubleshooting/DASHBOARD_NO_DATA_FIX.md).
+
+Other pipeline facts worth knowing: `@timestamp` is taken from Suricata's own
+`timestamp` field (not Logstash receive time); the raw `message` is removed
+after parsing; the output index is `suricata-%{+YYYY.MM.dd}` in UTC, which is why
+indices roll at midnight UTC.
+
+Logs: `/var/log/logstash/logstash-plain.log`. Test a config change before
+restarting:
+
+```bash
+sudo /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/suricata.conf
+sudo systemctl restart logstash
+```
+
+---
+
+## OpenSearch
+
+`install.sh` installs the OpenSearch 2.19.4 tarball, not the package:
+
+| Item | Location |
+|------|----------|
+| Install | `/opt/opensearch` |
+| Config | `/opt/opensearch/config/opensearch.yml` |
+| JVM options | `/opt/opensearch/config/jvm.options` |
+| Data | `/opt/opensearch/data` |
+| Logs | `/opt/opensearch/logs` |
+| Service | `opensearch.service` (systemd unit written by install.sh, runs as user `opensearch`) |
+
+`opensearch.yml` as written by `install.sh`:
 
 ```yaml
-# Cluster identification
-cluster.name: suricata-cluster
-node.name: node-1
-
-# Paths
-path.data: /var/lib/opensearch      # Data storage
-path.logs: /var/log/opensearch      # Log files
-
-# Network
-network.host: 0.0.0.0               # Listen on all interfaces
-http.port: 9200                     # HTTP API port
-transport.port: 9300                # Internal transport port
-
-# Discovery (single-node setup)
-discovery.type: single-node          # No clustering
-
-# Security (disabled for simplicity)
-plugins.security.disabled: true      # Enable in production!
-
-# Performance
-bootstrap.memory_lock: true          # Lock memory to prevent swapping
+cluster.name: pfsense-monitoring
+node.name: siem-node-1
+path.data: /opt/opensearch/data
+path.logs: /opt/opensearch/logs
+network.host: 0.0.0.0
+http.port: 9200
+discovery.type: single-node
+plugins.security.disabled: true
 ```
 
-### JVM Heap Configuration
+`network.host: 0.0.0.0` with the security plugin disabled means **anyone who can
+reach TCP 9200 can read, write and delete every index**. Read
+[Security](#security) before exposing the server beyond a trusted LAN.
 
-**File:** `/etc/opensearch/jvm.options.d/heap.options`
+### Index templates
 
-```
-# Set heap size to 50% of system RAM (max 31GB)
-# For 32GB system:
--Xms6g
--Xmx6g
+Two composable index templates, both applied by `setup.sh` step 2 and by
+`./scripts/install-opensearch-config.sh`:
 
-# For 16GB system:
--Xms4g
--Xmx4g
-```
+| Template name | Pattern | Source file |
+|---------------|---------|-------------|
+| `suricata-template` | `suricata-*` | `config/opensearch-index-template.json` |
+| `pfblockerng` | `pfblockerng-*` | `config/opensearch-pfblockerng-template.json` |
 
-**Rules:**
-- Set min and max to same value
-- Use 50% of available RAM
-- Never exceed 31GB (Java compressed pointers limit)
-- Leave at least 50% RAM for OS and page cache
+Both use 1 shard / 0 replicas / 5 s refresh. The Suricata template maps
+`geoip_src.location` and `geoip_dest.location` as `geo_point`, `src_ip`/`dest_ip`
+as `ip`, and the fields the dashboards aggregate on as `keyword`. The pfBlockerNG
+template uses `dynamic_templates` to force every `tag.*`, `tail_ip_block_log.*` and
+`tail_dnsbl_log.*` field that Telegraf produces to `keyword`. There is no
+`filterlog` template. Full field list: [FIELD_REFERENCE.md](FIELD_REFERENCE.md).
 
-### System Limits
+Templates only affect indices created *after* they are applied. To fix an
+existing index's mapping you must reindex or delete it.
 
-**File:** `/etc/security/limits.conf`
+### Auto-create
 
-```
-* soft nofile 65536
-* hard nofile 65536
-* soft memlock unlimited
-* hard memlock unlimited
-```
-
-**File:** `/etc/sysctl.conf`
+Both writers (Logstash and Telegraf) rely on OpenSearch creating each day's index
+on first write. `setup.sh` / `install-opensearch-config.sh` set:
 
 ```
-vm.max_map_count=262144
-net.core.rmem_max=33554432
+action.auto_create_index: pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*
 ```
 
-Apply with: `sudo sysctl -p`
+as a persistent cluster setting. Why it matters and how to verify:
+[OPENSEARCH_AUTO_CREATE.md](../troubleshooting/OPENSEARCH_AUTO_CREATE.md).
 
-### Common Tunables
+### Retention
 
-**Increase query performance:**
-```yaml
-# /etc/opensearch/opensearch.yml
-thread_pool.search.size: 30
-thread_pool.search.queue_size: 10000
-```
+`./scripts/configure-retention-policy.sh [DAYS] [PATTERN]` (defaults `90`,
+`suricata-*`) creates an ISM policy `delete-after-<DAYS>d` whose `ism_template`
+attaches it to new indices and applies it to existing ones. `install.sh` runs it
+with the retention you chose. Run it a second time with `pfblockerng-*` if you
+want the same for pfBlockerNG data. See
+[MULTI_INTERFACE_RETENTION.md](../operations/MULTI_INTERFACE_RETENTION.md).
 
-**Reduce memory pressure:**
-```yaml
-indices.memory.index_buffer_size: 20%
-indices.fielddata.cache.size: 25%
-```
+---
 
-**Increase bulk indexing performance:**
-```yaml
-thread_pool.bulk.size: 8
-thread_pool.bulk.queue_size: 1000
-```
+## Grafana datasources
 
-## Logstash Configuration
+Grafana 12.3.0 from the Grafana OSS apt repo; config `/etc/grafana/grafana.ini`,
+logs `/var/log/grafana/grafana.log`. The `grafana-opensearch-datasource` plugin
+is installed by `install.sh` and, if missing, by `setup.sh` step 5 over SSH.
 
-### Pipeline Configuration
+| Datasource name | Type | Index / database | Time field | Created by |
+|-----------------|------|------------------|------------|------------|
+| `OpenSearch-Suricata` | `grafana-opensearch-datasource` | `suricata-*` | `@timestamp` | `setup.sh` if no OpenSearch datasource exists yet (uid `opensearch-suricata`); otherwise the first existing OpenSearch datasource is reused |
+| `OpenSearch-pfBlockerNG` | `grafana-opensearch-datasource` | `pfblockerng-*` | `@timestamp` | `setup.sh` (URL `http://localhost:9200`, PPL enabled) |
+| `InfluxDB-pfSense` | `influxdb` (InfluxQL) | database `pfsense` | n/a | you, by hand; needed only for the pfSense system dashboard fed by Telegraf's InfluxDB output |
+| `Prometheus` | `prometheus` | n/a | n/a | optional; only for the extra `prometheus_stats.json` / `windows_exporter.json` dashboards |
 
-**File:** `/etc/logstash/conf.d/suricata.conf`
+For every OpenSearch datasource set **Flavor: OpenSearch**, **Version: 2.19.4**
+(or whatever `curl http://<SIEM_IP>:9200` reports), and leave *Log message field*
+empty.
 
-```ruby
-input {
-  udp {
-    port => 5140                      # Listening port
-    codec => plain                    # No pre-parsing
-    buffer_size => 65536              # UDP receive buffer (64KB)
-    receive_buffer_bytes => 33554432  # OS socket buffer (32MB)
-    workers => 2                      # Number of UDP listeners
-  }
-}
+Dashboards: `setup.sh` imports `dashboards/Suricata_IDS_IPS.json` (uid
+`suricata_ids_ips`) and `dashboards/Suricata_Per_Interface.json` (uid
+`suricata_per_interface`), rewriting every panel's datasource reference to the
+real OpenSearch datasource uid, so no manual `sed` of `${DS_OPENSEARCH}` is
+needed. `dashboards/pfsense_pfblockerng_system.json` needs the InfluxDB
+datasource and is imported by hand. See [dashboards/README.md](../../dashboards/README.md).
 
-filter {
-  # Parse JSON from event.original field
-  # UDP codec => plain populates event.original but not message
-  if [event][original] {
-    json {
-      source => "[event][original]"
-      target => "suricata_raw"
-      tag_on_failure => ["_jsonparsefailure"]
-    }
-  } else if [message] {
-    # Fallback to message field
-    json {
-      source => "message"
-      target => "suricata_raw"
-      tag_on_failure => ["_jsonparsefailure"]
-    }
-  }
-  
-  # Nest parsed data under suricata.eve
-  if [suricata_raw] {
-    ruby {
-      code => '
-        raw = event.get("suricata_raw")
-        if raw.is_a?(Hash)
-          event.set("[suricata][eve]", raw)
-        end
-      '
-    }
-    
-    # Parse Suricata timestamp to @timestamp
-    if [suricata][eve][timestamp] {
-      date {
-        match => [ "[suricata][eve][timestamp]", "ISO8601" ]
-        target => "@timestamp"
-      }
-    }
-    
-    # Clean up temporary fields
-    mutate {
-      remove_field => ["message", "suricata_raw", "[event][original]"]
-    }
-  }
-  
-  # Add index date for daily indices
-  mutate {
-    add_field => { "[@metadata][index_date]" => "%{+YYYY.MM.dd}" }
-  }
-}
+---
 
-output {
-  opensearch {
-    hosts => ["http://localhost:9200"]
-    index => "suricata-%{[@metadata][index_date]}"
-    ssl => false
-    ssl_certificate_verification => false
-  }
-  
-  # Optional: Debug output (comment out in production)
-  # stdout { codec => rubydebug }
-}
-```
+## Tuning
 
-### Main Configuration
+**OpenSearch heap.** `install.sh` sets `-Xms`/`-Xmx` in
+`/opt/opensearch/config/jvm.options` to half of RAM, capped at 16 GB. Rules: min
+equals max; never above 31 GB (compressed object pointers stop working); leave
+the rest for the page cache, which is what makes searches fast.
 
-**File:** `/etc/logstash/logstash.yml`
-
-```yaml
-# Pipeline settings
-pipeline.workers: 2                  # Number of filter/output workers
-pipeline.batch.size: 125             # Events per batch
-pipeline.batch.delay: 50             # Max wait time (ms)
-
-# Performance
-pipeline.unsafe_shutdown: false      # Wait for in-flight events on shutdown
-pipeline.ordered: auto               # Maintain event order when possible
-
-# Monitoring
-monitoring.enabled: false            # Disable if not using Elastic monitoring
-```
-
-### JVM Heap Configuration
-
-**File:** `/etc/logstash/jvm.options`
-
-```
-# Set heap to 25% of system RAM (min 1GB, max 8GB)
--Xms1g
--Xmx1g
-```
-
-### Common Filter Patterns
-
-**Add geographic location:**
-```ruby
-if [suricata][eve][src_ip] {
-  geoip {
-    source => "[suricata][eve][src_ip]"
-    target => "[suricata][eve][geoip][src]"
-  }
-}
-```
-
-**Add custom tags:**
-```ruby
-if [suricata][eve][alert][severity] <= 2 {
-  mutate {
-    add_tag => ["high_severity"]
-  }
-}
-```
-
-**Enrich with threat intelligence:**
-```ruby
-translate {
-  field => "[suricata][eve][src_ip]"
-  destination => "[threat][status]"
-  dictionary_path => "/etc/logstash/threat_ips.yml"
-}
-```
-
-## Grafana Configuration
-
-### Main Configuration
-
-**File:** `/etc/grafana/grafana.ini`
-
-Key sections:
-
-```ini
-[server]
-protocol = http
-http_port = 3000
-domain = YOUR_DOMAIN
-root_url = %(protocol)s://%(domain)s:%(http_port)s/
-
-[security]
-admin_user = admin
-admin_password = CHANGE_ME
-disable_gravatar = true
-
-[auth.anonymous]
-enabled = false
-
-[analytics]
-reporting_enabled = false
-check_for_updates = false
-
-[log]
-mode = console file
-level = info
-
-[paths]
-data = /var/lib/grafana
-logs = /var/log/grafana
-plugins = /var/lib/grafana/plugins
-```
-
-### Datasource Configuration (JSON)
-
-**OpenSearch-Suricata:**
-```json
-{
-  "name": "OpenSearch-Suricata",
-  "type": "grafana-opensearch-datasource",
-  "access": "proxy",
-  "url": "http://localhost:9200",
-  "basicAuth": false,
-  "jsonData": {
-    "database": "suricata-*",
-    "timeField": "@timestamp",
-    "version": "2.19.4",
-    "flavor": "opensearch",
-    "pplEnabled": false,
-    "logMessageField": "message",
-    "logLevelField": ""
-  }
-}
-```
-
-**OpenSearch-pfBlockerNG:**
-```json
-{
-  "name": "OpenSearch-pfBlockerNG",
-  "type": "grafana-opensearch-datasource",
-  "access": "proxy",
-  "url": "http://localhost:9200",
-  "basicAuth": false,
-  "jsonData": {
-    "database": "pfblockerng-*",
-    "timeField": "@timestamp",
-    "version": "2.19.4",
-    "flavor": "opensearch",
-    "pplEnabled": false
-  }
-}
-```
-
-> **Note:** pfBlockerNG data is sent by Telegraf's `[[outputs.opensearch]]` plugin directly to OpenSearch. Do NOT use the `[[outputs.elasticsearch]]` plugin — it is incompatible with OpenSearch 2.x.
-
-### Dashboard Variables
-
-Useful variables for filtering:
-
-**Interface:**
-```
-Type: Query
-Query: {"find": "terms", "field": "suricata.eve.in_iface.keyword"}
-Multi-value: true
-Include All option: true
-```
-
-**Event Type:**
-```
-Type: Query
-Query: {"find": "terms", "field": "suricata.eve.event_type.keyword"}
-Multi-value: true
-Include All option: true
-```
-
-**Source Network:**
-```
-Type: Custom
-Values: 192.168.0.0/16,10.0.0.0/8,172.16.0.0/12
-Multi-value: false
-```
-
-## pfSense Forwarder Configuration
-
-### Python Forwarder
-
-**File:** `/usr/local/bin/forward-suricata-eve.py`
-
-**Configuration Variables:**
-```python
-SIEM_HOST = "<SIEM_IP>"  # SIEM server IP
-LOGSTASH_PORT = 5140                # Logstash UDP port
-```
-
-**EVE JSON Path Detection:**
-```python
-def find_eve_log():
-    """Auto-detects Suricata EVE JSON file"""
-    matches = glob.glob("/var/log/suricata/*/eve.json")
-    if matches:
-        return matches[0]  # Returns first match
-    return None
-```
-
-**Tuning Parameters:**
-```python
-# Adjust sleep time between reads (default 0.1 seconds)
-time.sleep(0.1)  # Increase to reduce CPU usage
-
-# Adjust socket buffer (advanced)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
-```
-
-### Watchdog Script
-
-**File:** `/usr/local/bin/suricata-forwarder-watchdog.sh`
-
-**Configuration:**
 ```bash
-FORWARDER_SCRIPT="/usr/local/bin/forward-suricata-eve.sh"
-PYTHON_SCRIPT="/usr/local/bin/forward-suricata-eve.py"
-LOG_TAG="suricata-forwarder-watchdog"
+sudo sed -i 's/^-Xms.*/-Xms8g/; s/^-Xmx.*/-Xmx8g/' /opt/opensearch/config/jvm.options
+sudo systemctl restart opensearch
+curl -s 'http://localhost:9200/_cat/nodes?v&h=heap.percent,heap.max'
 ```
 
-**Cron Schedule:**
-```
-* * * * *  # Every minute
-```
+**Logstash heap.** `/etc/logstash/jvm.options`, default 1 GB. 2 GB is plenty for
+tens of thousands of events per minute; more only if you see GC warnings in
+`logstash-plain.log`. Workers: `pipeline.workers` in `/etc/logstash/logstash.yml`
+(defaults to CPU count).
 
-Change to run less frequently:
-```
-*/5 * * * *  # Every 5 minutes
-*/15 * * * * # Every 15 minutes
-```
+**UDP receive buffer.** The pipeline asks for a 32 MB socket buffer
+(`receive_buffer_bytes => 33554432`), but the kernel silently caps it at
+`net.core.rmem_max`, which is 208 KB on stock Ubuntu. Raise the cap or bursts
+from several Suricata interfaces will be dropped before Logstash sees them:
 
-### Suricata Configuration (pfSense)
-
-**Enable EVE JSON Output:**
-
-In pfSense: Services → Suricata → Interface Settings → EVE Output Settings
-
-```yaml
-eve-log:
-  enabled: yes
-  filetype: regular
-  filename: eve.json
-  types:
-    - alert:
-        tagged-packets: yes
-    - http:
-        extended: yes
-    - dns:
-        query: yes
-        answer: yes
-    - tls:
-        extended: yes
-    - files:
-        force-magic: yes
-    - ssh
-    - stats:
-        totals: yes
-        threads: yes
-    - flow
-```
-
-**Critical Settings:**
-- ✅ Eve JSON log: Enabled
-- ✅ File type: regular
-- ✅ Log types: alert, http, dns, tls, files (at minimum)
-
-## Field Reference
-
-### Suricata EVE JSON Fields
-
-Common fields available for querying:
-
-```
-suricata.eve.timestamp         # Original Suricata timestamp
-suricata.eve.flow_id           # Flow identifier
-suricata.eve.in_iface          # Interface name (e.g., "ix0")
-suricata.eve.event_type        # alert, dns, http, tls, quic, etc.
-suricata.eve.src_ip            # Source IP address
-suricata.eve.src_port          # Source port
-suricata.eve.dest_ip           # Destination IP address
-suricata.eve.dest_port         # Destination port
-suricata.eve.proto             # TCP, UDP, ICMP, etc.
-
-# Alert-specific fields
-suricata.eve.alert.signature   # Alert signature text
-suricata.eve.alert.category    # Alert category
-suricata.eve.alert.severity    # 1-4 (1=critical, 4=low)
-suricata.eve.alert.gid         # Generator ID
-suricata.eve.alert.sid         # Signature ID
-
-# DNS-specific fields
-suricata.eve.dns.type          # query or answer
-suricata.eve.dns.rrname        # Domain name
-suricata.eve.dns.rrtype        # A, AAAA, CNAME, etc.
-suricata.eve.dns.rcode         # Response code
-
-# TLS-specific fields
-suricata.eve.tls.sni           # Server Name Indication
-suricata.eve.tls.version       # TLS version
-suricata.eve.tls.subject       # Certificate subject
-suricata.eve.tls.issuerdn      # Certificate issuer
-
-# HTTP-specific fields
-suricata.eve.http.hostname     # HTTP Host header
-suricata.eve.http.url          # Request URL
-suricata.eve.http.http_method  # GET, POST, etc.
-suricata.eve.http.status       # HTTP status code
-suricata.eve.http.http_user_agent  # User agent string
-```
-
-## Performance Tuning
-
-### For High Event Rate (>1000/sec)
-
-**OpenSearch:**
-```yaml
-# /etc/opensearch/opensearch.yml
-indices.memory.index_buffer_size: 30%
-thread_pool.bulk.queue_size: 2000
-```
-
-**Logstash:**
-```yaml
-# /etc/logstash/logstash.yml
-pipeline.workers: 4
-pipeline.batch.size: 250
-pipeline.batch.delay: 50
-```
-
-**Logstash suricata.conf:**
-```ruby
-input {
-  udp {
-    workers => 4  # Increase UDP listeners
-    receive_buffer_bytes => 134217728  # 128MB
-  }
-}
-```
-
-### For Low Resource Systems
-
-**OpenSearch heap:**
-```
--Xms2g
--Xmx2g
-```
-
-**Logstash heap:**
-```
--Xms512m
--Xmx512m
-```
-
-**Reduce retention:**
 ```bash
-# Delete indices older than 7 days instead of 30
+echo 'net.core.rmem_max=33554432' | sudo tee /etc/sysctl.d/90-logstash-udp.conf
+sudo sysctl --system
+sudo systemctl restart logstash
 ```
 
-## Environment Variables
+Check for drops with `netstat -su | grep -i 'receive errors'` (or `ss -u -m` on
+the 5140 socket). `install.sh` also sets `vm.max_map_count=262144`,
+`vm.swappiness=1` and the `nofile`/`memlock` limits OpenSearch needs.
 
-### OpenSearch
+**Suricata side.** Fewer EVE types (drop `flow` and `stats` if you never chart
+them) is the cheapest way to cut event volume; see
+[SURICATA_OPTIMIZATION_GUIDE.md](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md).
+
+---
+
+## Logstash maintenance
+
+Logstash 8.19.7 comes from the Elastic 8.x apt repo, so `apt upgrade` will move
+it. Three things break after an upgrade and are worth checking before you go
+hunting for data-flow bugs:
+
+1. **Output plugin missing.** `logstash-output-opensearch` is a third-party
+   plugin and is not preserved across package upgrades. Symptom in
+   `logstash-plain.log`: `Couldn't find any output plugin named 'opensearch'`.
+   ```bash
+   sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
+   sudo systemctl restart logstash
+   ```
+2. **Data directory ownership.** The package sometimes leaves
+   `/usr/share/logstash/data` owned by root, and the service (user `logstash`)
+   fails with `Permission denied` on `.lock` or `uuid`.
+   ```bash
+   sudo chown -R logstash:logstash /usr/share/logstash/data
+   ```
+3. **Gemfile.lock out of sync.** If plugin install fails with a bundler
+   "Gemfile.lock" conflict, remove the lock and let Logstash regenerate it:
+   ```bash
+   sudo rm /usr/share/logstash/Gemfile.lock
+   sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
+   ```
+
+To pin the version and avoid surprises: `sudo apt-mark hold logstash`.
+
+---
+
+## Security
+
+The stack as installed is designed for a **trusted management LAN**. Three
+things to do before anything else can reach it:
+
+**Restrict ports with ufw.** `install.sh` opens 9200/tcp, 5140/udp and 3000/tcp
+to everyone. Tighten them to the hosts that need them (Grafana talks to
+OpenSearch over `localhost`, so 9200 rarely needs to be open at all):
+
 ```bash
-OPENSEARCH_JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-OPENSEARCH_PATH_CONF=/etc/opensearch
+sudo ufw delete allow 9200/tcp
+sudo ufw allow from <ADMIN_WORKSTATION_IP> to any port 9200 proto tcp comment 'OpenSearch admin'
+sudo ufw delete allow 5140/udp
+sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp comment 'Suricata forwarder'
+sudo ufw delete allow 3000/tcp
+sudo ufw allow from 203.0.113.0/24 to any port 3000 proto tcp comment 'Grafana LAN'
+sudo ufw status numbered
 ```
 
-### Logstash
-```bash
-LS_HOME=/usr/share/logstash
-LS_SETTINGS_DIR=/etc/logstash
-LS_JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-```
+Remember that `setup.sh`, `status.sh` and `diagnose-and-repair.sh` need 9200 from
+wherever you run them.
 
-### Grafana
-```bash
-GF_PATHS_DATA=/var/lib/grafana
-GF_PATHS_LOGS=/var/log/grafana
-GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-```
+**Change the Grafana admin password** on first login (Grafana prompts), or with
+`sudo grafana-cli admin reset-admin-password '<new>'`, then update
+`GRAFANA_ADMIN_PASS` in `config.env`. `install.sh` sets it for you if you gave it
+one.
 
-## Backup and Restore
+**OpenSearch security plugin.** It is disabled (`plugins.security.disabled: true`)
+because enabling it means TLS on 9200, users and roles, and matching changes in
+the Logstash output (`user`/`password`/`ssl`), the Grafana datasources (basic
+auth) and Telegraf's `[[outputs.opensearch]]`. That is on the
+[ROADMAP.md](../../ROADMAP.md); until then treat network access to 9200 as
+administrative access to all data. Do not put the SIEM server on a network
+segment that untrusted devices can reach.
 
-### OpenSearch Indices
-```bash
-# Backup
-curl -X PUT "http://localhost:9200/_snapshot/my_backup" -H 'Content-Type: application/json' -d'
-{
-  "type": "fs",
-  "settings": {
-    "location": "/backup/opensearch"
-  }
-}'
+---
 
-# Create snapshot
-curl -X PUT "http://localhost:9200/_snapshot/my_backup/snapshot_1?wait_for_completion=true"
-```
+## See also
 
-### Grafana Dashboards
-```bash
-# Export dashboard
-curl -s -H "Authorization: Bearer YOUR_API_KEY" \
-  http://localhost:3000/api/dashboards/uid/suricata-complete | \
-  jq .dashboard > dashboard-backup.json
-
-# Import dashboard
-curl -X POST -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -d @dashboard-backup.json \
-  http://localhost:3000/api/dashboards/db
-```
-
-### Configuration Files
-```bash
-# Backup all configs
-tar -czf config-backup.tar.gz \
-  /etc/opensearch/opensearch.yml \
-  /etc/logstash/conf.d/ \
-  /etc/grafana/grafana.ini \
-  /usr/local/bin/forward-suricata-eve.py
-```
-
-## See Also
-
-- [Installation Guide](../install/INSTALL_SIEM_STACK.md)
-- [Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md)
-- [pfSense Forwarder Setup](../install/INSTALL_PFSENSE_FORWARDER.md)
+- [config/README.md](../../config/README.md): deploying and editing the config files by hand
+- [scripts/README.md](../../scripts/README.md): what every helper script does
+- [FIELD_REFERENCE.md](FIELD_REFERENCE.md): field names and types
+- [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md)
+- [INSTALL_SIEM_STACK.md](../install/INSTALL_SIEM_STACK.md) and [INSTALL_PFSENSE_FORWARDER.md](../install/INSTALL_PFSENSE_FORWARDER.md)

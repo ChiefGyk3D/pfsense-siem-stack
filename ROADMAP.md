@@ -45,6 +45,15 @@ Fixing what the 2026-08 review found. Items marked ✅ landed with the review PR
 - [x] Fix broken references to renamed/archived scripts across `install.sh`, docs, and tests
 - [x] Docs: correct the nested-vs-flat Logstash contradiction (pipeline is flat)
 - [x] CI: shell syntax, JSON, and Python compile checks on every push
+- [x] Docs audited against the code and reorganised into a pfSense knowledge base + SIEM stack docs (2026-09); pfSense 2.9.0 upgrade guide added
+- [x] `setup.sh`: rc.d unit renamed to `suricata_forwarder.sh` so pfSense actually starts it at boot; interpreter detected instead of hardcoded `python3.11`; `stop` works (supervisor + child PIDs)
+- [ ] **pfSense 2.9.0 validation**: run `preflight.sh → setup.sh → status.sh` on a 2.9.0 box, confirm the Python path, `maxminddb` import, Telegraf workaround (Redmine #16674) and dashboards; record results in the upgrade guide
+- [ ] Retire the legacy pfSense-side scripts (`setup_forwarder_monitoring.sh`, `suricata-restart-hook.sh`, `suricata-restart-with-forwarder.sh`, `unified-monitoring-watchdog.sh`, `suricata-eve-forwarder.sh`): they hardcode `python3.11` and use `killall python3.11`
+- [ ] Install the watchdog cron through the pfSense Cron package (config.xml-backed) instead of root's crontab, so it is in backups and survives a restore
+- [ ] `plugins/telegraf_pfifgw.php`: replace the legacy `$config` global with `config_get_path()`; guard undefined variables under PHP 8.5
+- [ ] `apply-suricata-drop-rules.sh` / `enable-selective-blocking.sh`: stop hardcoding instance names and writing into pfSense-managed rules files; drive drops through SID Mgmt
+- [ ] `status.sh`: probe Logstash's UDP port with `nc -u` (the TCP probe can never succeed); drop the `lsof` dependency (not in pfSense base)
+- [ ] Suricata 8 readiness: detect the package version and warn about the DNS EVE v3 change; update DNS panels
 - [ ] **OpenSearch security**: enable the security plugin (auth + TLS), bind to a management interface, restrict ufw 9200 by source — today the index is unauthenticated and reachable
 - [ ] Verify OpenSearch tarball checksum during install
 - [ ] Single shared config loader (`lib/config.sh`) so every script agrees on `PFSENSE_USER`, `SIEM_SSH_USER`, `OPENSEARCH_HOST` — no more personal-network defaults
@@ -60,13 +69,56 @@ A SIEM you have to look at is a dashboard. Biggest capability gap:
 - [ ] Snapshot tier for OpenSearch (hot → snapshot → delete) instead of delete-only ISM
 - [ ] Real tests: assertions + exit codes in `tests/`, dry-run mode for `setup.sh`/`install.sh` runnable in CI
 
+## 📦 Phase B½ — One-command distribution (install from GitHub)
+
+Today a user must clone the repo, copy `config.env.example`, then run three scripts on
+two hosts. Goal: a single command per host, plus a download-and-run path for people who
+will not pipe the internet into a shell.
+
+- [ ] **`bootstrap.sh` at the repo root** (workstation or SIEM server, bash):
+  `curl -fsSL https://raw.githubusercontent.com/ChiefGyk3D/pfsense-siem-stack/<tag>/bootstrap.sh | bash`
+  — checks for `git`/`curl`/`jq`/`ssh`, clones (or downloads the release tarball for) a
+  pinned tag into `~/pfsense-siem-stack`, creates `config.env` interactively
+  (`SIEM_HOST`, `PFSENSE_HOST`, `PFSENSE_USER`), runs `scripts/preflight.sh`, then hands
+  off to `./pfsense-siem`. Flags: `--version vX.Y.Z`, `--dir`, `--non-interactive` with
+  env vars, `--siem-only` (runs `install.sh`), `--deploy-only` (runs `setup.sh`).
+- [ ] **pfSense-side standalone installer** (`bootstrap-pfsense.sh`, POSIX `/bin/sh`,
+  no bash on pfSense): for users who only want the forwarder and have no workstation
+  in the loop — `fetch -o - https://.../bootstrap-pfsense.sh | sh -s -- --siem <SIEM_IP>`
+  installs `forward-suricata-eve.py`, `suricata_forwarder.sh` and the watchdog exactly
+  as `setup.sh` does, using the detected Python. Shares the rc.d/watchdog templates with
+  `setup.sh` (move them to `lib/` so the two cannot drift).
+- [ ] **GitHub Releases** as the distribution unit: tag `vX.Y.Z`, CI builds a tarball
+  (`pfsense-siem-stack-vX.Y.Z.tar.gz`) plus `SHA256SUMS`, and the release notes are the
+  CHANGELOG section. The manual path becomes "download the release, verify the checksum,
+  unpack, run `./pfsense-siem`" — no git required. Sign tags (`git tag -s`) once a key is
+  published.
+- [ ] **Safety for the `curl | bash` path**: bootstrap fetches only from a pinned tag
+  (never `main`), verifies the tarball against `SHA256SUMS` before running anything,
+  prints what it is about to do and pauses unless `--yes`, and the README shows the
+  two-step form first (`curl -o bootstrap.sh … && less bootstrap.sh && bash bootstrap.sh`).
+- [ ] **`pfsense-siem update`** menu item: `git fetch` + checkout of the latest release
+  tag (or tarball re-download), show the CHANGELOG diff, re-run `setup.sh` so the
+  forwarder/rc.d/watchdog on pfSense match the new version. This is also the
+  post-pfSense-upgrade recovery command.
+- [ ] **Container image for the SIEM side** is out of scope here — that is
+  [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack); bootstrap should
+  offer "point at an existing OpenSearch/Grafana" as the default and `install.sh` as the
+  bare-metal fallback.
+- [ ] Later: Ansible role wrapping the same steps for people who already manage pfSense
+  and the SIEM host with Ansible (moves the Phase C item here).
+
+Prerequisite decisions: adopt semantic version tags (the CHANGELOG already uses them but
+nothing is tagged since 1.2.0), and decide whether `install.sh` stays supported enough
+to be one `bootstrap` mode or becomes "advanced, read the doc".
+
 ## 📦 Phase C — Content & reach (later)
 
 - [ ] LAN/east-west dashboard, lateral movement detection
 - [ ] Filterlog dashboard (firewall rule analysis), Unbound DNS analytics, VPN monitoring, DHCP lease tracking
 - [ ] Multi-firewall support (central monitoring of several pfSense boxes)
 - [ ] Threat intel feeds (MISP, abuse.ch, OTX) — coordinate with siem-docker-stack's MISP plans ([siem-docker-stack#5](https://github.com/ChiefGyk3D/siem-docker-stack/issues/5))
-- [ ] Ansible playbooks / repeatable deployment
+- [ ] Ansible playbooks / repeatable deployment (see Phase B½ — one-command distribution)
 - [ ] Snort integration, OPNsense support
 
 ## 🌅 Long-term ideas (no timeline)
@@ -90,7 +142,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Highest-value contributions right now: O
 
 ---
 
-**Last Updated**: August 29, 2026
+**Last Updated**: September 19, 2026
 **Maintainer**: [ChiefGyk3D](https://github.com/ChiefGyk3D)
 **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
 **License**: MPL 2.0

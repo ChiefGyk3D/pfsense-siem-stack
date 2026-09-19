@@ -1,49 +1,42 @@
-# Installing the Plugins
-Perhaps the easiest method of installing these plugins is by utlizing the "Filer" plugin in pfSense. Simply type the entire file name (i.e. "/usr/local/bin/plugin_name") and paste the code into the window. Make sure to set the permissions to be "0755", as they default to "0644" which is NOT executable!
+# Telegraf Plugins for pfSense
 
-# telegraf_pfifgw.php
+Small scripts that print InfluxDB line protocol, meant to be run by Telegraf's `[[inputs.exec]]` on a pfSense firewall. Installation, the `inputs.exec` blocks, restart procedure and troubleshooting are all in **[docs/pfsense/TELEGRAF_ON_PFSENSE.md](../docs/pfsense/TELEGRAF_ON_PFSENSE.md)**; this file is only the index.
 
-*Replaces telegraf_gateways.py scripts (2.7 & 3.7)*
+## Installing
 
-*Replaces telegraf_pfinterface.php and telegraf_gateways.php*
+- `./install_plugins.sh` (from a clone of this repository) copies the plugins you pick to `/usr/local/bin/` on the firewall over SSH and marks them executable. Files in `/usr/local` are not part of `config.xml`, so they are not included in configuration backups and may need to be re-copied after a pfSense upgrade or a restore to a fresh install.
+- The durable alternative is the **Filer** package: one entry per plugin, full path (e.g. `/usr/local/bin/telegraf_pfifgw.php`), paste the contents, mode **0755** (the default 0644 is not executable). Filer stores the file inside `config.xml` and rewrites it at boot.
+- `install_plugins.sh` also looks for `config/additional_config.conf`. That file is **not shipped**; put the `inputs.exec` blocks in the GUI **Services → Telegraf → Additional Configuration** box instead, which is the only place where they persist.
 
-This single script collects information for Interfaces and gateways.
+## The plugins
 
-**Interfaces:**
-* Interface name
-* IP4 address
-* IP4 subnet
-* IP6 address
-* IP6 subnet
-* MAC address
-* Friendly name
-* Status (Online/Offline/Etc.)
+| Plugin | Emits | Prerequisites |
+|--------|-------|---------------|
+| **`telegraf_pfifgw.php`** | `interface` — one point per assigned interface with tags for IPv4/IPv6 address and subnet, MAC, real and friendly name, and a numeric `status` field (1 up, 0 down, 2 unknown). `gateways` — one point per gateway with `monitor`, `source`, `defaultgw`, `gwdescr`, `delay`, `stddev`, `loss`, `status`, `status_code` (0 online, 1 down, 2 unknown) and `substatus`. | Runs under `/usr/local/bin/php-cgi` and includes pfSense's `config.inc`, `gwlb.inc` and `interfaces.inc`. It calls `return_gateways_status(true)` (not the older `return_gateways_status_text()`) and reads the legacy `$config` global. These internals change across major pfSense releases; run the script by hand after an upgrade to make sure it still works. |
+| **`telegraf_temperature.sh`** | `temperature` — one point per `dev.cpu.N` core and per `hw.acpi.thermal.tzN` zone, field `degrees`. | **System → Advanced → Miscellaneous → Thermal Sensors** must be set to the module for your CPU (`coretemp` for Intel, `amdtemp` for AMD); otherwise `sysctl dev.cpu` has no temperature entries and the script prints nothing. |
+| **`telegraf_unbound.sh`** | Whatever `unbound-control` prints for the sub-command you pass (use `stats_noreset`), with per-thread lines removed — `key=value` lines, so use `data_format = "logfmt"` plus a `name_override` (e.g. `unbound`). Every Unbound counter becomes a field. | DNS Resolver (Unbound) enabled. Calls `/usr/local/sbin/unbound-control -c /var/unbound/unbound.conf`, so Unbound's remote-control interface must be enabled in the generated config; pfSense does this by default. Verify with `unbound-control -c /var/unbound/unbound.conf status`. |
+| **`telegraf_unbound_lite.sh`** | `unbound_lite` — only `total.num.cachehits` and `total.num.cachemiss`. | Same as above. Use this if you only want a cache hit ratio and do not want hundreds of Unbound counters in InfluxDB. |
+| **`telegraf_arp_mac_vendor.php`** | `arp_table` — one point per ARP entry; tags `host`, `mac`, `vendor`, `interface`, `ip`; fields `expires` (seconds), `permanent` (0/1). | An OUI database: install the **nmap** package from the GUI package manager (`/usr/local/share/nmap/nmap-mac-prefixes`), or place an IEEE `oui.txt` at `/usr/local/share/oui.txt`. Both formats are parsed. See [docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md](../docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md). |
 
-**Gateways:**
-* Interface name
-* Monitor IP
-* Source IP
-* Default gw (True/False)
-* GW Description
-* Delay
-* Stddev
-* Loss (%)
-* Status (Online/Offline/etc.)
-* Substatus (None/Packetloss/Latency/Etc.)
+## Wiring them into Telegraf
 
-This has been modified from the original python version to a native PHP script. The new script calls the builtin "return_gateways_status_text" function from "/etc/inc/gwlb.inc". In addition to the loss, rtt, and rttsd included in the original plugin, the new version will also return the gateway IP, monitored IP, status, and substatus of the gateway. This eliminates the guess work of whether or not pfSense has marked this gateway as down. 
+Paste blocks like this into **Services → Telegraf → Additional Configuration** and click Save (which regenerates `/usr/local/etc/telegraf.conf` and restarts the service):
 
-# telegraf_unbound_lite.sh
-#### This plugin is not in use on my system but it's still worth documenting.
-If you only care about some of the unbound metrics and don't want to waste space collecting all the unwanted unbound metrics, here's a plugin for you.
+```toml
+[[inputs.exec]]
+  commands = ["/usr/local/bin/telegraf_pfifgw.php"]
+  timeout = "15s"
+  data_format = "influx"
 
-# telegraf_netifinfo_plugin
-#### This plugin is not in use on my system but it's still worth documenting.
-I found a plugin to get IP, MAC, IF Name and Status. [On this thread](https://github.com/influxdata/telegraf/issues/3756#issuecomment-485606025 "On this thread") a user posts some go code for a telegraf plugin. I fired up a FreeBSD 11 ami on amazon, installed go and compiled a binary version of the code. It's worked as expected but my queries and formatting could use some help.
+[[inputs.exec]]
+  commands = ["/usr/local/bin/telegraf_unbound.sh stats_noreset"]
+  timeout = "10s"
+  data_format = "logfmt"
+  name_override = "unbound"
+```
 
-I saved the code as telegraf_netifinfo_plugin.go and compiled with the following commands:
+Telegraf on pfSense runs as root by design, so none of these scripts need extra permissions. Test any of them first by running it from a root shell; it should print line protocol and nothing on stderr.
 
-    setenv CGO_ENABLED 0
-    setenv GOOS freebsd
-    setenv GOARCH amd64
-    go build -o telegraf_netifinfo_plugin
+## License
+
+All plugins are MPL-2.0 (see the SPDX headers). Several descend from community pfSense Telegraf plugins; see the acknowledgements in the [main README](../README.md).
