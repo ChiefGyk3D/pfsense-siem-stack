@@ -1,6 +1,5 @@
 # Hardware Requirements & Recommendations
 
-> **Last Updated**: November 27, 2025  
 > **Status**: ✅ Production-tested specifications
 
 This document provides detailed hardware requirements and recommendations based on real-world deployment experience.
@@ -42,12 +41,12 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 | **RAM** | 16GB | Tight but workable with tuning |
 | **Storage** | 100GB SSD | Plan for 10-15GB/day with light traffic |
 | **Network** | 1 Gigabit NIC | Must handle log ingestion spikes |
-| **OS** | Ubuntu Server 22.04+ | Tested on 24.04 LTS |
+| **OS** | Ubuntu Server 24.04 LTS | Tested OS; 22.04 should work |
 
 **Component Breakdown (Minimum)**:
-- OpenSearch: 6GB heap (leaves little room for growth)
+- OpenSearch: 6-8GB heap (`install.sh` sets 50% of RAM, capped at 16GB)
 - Logstash: 2GB heap (may struggle with traffic spikes)
-- InfluxDB: 2GB (optional but recommended)
+- InfluxDB: 2GB (optional — only for the pfSense system dashboard; not installed by `install.sh`)
 - Grafana: 1GB
 - System: 2-3GB
 
@@ -70,7 +69,7 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 **Component Breakdown (Recommended)**:
 - OpenSearch: 12-16GB heap (excellent performance)
 - Logstash: 4GB heap (handles spikes well)
-- InfluxDB: 4GB (smooth time-series operations)
+- InfluxDB: 4GB (optional, separate install — smooth time-series operations)
 - Grafana: 2GB (fast dashboard rendering)
 - System: 4-6GB (caching, buffers)
 
@@ -99,11 +98,15 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 - ✅ Complex dashboard queries remain responsive
 - ✅ Room for additional services (ntopng, etc.)
 
-**Cost**: ~$800-1200 depending on configuration (2024/2025 pricing)
+**Cost**: roughly $800-1200 depending on configuration (prices vary)
 
 ---
 
 ## 🔥 pfSense Firewall Requirements
+
+**pfSense version**: 2.8.1 tested; 2.9.0 supported with the caveats in the
+[pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md); 2.7.2 is the minimum
+(Python 3 and `maxminddb` must be present for the forwarder).
 
 ### PfBlockerNG Only (No IDS/IPS)
 
@@ -130,7 +133,7 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 |-----------|--------------|-------|
 | **CPU** | Quad-core | IDS inspection is CPU-intensive |
 | **RAM** | 8GB | Minimum for 1-2 instances |
-| **Stream Memory** | 1GB per interface | **Critical - see below** |
+| **Stream Memory** | up to 1GB per interface | **Raise when memcap drops or crashes appear - see below** |
 
 #### Recommended (Multi-Interface, IDS + IPS)
 
@@ -138,7 +141,7 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 |-----------|--------------|-------|
 | **CPU** | 6-8 cores minimum | More cores = more throughput |
 | **RAM** | **12-16GB** | Comfortable for 10-15 instances |
-| **Stream Memory** | 1GB per interface | **Must increase from default** |
+| **Stream Memory** | up to 1GB per interface | **Raise from the 256MB default if needed** |
 | **Network** | Intel NICs preferred | Better driver support, offloading |
 
 #### Production Reference Configuration
@@ -161,7 +164,7 @@ Logging and SIEM workloads involve constant, high-frequency writes:
   - Plan maintenance windows accordingly
   - Monitor for thermal throttling on underpowered systems
 - **RAM Usage**: 12-14GB with 15 instances
-- **Stream Memory**: 1GB per interface (critical for stability)
+- **Stream Memory**: raised to 1GB per interface on the reference deployment (15 instances)
 
 ⚠️ **Important**: The CPU spike during rule reloads can cause temporary packet drops in inline IPS mode. For critical environments, consider:
 - Using IDS mode instead of inline IPS (alerts only, no blocking)
@@ -172,9 +175,9 @@ Logging and SIEM workloads involve constant, high-frequency writes:
 
 ## ⚙️ Critical Suricata Configuration
 
-### Stream Memory Increase (REQUIRED for Multicore)
+### Stream Memory Increase (recommended for multi-core, many-instance boxes)
 
-**Problem**: Default stream memory (256MB) causes Suricata to crash on startup with multicore CPUs and busy networks.
+**Problem**: With the default stream memcap (256 MB) Suricata can crash on startup or drop segments on multi-core CPUs running many instances on busy networks. Raise it when you see `memcap` counters climbing in Suricata stats or unexplained instance restarts; a single-instance box on a quiet link is usually fine at the default.
 
 **Symptoms**:
 ```
@@ -244,29 +247,32 @@ Recommended rule sources:
 
 ### MaxMind GeoLite2 Account (FREE)
 
-**Required for**:
-- Suricata alert GeoIP enrichment
-- PfBlockerNG country blocking
-- ntopng traffic analysis
-- Grafana geomap visualizations
+**Who needs it**: the pfSense package that *downloads* the GeoLite2 database — pfBlockerNG
+(GeoIP blocking) or ntopng (traffic analysis). MaxMind requires a free account and license
+key for every GeoLite2 download.
+
+**Who does not**: the Suricata forwarder in this project. It only *reads* a GeoLite2 file
+that pfBlockerNG or ntopng has already placed on pfSense, so the Grafana geomap works with
+no MaxMind credentials of its own. Without any database present the forwarder still runs —
+events simply have no `geoip_*` fields. Full details and the search order are in
+[GeoIP Setup](GEOIP_SETUP.md).
 
 **Setup**:
 1. Create free account: [MaxMind GeoLite2 Signup](https://www.maxmind.com/en/geolite2/signup)
 2. Generate license key
-3. Configure in pfSense:
-   - **System** → **Updates** → **MaxMind GeoIP**
-   - Enter license key
-   - Enable automatic updates
+3. Enter it in the package that will own the database:
+   - **pfBlockerNG**: Firewall → pfBlockerNG → IP → MaxMind License Key
+   - **ntopng**: Diagnostics → ntopng Settings → MaxMind license key
+4. Let that package download/update the database (weekly is typical)
 
 **Databases Used**:
-- **GeoLite2-Country** (required): Country-level GeoIP
-- **GeoLite2-City** (optional): City-level GeoIP
-  - Provides more detailed location data
-  - Used in Suricata IDS/IPS Grafana dashboard
+- **GeoLite2-Country**: Country-level GeoIP (country tables only)
+- **GeoLite2-City**: City-level GeoIP with coordinates
+  - Required for the geomap panels in the Suricata IDS/IPS dashboard
   - Adds ~50MB to database size
   - Highly recommended for threat intelligence
 
-**Update Frequency**: Weekly automatic updates (MaxMind releases Tuesday/Wednesday)
+**Update Frequency**: Weekly automatic updates by the owning package (MaxMind releases Tuesday/Wednesday)
 
 ---
 
@@ -352,7 +358,7 @@ This provides the best balance of functionality, performance, and cost (storage)
 ### OpenSearch
 
 1. **Set heap to 50% of RAM**: But no more than 31GB
-2. **Use ILM policies**: Auto-delete old indices
+2. **Use ISM retention policies**: Auto-delete old indices (`./scripts/configure-retention-policy.sh [DAYS]`, default 90; `setup.sh` applies `RETENTION_DAYS` from config.env, default 30)
 3. **Optimize replica count**: 0 replicas for single-node setups
 4. **Monitor disk space**: Set watermark alerts
 
@@ -367,27 +373,27 @@ This provides the best balance of functionality, performance, and cost (storage)
 
 ## 🛒 Hardware Shopping List
 
-### Budget SIEM Server (~$400-600)
+### Budget SIEM Server (~$400-600, prices vary)
 
 - **Mini PC**: Intel N100 or similar (16GB RAM, 500GB SSD)
   - Examples: Beelink, GMKtec, Minisforum
 - **Alternative**: Used Dell/HP/Lenovo SFF with i5/Ryzen 5
 - **Upgrade path**: Add more RAM or larger SSD later
 
-### Recommended SIEM Server (~$800-1200)
+### Recommended SIEM Server (~$800-1200, prices vary)
 
 - **Mini PC**: Intel i5/i7 or Ryzen 5/7 (32GB RAM, 1TB NVMe)
   - Examples: Intel NUC, Minisforum, Purism Librem Mini
 - **Alternative**: Build micro-ATX system with newer CPU
 - **Longevity**: 5+ years with room for workload growth
 
-### Budget pfSense Firewall (~$300-500)
+### Budget pfSense Firewall (~$300-500, prices vary)
 
 - **Protectli Vault**: 4-port, quad-core, 8GB RAM
 - **Alternative**: Dell/HP thin client with dual-NIC PCIe card
 - **Good for**: 500Mbps+ with Suricata on 2-3 interfaces
 
-### Recommended pfSense Firewall (~$600-1000)
+### Recommended pfSense Firewall (~$600-1000, prices vary)
 
 - **Protectli VP4670**: 6-port, Intel CPU, 16GB RAM
 - **Netgate 6100**: Official pfSense hardware, support included
@@ -413,7 +419,7 @@ Before ordering hardware, verify:
 
 ## 📞 Questions?
 
-- **General Hardware**: Open a [GitHub Discussion](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
+- **General Hardware**: Open a [GitHub Discussion](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
 - **Suricata Performance**: See [SURICATA_OPTIMIZATION_GUIDE.md](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
 - **Storage Sizing**: See [MULTI_INTERFACE_RETENTION.md](../operations/MULTI_INTERFACE_RETENTION.md)
 - **Troubleshooting**: See [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md)

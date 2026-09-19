@@ -124,12 +124,12 @@ print(v)
     fi
 
     # Check index template
-    TEMPLATE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${OS_URL}/_index_template/${INDEX_PREFIX}" 2>/dev/null)
+    TEMPLATE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${OS_URL}/_index_template/${INDEX_PREFIX}-template" 2>/dev/null)
     if [ "$TEMPLATE_STATUS" = "200" ]; then
         ok "Index template '${INDEX_PREFIX}' exists"
 
         # Check if template uses flat or nested structure
-        TEMPLATE_FIELDS=$(curl -s "${OS_URL}/_index_template/${INDEX_PREFIX}" | python3 -c "
+        TEMPLATE_FIELDS=$(curl -s "${OS_URL}/_index_template/${INDEX_PREFIX}-template" | python3 -c "
 import sys,json
 d = json.load(sys.stdin)
 templates = d.get('index_templates',[])
@@ -150,7 +150,7 @@ else:
             warn "Index template uses NESTED structure (needs update)"
             echo ""
             echo -e "  ${YELLOW}FIXING: Applying flat index template...${NC}"
-            RESULT=$(curl -s -XPUT "${OS_URL}/_index_template/${INDEX_PREFIX}" \
+            RESULT=$(curl -s -XPUT "${OS_URL}/_index_template/${INDEX_PREFIX}-template" \
                 -H 'Content-Type: application/json' \
                 -d @"${PROJECT_DIR}/config/opensearch-index-template.json" 2>/dev/null)
             if echo "$RESULT" | grep -q '"acknowledged":true'; then
@@ -165,7 +165,7 @@ else:
         warn "Index template '${INDEX_PREFIX}' not found"
         echo ""
         echo -e "  ${YELLOW}FIXING: Creating index template...${NC}"
-        RESULT=$(curl -s -XPUT "${OS_URL}/_index_template/${INDEX_PREFIX}" \
+        RESULT=$(curl -s -XPUT "${OS_URL}/_index_template/${INDEX_PREFIX}-template" \
             -H 'Content-Type: application/json' \
             -d @"${PROJECT_DIR}/config/opensearch-index-template.json" 2>/dev/null)
         if echo "$RESULT" | grep -q '"acknowledged":true'; then
@@ -336,8 +336,8 @@ if [ "$PFSENSE_SSH" = true ]; then
         echo ""
         echo -e "  ${YELLOW}FIXING: Starting forwarder...${NC}"
         # Prefer the rc.d service installed by setup.sh; fall back to nohup with a detected Python
-        if ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder' 2>/dev/null; then
-            ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'service suricata_forwarder restart' 2>/dev/null
+        if ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'test -x /usr/local/etc/rc.d/suricata_forwarder.sh' 2>/dev/null; then
+            ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'service suricata_forwarder.sh restart' 2>/dev/null
         else
             ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'PY=$(command -v python3.11 || command -v python3); nohup "$PY" /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &' 2>/dev/null
         fi
@@ -347,7 +347,7 @@ if [ "$PFSENSE_SSH" = true ]; then
             fix "Forwarder started (PID: $FORWARDER_PID)"
         else
             fail "Failed to start forwarder"
-            info "Check manually: ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'service suricata_forwarder start'"
+            info "Check manually: ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'service suricata_forwarder.sh start'"
         fi
     fi
 
@@ -564,7 +564,7 @@ else
     echo "  ssh ${SIEM_SSH_USER}@${SIEM_HOST} 'sudo cp /tmp/logstash-suricata.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash'"
     echo ""
     echo "  # 2. Apply index template:"
-    echo "  curl -XPUT '${OS_URL}/_index_template/${INDEX_PREFIX}' -H 'Content-Type: application/json' -d @config/opensearch-index-template.json"
+    echo "  curl -XPUT '${OS_URL}/_index_template/${INDEX_PREFIX}-template' -H 'Content-Type: application/json' -d @config/opensearch-index-template.json"
     echo ""
     echo "  # 3. Enable auto-create:"
     echo "  curl -XPUT '${OS_URL}/_cluster/settings' -H 'Content-Type: application/json' -d '{\"persistent\":{\"action.auto_create_index\":\"${INDEX_PREFIX}-*\"}}'"

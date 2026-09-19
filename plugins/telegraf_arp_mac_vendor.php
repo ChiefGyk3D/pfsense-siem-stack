@@ -11,8 +11,8 @@
  * 
  * Output Format: InfluxDB Line Protocol
  * Measurement: arp_table
- * Tags: mac_address, vendor, interface, ip_address
- * Fields: expires_in (seconds), permanent (boolean)
+ * Tags: host, mac, vendor, interface, ip
+ * Fields: expires (seconds), permanent (boolean)
  */
 
 $host = gethostname();

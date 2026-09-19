@@ -7,10 +7,10 @@ deployment (10 minutes if your SIEM server is already running).
 
 **Hardware/hosts you need** (see [Hardware Requirements](docs/install/HARDWARE_REQUIREMENTS.md)):
 
-- **pfSense 2.7.2+/2.8.x** with Suricata installed and enabled on at least one
+- **pfSense CE 2.7.2+** (2.8.1 tested; 2.9.0 works — read the [Upgrade Guide](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) first) with Suricata installed and enabled on at least one
   interface, and SSH enabled (System → Advanced → Secure Shell)
-- **A Linux server** (Ubuntu 24.04 LTS recommended) for the SIEM stack — 8 GB RAM
-  minimum, 16 GB+ recommended, 100 GB+ disk for logs
+- **A Linux server** (Ubuntu 24.04 LTS recommended) for the SIEM stack — 16 GB RAM
+  minimum, 32 GB recommended, 100 GB+ SSD for logs
 - **A workstation** (can be the SIEM server itself) with `bash`, `ssh`, `curl`, `jq`,
   and `python3` to run the scripts from
 
@@ -75,7 +75,7 @@ The installer will:
 1. **Run preflight + prerequisite checks** — OpenSearch, Grafana, SSH, Suricata EVE logs
 2. **Configure OpenSearch** — index templates (keyword, ip, geo_point) and auto-create
 3. **Deploy Logstash config** — flat JSON parsing pipeline (via SSH to SIEM server)
-4. **Deploy forwarder to pfSense** — plus rc.d service and watchdog cron
+4. **Deploy forwarder to pfSense** — detects the Python interpreter, installs the rc.d service (`suricata_forwarder.sh`) and the watchdog cron
 5. **Import dashboards** — IDS/IPS and Per-Interface dashboards via the Grafana API
 6. **Verify data flow** — confirm events are appearing in OpenSearch
 
@@ -105,7 +105,7 @@ Details: [Dashboard Installation](docs/install/INSTALL_DASHBOARD.md).
 Verify the forwarder on pfSense:
 
 ```bash
-ssh admin@<pfsense> 'service suricata_forwarder status'
+ssh admin@<pfsense> 'service suricata_forwarder.sh status'
 ```
 
 ## Where to next

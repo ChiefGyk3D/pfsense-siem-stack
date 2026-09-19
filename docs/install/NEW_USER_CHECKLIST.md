@@ -1,44 +1,43 @@
 # New User Setup Checklist
 
-Complete step-by-step checklist for deploying pfSense Suricata Dashboard from scratch.
+Step-by-step checklist for deploying the pfSense SIEM stack from scratch. It tells you
+*what to verify at each stage*; the commands themselves live in
+[QUICK_START.md](../../QUICK_START.md) and the install guides linked from each step.
 
 ## Pre-Installation Checklist
 
 ### Hardware Requirements
 
-**SIEM Server (Ubuntu/Debian):**
+Full detail: [Hardware Requirements](HARDWARE_REQUIREMENTS.md).
+
+**SIEM Server:**
 - [ ] CPU: 4+ cores recommended (2 minimum)
-- [ ] RAM: 8 GB minimum, 16 GB recommended
-- [ ] Disk: 100+ GB for logs (depends on retention)
-- [ ] Network: Static IP address configured
+- [ ] RAM: 16 GB minimum, 32 GB recommended
+- [ ] Disk: 100 GB+ SSD (500 GB+ for 30-day retention on busy networks); **no SD cards**
+- [ ] Network: static IP address configured
 
 **pfSense Firewall:**
-- [ ] pfSense 2.7+ installed (2.8.1 tested)
-- [ ] Suricata package installed
-- [ ] At least one interface configured for monitoring
-- [ ] SSH enabled (System > Advanced > Admin Access)
-- [ ] SSH key-based authentication configured (recommended)
+- [ ] pfSense 2.7.2+ installed (2.8.1 tested; 2.9.0 supported, see [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md))
+- [ ] Suricata package installed, rules downloaded, enabled on at least one interface
+- [ ] SSH enabled (System > Advanced > Secure Shell)
+- [ ] Optional: ntopng or pfBlockerNG with a MaxMind key, for GeoIP ([GeoIP Setup](GEOIP_SETUP.md))
 
 ### Network Requirements
 
-- [ ] Firewall rule: Allow pfSense → SIEM Server UDP port 5140
-- [ ] Firewall rule: Allow your workstation → SIEM Server TCP port 3000 (Grafana)
-- [ ] DNS resolution working on both systems
-- [ ] NTP configured on both systems (time sync critical!)
+- [ ] pfSense → SIEM server: UDP 5140 allowed (Logstash input)
+- [ ] Workstation → SIEM server: TCP 3000 (Grafana) and TCP 9200 (OpenSearch, used by `setup.sh`)
+- [ ] Workstation → pfSense: TCP 22 (SSH)
+- [ ] NTP configured on both systems (time sync matters for the dashboards)
 
 ### Software Prerequisites
 
 **On SIEM Server:**
-- [ ] Ubuntu 20.04+ or Debian 11+ installed
-- [ ] Root or sudo access
-- [ ] Internet connectivity for package downloads
-- [ ] Git installed: `sudo apt install git -y`
+- [ ] Ubuntu 24.04 LTS installed (tested; 22.04 should work)
+- [ ] Root or sudo access and Internet connectivity for package downloads
+- [ ] `git` installed
 
-**On pfSense:**
-- [ ] Suricata package installed and configured
-- [ ] At least one interface enabled in Suricata
-- [ ] Rules downloaded and enabled (see [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md))
-- [ ] SSH enabled and accessible
+**On the workstation you run the scripts from** (can be the SIEM server itself):
+- [ ] `bash`, `ssh`, `scp`, `curl`, `jq`, `python3` available
 
 ---
 
@@ -46,267 +45,91 @@ Complete step-by-step checklist for deploying pfSense Suricata Dashboard from sc
 
 ### Phase 1: Initial Setup (30 minutes)
 
-#### 1. Clone Repository
-```bash
-# On your SIEM server
-cd ~
-git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
-cd pfsense_siem_stack
-```
-- [ ] Repository cloned successfully
-- [ ] Current directory is `pfsense_siem_stack/`
+Follow [QUICK_START.md](../../QUICK_START.md) steps 1-3. Check off as you go:
 
-#### 2. Install SIEM Stack
-```bash
-# Run as root or with sudo
-sudo ./install.sh
-```
+#### 1. Clone and configure
+- [ ] Repository cloned: `git clone https://github.com/ChiefGyk3D/pfsense-siem-stack.git`
+- [ ] `config.env` created from `config.env.example`
+- [ ] **Required** variables set: `SIEM_HOST`, `PFSENSE_HOST`, `PFSENSE_USER` (default `admin`)
+- [ ] Recommended: `GRAFANA_ADMIN_PASS` changed from `admin`; `RETENTION_DAYS` reviewed (default 30)
 
-**This installs:**
-- OpenSearch 2.x
-- Logstash 8.x  
-- Grafana 12.x
+#### 2. SSH access to pfSense
+- [ ] `ssh-copy-id admin@<PFSENSE_IP>` done — the scripts never prompt for passwords
+- [ ] `ssh admin@<PFSENSE_IP> 'echo ok'` works without a password prompt
 
-**Expected time:** 15-20 minutes
+#### 3. Preflight
+- [ ] `./scripts/preflight.sh` passes (config.env, SSH to both hosts, Python on pfSense, OpenSearch reachability, GeoIP presence). Fix every ✗ before continuing; ⚠ for OpenSearch is expected before `install.sh` has run.
 
-**Checkpoint:**
-- [ ] OpenSearch running: `sudo systemctl status opensearch`
-- [ ] Logstash running: `sudo systemctl status logstash`
-- [ ] Grafana running: `sudo systemctl status grafana-server`
-- [ ] No errors in installation output
+#### 4. Install the SIEM stack
+- [ ] `sudo ./install.sh` completed on the SIEM server (OpenSearch 2.19.4 in `/opt/opensearch`, Logstash 8.19.7, Grafana 12.3.0) — manual alternative: [SIEM Stack Installation](INSTALL_SIEM_STACK.md)
+- [ ] `systemctl status opensearch logstash grafana-server` all active
+- [ ] `curl -s http://localhost:9200 | jq .version.number` returns `2.19.4`
 
-#### 3. Configure Environment
-```bash
-# Copy example configuration
-cp config.env.example config.env
-
-# Edit with your settings
-nano config.env
-```
-
-**Required changes:**
-```bash
-SIEM_HOST=<SIEM_IP>        # Your SIEM server IP
-PFSENSE_HOST=192.168.1.1        # Your pfSense IP
-```
-
-**Optional but recommended:**
-```bash
-GRAFANA_ADMIN_PASS=YourStrongPassword  # Change default password
-RETENTION_DAYS=30                      # Adjust retention
-```
-
-- [ ] `config.env` created from example
-- [ ] SIEM_HOST configured with correct IP
-- [ ] PFSENSE_HOST configured with correct IP
-- [ ] GRAFANA_ADMIN_PASS changed from default
-
-#### 4. Setup SSH Access to pfSense
-```bash
-# Test SSH connectivity
-ssh root@<pfsense-ip>
-
-# If prompted for password, setup key-based auth (recommended):
-ssh-copy-id root@<pfsense-ip>
-```
-
-- [ ] SSH connection successful
-- [ ] Key-based authentication working (recommended)
-- [ ] Can execute commands without password prompt
-
-#### 5. Run Automated Setup
-```bash
-# From pfsense_siem_stack directory
-./setup.sh
-```
-
-**This configures:**
-- OpenSearch index templates
-- Deploys forwarder to pfSense
-- Installs watchdog for auto-restart
-- Verifies everything is working
-
-**Expected time:** 5 minutes
-
-**Checkpoint:**
-- [ ] Script completed without errors
-- [ ] Forwarder deployed to pfSense
-- [ ] Watchdog cron installed
-- [ ] Data flowing to OpenSearch
+#### 5. Run the automated setup
+- [ ] `./setup.sh` completed without errors (it re-runs preflight, installs the OpenSearch index template, deploys the Logstash pipeline, deploys forwarder + rc.d service + watchdog to pfSense, imports the Suricata dashboards, verifies data flow)
+- [ ] `ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'` reports running
+- [ ] `ssh admin@<PFSENSE_IP> 'crontab -l | grep watchdog'` shows the every-minute entry
+- [ ] Event count increasing: `curl -s http://localhost:9200/suricata-*/_count | jq .count`
 
 ---
 
 ### Phase 2: Dashboard Setup (10 minutes)
 
+Detail: [Dashboard Installation](INSTALL_DASHBOARD.md).
+
 #### 6. Access Grafana
-```bash
-# Open in browser
-http://<siem-server-ip>:3000
-```
+- [ ] Login at `http://<SIEM_IP>:3000` works (`admin` / your `GRAFANA_ADMIN_PASS`)
+- [ ] Password changed if still `admin`
 
-**Login:**
-- Username: `admin`
-- Password: (from config.env, default `admin`)
+#### 7. Data sources
+- [ ] `OpenSearch-Suricata` (index `suricata-*`, time field `@timestamp`) exists and tests green
+- [ ] `OpenSearch-pfBlockerNG` (index `pfblockerng-*`) exists — `setup.sh` creates it; tests green once Telegraf sends data
+- [ ] *Optional:* InfluxDB datasource `pfsense` (database `pfsense`) — only for the pfSense system dashboard
 
-- [ ] Grafana login successful
-- [ ] Password changed on first login
+#### 8. Dashboards
+`setup.sh` imports the two Suricata dashboards through the Grafana API. Confirm, and import manually only if missing:
 
-#### 7. Configure OpenSearch Data Sources
-
-**Navigate:** Configuration (⚙️) → Data Sources → Add data source → OpenSearch
-
-**Datasource 1 — Suricata:**
-```
-Name: OpenSearch-Suricata
-URL: http://localhost:9200
-Index name: suricata-*
-Time field: @timestamp
-Version: 2.0+
-```
-
-- [ ] Suricata data source added
-- [ ] Test successful (green checkmark)
-
-**Datasource 2 — pfBlockerNG:**
-```
-Name: OpenSearch-pfBlockerNG
-URL: http://localhost:9200
-Index name: pfblockerng-*
-Time field: @timestamp
-Version: 2.0+
-```
-
-- [ ] pfBlockerNG data source added
-- [ ] Test successful (green checkmark)
-
-#### 8. Import Dashboards
-
-**Navigate:** Dashboards (+) → Import → Upload JSON file
-
-**Import all three dashboards:**
-
-**Dashboard 1: pfSense System & pfBlockerNG**
-- **File:** `dashboards/pfsense_pfblockerng_system.json`
-- **Datasource:** Select your InfluxDB datasource (system metrics) AND OpenSearch-pfBlockerNG datasource (pfBlockerNG panels)
-- [ ] Dashboard imported successfully
-- [ ] Shows system metrics, network stats (InfluxDB)
-- [ ] Shows pfBlockerNG IP blocks and DNSBL blocks (OpenSearch)
-
-**Dashboard 2: Suricata WAN Monitoring**
-- **File:** `dashboards/Suricata IDS_IPS Dashboard.json`
-- **Datasource:** Select your OpenSearch datasource
-- [ ] Dashboard imported successfully
-- [ ] Shows WAN-side security events and alerts
-
-**Dashboard 3: Suricata Per-Interface (LAN Monitoring)**
-- **File:** `dashboards/Suricata_Per_Interface.json`
-- **Datasource:** Select your OpenSearch datasource
-- [ ] Dashboard imported successfully
-- [ ] Shows per-VLAN/interface sections
-- [ ] Interface dropdown populated with your interfaces
+- [ ] **Suricata IDS/IPS** — `dashboards/Suricata_IDS_IPS.json` (UID `suricata_ids_ips`) at `http://<SIEM_IP>:3000/d/suricata_ids_ips`
+- [ ] **Suricata Per-Interface** — `dashboards/Suricata_Per_Interface.json` (UID `suricata_per_interface`); interface dropdown lists your interfaces
+- [ ] *Optional:* **pfSense System & pfBlockerNG** — `dashboards/pfsense_pfblockerng_system.json`, imported manually with the InfluxDB and OpenSearch-pfBlockerNG datasources ([Telegraf pfBlockerNG Setup](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md))
 
 ---
 
 ### Phase 3: Validation (15 minutes)
 
-#### 9. Verify Data Flow
+#### 9. Verify data flow
+- [ ] `./scripts/status.sh` — all checks green (OpenSearch, Logstash, Grafana, forwarder on pfSense, watchdog cron, recent data)
+- [ ] Recent data timestamp within the last 5 minutes
 
-**Run status check:**
-```bash
-./scripts/status.sh
-```
+#### 10. Check dashboard panels
+- [ ] Events over time, event type and protocol distributions populated
+- [ ] Top source/destination IPs populated
+- [ ] GeoIP map shows external sources (needs a GeoLite2-City DB on pfSense — see [GeoIP Setup](GEOIP_SETUP.md); may take a few minutes)
 
-**Expected output:**
-```
-✓ OpenSearch is running
-✓ Logstash is running  
-✓ Grafana is running
-✓ Forwarder is running on pfSense
-✓ Watchdog cron is installed
-✓ Recent data found (within last 5 minutes)
-```
+If panels are empty: wait 2-3 minutes, check the time range, then run
+`./scripts/diagnose-and-repair.sh`. See [Dashboard No Data Fix](../troubleshooting/DASHBOARD_NO_DATA_FIX.md).
 
-- [ ] All checks passing (green checkmarks)
-- [ ] Recent data timestamp within last 5 minutes
-- [ ] No error messages
-
-#### 10. Check Dashboard Panels
-
-**In Grafana dashboard:**
-- [ ] "Events & Alerts" panel showing data
-- [ ] "Event Type Distribution" pie chart populated
-- [ ] "Protocol Distribution" showing TCP/UDP/ICMP
-- [ ] "Top 10 Alert Signatures" table has entries
-- [ ] GeoIP map showing attack sources (may take a few minutes)
-- [ ] "IDS Alert Logs" table showing recent alerts
-
-**If panels empty:**
-- Wait 2-3 minutes for data to flow
-- Generate test alert: `curl http://testmyids.com`
-- Check forwarder: `ssh root@pfsense 'ps aux | grep forward-suricata'`
-
-#### 11. Test Alert Generation
-
-```bash
-# From any machine that routes through pfSense
-curl http://testmyids.com
-```
-
-**Within 30 seconds:**
-- [ ] Alert appears in "IDS Alert Logs" panel
-- [ ] Counter increments in "Events & Alerts"
-- [ ] Signature shows "ET POLICY curl User-Agent Detected"
+#### 11. Test alert generation
+- [ ] From a machine behind pfSense: `curl http://testmyids.com`
+- [ ] Within ~30 seconds an alert (e.g. "ET POLICY curl User-Agent Detected") appears in the alerts table
 
 ---
 
 ### Phase 4: Optimization (Optional, 1-2 hours)
 
-#### 12. Optimize Suricata Rules
+#### 12. Tune Suricata rules
+Follow the [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md):
+- [ ] Read "Phase 1: Starting Out"; enable the core ET rule categories
+- [ ] Stay in IDS mode (alert only) for the first weeks
+- [ ] Review log retention/rotation on pfSense
 
-**Follow:** [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
+#### 13. Forwarder monitoring
+- [ ] Optional deeper monitoring per [Forwarder Monitoring Guide](../operations/SURICATA_FORWARDER_MONITORING.md) (`./scripts/setup_forwarder_monitoring.sh`)
+- [ ] Test recovery: `ssh admin@<PFSENSE_IP> 'pkill -f forward-suricata-eve.py'` — the watchdog restarts it within a minute
 
-**Recommended for new users:**
-- [ ] Read "Phase 1: Starting Out" section
-- [ ] Enable ~42 core ET rule categories
-- [ ] Configure IDS mode (alert only) first
-- [ ] Review log retention settings
-- [ ] Configure automatic log management
-
-**After 1-3 months:**
-- [ ] Consider IPS mode (selective blocking)
-- [ ] Add Snort subscription rules (optional)
-- [ ] Fine-tune rules based on false positives
-
-#### 13. Setup Forwarder Monitoring
-
-**Follow:** [Forwarder Monitoring Guide](../operations/SURICATA_FORWARDER_MONITORING.md)
-
-**Recommended approach: Hybrid**
-```bash
-./scripts/setup_forwarder_monitoring.sh
-# Select Option 1: Hybrid
-```
-
-- [ ] Monitoring installed via script
-- [ ] Cron jobs verified: `ssh root@pfsense 'crontab -l'`
-- [ ] Test restart: Kill forwarder and wait 5 minutes
-
-#### 14. Configure Data Retention
-
-```bash
-# Adjust retention policy
-./scripts/configure-retention-policy.sh
-```
-
-**Default:** 30 days
-
-**Adjust based on:**
-- Disk space available
-- Compliance requirements
-- Alert volume (check with `./scripts/status.sh`)
-
-- [ ] Retention policy configured
-- [ ] Disk space monitored: `df -h /var/lib/opensearch`
+#### 14. Data retention
+- [ ] Retention policy applied: `setup.sh` applies `RETENTION_DAYS` from config.env (default 30). To change it later run `./scripts/configure-retention-policy.sh <DAYS>` — it takes the day count as an argument (default 90 when omitted) and does not prompt
+- [ ] Disk usage checked: `df -h /opt/opensearch/data`
 
 ---
 
@@ -314,45 +137,23 @@ curl http://testmyids.com
 
 ### Security Hardening
 
-- [ ] Grafana admin password changed from default
-- [ ] Grafana users configured (if multi-user)
-- [ ] Firewall rules configured (only allow necessary access)
-- [ ] OpenSearch bound to localhost (default in install.sh)
-- [ ] SSH key-based auth enabled on pfSense
-- [ ] Logstash UDP 5140 restricted to pfSense IP only
+- [ ] Grafana admin password changed from default; additional users created if multi-user
+- [ ] **OpenSearch is NOT bound to localhost and has NO authentication** by default — `install.sh` sets `network.host: 0.0.0.0`, `plugins.security.disabled: true` and opens ufw 9200/tcp. Restrict 9200 with ufw to trusted hosts (`sudo ufw delete allow 9200/tcp` then `sudo ufw allow from <WORKSTATION_IP> to any port 9200 proto tcp`) or enable the security plugin. Tracked in [ROADMAP.md, Phase A](../../ROADMAP.md).
+- [ ] Logstash UDP 5140 restricted to the pfSense IP (`sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp`)
+- [ ] Grafana 3000 restricted to your management network
+- [ ] SSH key-based auth only on pfSense
 
 ### Backup Configuration
 
-**Critical files to backup:**
-- [ ] `config.env` (contains your settings)
-- [ ] Grafana dashboards (export JSON periodically)
-- [ ] OpenSearch index templates
-- [ ] Suricata rule configuration
-
-```bash
-# Backup config
-cp config.env config.env.backup
-
-# Export Grafana dashboard
-# (Use Grafana UI: Dashboard settings → JSON Model → Copy)
-
-# Backup OpenSearch template
-curl http://localhost:9200/_index_template/suricata-template > suricata-template-backup.json
-```
-
-### Monitoring Setup
-
-- [ ] Review dashboard daily for first week
-- [ ] Set up Grafana alerts (optional)
-- [ ] Monitor disk usage: `df -h /var/lib/opensearch`
-- [ ] Check forwarder status weekly: `./scripts/status.sh`
-- [ ] Review Suricata stats: Grafana "Performance" panels
+- [ ] `config.env` backed up (contains your settings and Grafana password)
+- [ ] Grafana dashboards exported periodically (Dashboard settings → JSON Model, or the API)
+- [ ] OpenSearch index template saved: `curl -s http://localhost:9200/_index_template/suricata-template > suricata-template-backup.json`
+- [ ] pfSense configuration backed up (Diagnostics > Backup & Restore). Note: the forwarder files on pfSense are **not** in that backup — re-run `./setup.sh` after a restore
 
 ### Documentation
 
 - [ ] Read [Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md)
 - [ ] Bookmark [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
-- [ ] Review [Forwarder Monitoring Guide](../operations/SURICATA_FORWARDER_MONITORING.md)
 - [ ] Keep notes on false positives for tuning
 
 ---
@@ -360,154 +161,72 @@ curl http://localhost:9200/_index_template/suricata-template > suricata-template
 ## Maintenance Schedule
 
 ### Daily (First Week)
-- Check dashboard for unusual activity
-- Review new alert signatures
-- Verify data is flowing (`./scripts/status.sh`)
+- Check dashboard for unusual activity and new alert signatures
+- Verify data is flowing: `./scripts/status.sh`
 
 ### Weekly
-- Review CPU/memory usage on pfSense
-- Check disk space: `df -h /var/lib/opensearch`
-- Review false positives
-- Update Suricata rules (automatic by default)
+- Review CPU/memory on pfSense; review false positives
+- Check disk space: `df -h /opt/opensearch/data`
+- Confirm Suricata rule updates are running
 
 ### Monthly
-- Update pfSense and packages
-- Update SIEM stack packages
-- Review and tune Suricata rules
-- Export dashboard backups
-- Review retention policy vs disk usage
-- Check for new Grafana dashboard updates
+- Update SIEM stack packages (`apt`) and pfSense packages
+- Export dashboard backups; review retention vs disk usage
+
+### After upgrading pfSense
+- Re-run `./setup.sh` and then `./scripts/status.sh`. The forwarder, rc.d service and root crontab entry are outside `config.xml` and can be removed by an upgrade or package reinstall. See [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
 
 ### Quarterly
 - Review security posture based on alerts
-- Update GeoIP database (if not using ntopng)
-- Review and update documentation
-- Test disaster recovery procedures
+- Confirm the GeoLite2 database on pfSense is still updating (ntopng/pfBlockerNG)
+- Test disaster recovery (restore pfSense config, re-run `./setup.sh`)
 
 ---
 
 ## Common Issues & Quick Fixes
 
-### Dashboard Shows "No Data"
-```bash
-# Check everything
-./scripts/status.sh
+| Symptom | First thing to try | Detail |
+|---------|--------------------|--------|
+| Dashboard shows "No data" | `./scripts/status.sh`, then `./scripts/diagnose-and-repair.sh` | [Dashboard No Data Fix](../troubleshooting/DASHBOARD_NO_DATA_FIX.md) |
+| Forwarder not running | `ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh restart'` (or wait a minute for the watchdog) | [Forwarder Installation](INSTALL_PFSENSE_FORWARDER.md#troubleshooting) |
+| Data stops at midnight UTC | `./scripts/install-opensearch-config.sh` (or re-run `./setup.sh`) | [OpenSearch Auto-Create](../troubleshooting/OPENSEARCH_AUTO_CREATE.md) |
+| High CPU on pfSense | Reduce rule count, disable low-value interfaces | [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md) |
+| Disk filling up | `./scripts/configure-retention-policy.sh <DAYS>`; check `curl -s 'http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc'` | [Multi-Interface Retention](../operations/MULTI_INTERFACE_RETENTION.md) |
+| Too many false positives | Disable noisy SIDs, add suppressions | [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md) |
+| Everything on the SIEM needs a restart | `./scripts/restart-services.sh` | |
 
-# Most common: forwarder not running
-ssh root@pfsense 'ps aux | grep forward-suricata'
-
-# Restart if needed
-./setup.sh
-```
-
-### Data Stops at Midnight UTC
-```bash
-# OpenSearch auto-create disabled
-./setup.sh  # Re-run to fix
-
-# Or manually:
-./scripts/install-opensearch-config.sh
-```
-
-### High CPU on pfSense
-- Reduce Suricata rule count
-- Disable low-value interfaces
-- See [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
-
-### Disk Space Running Out
-```bash
-# Reduce retention
-./scripts/configure-retention-policy.sh
-
-# Check index sizes
-curl http://localhost:9200/_cat/indices/suricata-*?v&s=store.size:desc
-```
-
-### Too Many False Positives
-- Review alerts in dashboard
-- Disable noisy signatures
-- Add suppression rules
-- See [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md) → "Phase 2: After Tuning"
+**Logs:** SIEM — `sudo journalctl -u logstash -f`, `sudo journalctl -u opensearch -f`;
+pfSense — `ssh admin@<PFSENSE_IP> 'tail -f /var/log/system.log | grep suricata'`.
 
 ---
 
 ## Support Resources
 
-### Documentation
-- **Main README:** [../README.md](../../README.md)
+- **Quick start:** [QUICK_START.md](../../QUICK_START.md)
+- **Documentation hub:** [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md)
 - **Troubleshooting:** [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md)
-- **Suricata Optimization:** [SURICATA_OPTIMIZATION_GUIDE.md](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
-- **Forwarder Monitoring:** [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md)
-- **GeoIP Setup:** [GEOIP_SETUP.md](./GEOIP_SETUP.md)
-
-### Community
-- **GitHub Issues:** Report bugs or request features
-- **GitHub Discussions:** Ask questions, share configurations
-- **pfSense Forums:** General pfSense and Suricata help
+- **GeoIP Setup:** [GEOIP_SETUP.md](GEOIP_SETUP.md)
+- **Issues and discussions:** https://github.com/ChiefGyk3D/pfsense-siem-stack
 - **Suricata Docs:** https://suricata.readthedocs.io/
-
-### Emergency Commands
-
-**Restart everything (SIEM):**
-```bash
-./scripts/restart-services.sh
-```
-
-**Restart forwarder (pfSense):**
-```bash
-ssh root@pfsense 'pkill -f forward-suricata && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py > /dev/null 2>&1 &'
-```
-
-**Check logs:**
-```bash
-# SIEM
-sudo tail -f /var/log/logstash/logstash-plain.log
-sudo journalctl -u opensearch -f
-
-# pfSense
-ssh root@pfsense 'tail -f /var/log/system.log | grep suricata'
-```
 
 ---
 
 ## Next Steps
 
-After successful installation:
-
-1. **Learn Your Baseline** (Week 1)
-   - Review alerts daily
-   - Identify normal vs suspicious traffic
-   - Document legitimate traffic patterns
-
-2. **Tune Rules** (Weeks 2-4)
-   - Disable noisy false positives
-   - Focus on high/critical severity alerts
-   - Customize for your environment
-
-3. **Consider IPS Mode** (Month 2+)
-   - After understanding traffic patterns
-   - See [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md) → "IDS vs IPS Mode"
-   - Start with one interface (Guest network recommended)
-
-4. **Expand Monitoring** (Month 3+)
-   - Add internal interfaces if needed
-   - Setup alerting in Grafana
-   - Integrate with other security tools
-
-5. **Share Your Experience**
-   - Submit improvements via GitHub
-   - Help other users in Discussions
-   - Share your dashboard customizations
+1. **Learn your baseline** (week 1) — review alerts daily, document legitimate traffic patterns
+2. **Tune rules** (weeks 2-4) — disable noisy false positives, focus on high/critical severity
+3. **Consider IPS mode** (month 2+) — one interface at a time; see the optimization guide's "IDS vs IPS Mode"
+4. **Expand monitoring** (month 3+) — more interfaces, Grafana alerting, other integrations
+5. **Share your experience** — improvements and dashboard customizations are welcome on GitHub
 
 ---
 
 ## Completion Sign-Off
 
-**Installation Complete:**
 - [ ] All Phase 1 steps completed
 - [ ] All Phase 2 steps completed
 - [ ] All Phase 3 validation passed
-- [ ] Documentation reviewed
+- [ ] Security hardening reviewed (especially OpenSearch exposure)
 - [ ] Maintenance schedule understood
 
 **Installation Date:** _______________
@@ -522,7 +241,3 @@ After successful installation:
 ```
 (Add any environment-specific notes here)
 ```
-
----
-
-🎉 **Congratulations!** Your pfSense Suricata Dashboard is fully operational. Happy monitoring!

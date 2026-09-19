@@ -110,12 +110,12 @@ fi
 # ── 4. Python on pfSense ─────────────────────────────────────────────────────
 if [[ "$PFSENSE_SSH_OK" == true ]]; then
     PFSENSE_PYTHON=$(ssh "${SSH_OPTS[@]}" "${PFSENSE_USER}@${PFSENSE_HOST}" \
-        'for p in /usr/local/bin/python3.11 /usr/local/bin/python3 /usr/bin/python3; do [ -x "$p" ] && echo "$p" && break; done' 2>/dev/null)
+        'for p in /usr/local/bin/python3 /usr/local/bin/python3.13 /usr/local/bin/python3.12 /usr/local/bin/python3.11 /usr/bin/python3; do [ -x "$p" ] && echo "$p" && break; done' 2>/dev/null)
     if [[ -n "$PFSENSE_PYTHON" ]]; then
         ok "python3 on pfSense (${PFSENSE_PYTHON})"
     else
         fail "python3 not found on pfSense (required by the forwarder)"
-        echo "      Install:  ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'pkg install python311'"
+        echo "      Install:  ssh ${PFSENSE_USER}@${PFSENSE_HOST} 'pkg install python311'   # or the python3 your pfSense release ships"
     fi
 else
     fail "python3 check on pfSense skipped (no SSH access)"

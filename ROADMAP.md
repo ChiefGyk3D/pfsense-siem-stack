@@ -45,6 +45,15 @@ Fixing what the 2026-08 review found. Items marked ✅ landed with the review PR
 - [x] Fix broken references to renamed/archived scripts across `install.sh`, docs, and tests
 - [x] Docs: correct the nested-vs-flat Logstash contradiction (pipeline is flat)
 - [x] CI: shell syntax, JSON, and Python compile checks on every push
+- [x] Docs audited against the code and reorganised into a pfSense knowledge base + SIEM stack docs (2026-09); pfSense 2.9.0 upgrade guide added
+- [x] `setup.sh`: rc.d unit renamed to `suricata_forwarder.sh` so pfSense actually starts it at boot; interpreter detected instead of hardcoded `python3.11`; `stop` works (supervisor + child PIDs)
+- [ ] **pfSense 2.9.0 validation**: run `preflight.sh → setup.sh → status.sh` on a 2.9.0 box, confirm the Python path, `maxminddb` import, Telegraf workaround (Redmine #16674) and dashboards; record results in the upgrade guide
+- [ ] Retire the legacy pfSense-side scripts (`setup_forwarder_monitoring.sh`, `suricata-restart-hook.sh`, `suricata-restart-with-forwarder.sh`, `unified-monitoring-watchdog.sh`, `suricata-eve-forwarder.sh`): they hardcode `python3.11` and use `killall python3.11`
+- [ ] Install the watchdog cron through the pfSense Cron package (config.xml-backed) instead of root's crontab, so it is in backups and survives a restore
+- [ ] `plugins/telegraf_pfifgw.php`: replace the legacy `$config` global with `config_get_path()`; guard undefined variables under PHP 8.5
+- [ ] `apply-suricata-drop-rules.sh` / `enable-selective-blocking.sh`: stop hardcoding instance names and writing into pfSense-managed rules files; drive drops through SID Mgmt
+- [ ] `status.sh`: probe Logstash's UDP port with `nc -u` (the TCP probe can never succeed); drop the `lsof` dependency (not in pfSense base)
+- [ ] Suricata 8 readiness: detect the package version and warn about the DNS EVE v3 change; update DNS panels
 - [ ] **OpenSearch security**: enable the security plugin (auth + TLS), bind to a management interface, restrict ufw 9200 by source — today the index is unauthenticated and reachable
 - [ ] Verify OpenSearch tarball checksum during install
 - [ ] Single shared config loader (`lib/config.sh`) so every script agrees on `PFSENSE_USER`, `SIEM_SSH_USER`, `OPENSEARCH_HOST` — no more personal-network defaults
@@ -90,7 +99,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Highest-value contributions right now: O
 
 ---
 
-**Last Updated**: August 29, 2026
+**Last Updated**: September 19, 2026
 **Maintainer**: [ChiefGyk3D](https://github.com/ChiefGyk3D)
 **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
 **License**: MPL 2.0

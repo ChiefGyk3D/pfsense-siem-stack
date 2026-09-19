@@ -78,7 +78,7 @@ fi
 
 # Logstash
 echo -n "Checking Logstash port... "
-if nc -z -w2 "$SIEM_HOST" "$LOGSTASH_UDP_PORT" 2>/dev/null; then
+if nc -z -u -w2 "$SIEM_HOST" "$LOGSTASH_UDP_PORT" 2>/dev/null; then
     print_status 0 "Logstash UDP port $LOGSTASH_UDP_PORT is listening"
 else
     print_status 1 "Logstash UDP port $LOGSTASH_UDP_PORT is NOT accessible"

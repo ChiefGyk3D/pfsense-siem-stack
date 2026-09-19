@@ -1,341 +1,200 @@
-# Fixing "No Data" in Grafana Dashboard
+# Fixing "No Data" in Grafana Dashboards
 
 ## Problem Overview
 
-The most common issue users face is Grafana dashboard panels showing "No Data" even though:
-- ✅ Suricata is running and generating events
-- ✅ Forwarder is sending data
-- ✅ Logstash is receiving events  
-- ✅ OpenSearch has documents
+Panels show "No Data" even though Suricata is running, the forwarder is sending,
+Logstash is receiving and OpenSearch holds documents. This page is the single
+triage for that situation; [TROUBLESHOOTING.md](TROUBLESHOOTING.md) only
+summarises it.
 
-This guide explains the root causes and solutions.
+Before anything else, confirm you really are in this situation:
+
+```bash
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_count' | jq .count
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc' \
+  | jq '.hits.hits[0]._source | {ts: ."@timestamp", event_type, src_ip, in_iface}'
+```
+
+If the count is 0 or the latest event is stale, the problem is upstream: see the
+Forwarder, Logstash and auto-create sections of
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md). If recent documents exist, continue.
+
+`./scripts/diagnose-and-repair.sh` performs most of the checks below and reports
+which one failed.
 
 ## Root Causes
 
-### 1. Datasource Variable Not Resolved
+### 1. Panels Point at a Datasource That Does Not Exist
 
-**Symptom**: ALL panels show "No Data"
+**Symptom:** *all* panels show "No Data" or a red "datasource not found" corner.
 
-**Cause**: Dashboard uses `${DS_OPENSEARCH}` variable but no datasource is configured
+**Cause:** the dashboard JSON was imported in a way that did not resolve the
+datasource. The shipped dashboards use a `${DS_OPENSEARCH}` template variable so
+they can be imported anywhere.
 
-**How to identify**:
+**How to identify:**
 ```bash
-# Check if dashboard is using a variable
-curl -s -u admin:admin "http://localhost:3000/api/dashboards/uid/suricata-complete" | \
-  jq '.dashboard.panels[0].datasource'
-
-# If you see: {"type": "grafana-opensearch-datasource", "uid": "${DS_OPENSEARCH}"}
-# This is the problem!
+curl -s -u admin:<password> 'http://<SIEM_IP>:3000/api/dashboards/uid/suricata_ids_ips' \
+  | jq '.dashboard.panels[0].datasource'
+# problem if uid is "${DS_OPENSEARCH}" or does not match one of:
+curl -s -u admin:<password> 'http://<SIEM_IP>:3000/api/datasources' \
+  | jq '.[] | select(.type=="grafana-opensearch-datasource") | {name, uid}'
 ```
 
-**Fix**:
-1. Get your actual datasource UID:
-   ```bash
-   curl -s -u admin:admin "http://localhost:3000/api/datasources" | \
-     jq '.[] | select(.type == "grafana-opensearch-datasource") | {name, uid}'
-   ```
+**Fix:** re-import through `./setup.sh` (step 5). It removes `__inputs`, sets
+the uid to `suricata_ids_ips` / `suricata_per_interface`, and rewrites every
+panel's datasource to the real OpenSearch datasource uid, so there is nothing to
+edit by hand. If you must import through the Grafana UI, choose your OpenSearch
+datasource in the import dialog's dropdown.
 
-2. Replace variable with actual UID in dashboard JSON:
-   ```bash
-   cd dashboards/
-   sed 's/\${DS_OPENSEARCH}/bf53unpmdj0u8c/g' "Suricata IDS_IPS Dashboard.json" > "Suricata IDS_IPS Dashboard_fixed.json"
-   ```
-   (Replace `bf53unpmdj0u8c` with your actual UID)
+### 2. Datasource Misconfigured
 
-3. Re-import dashboard:
-   ```bash
-   curl -X POST -H "Content-Type: application/json" -u admin:admin \
-     "http://localhost:3000/api/dashboards/db" \
-     -d @<(jq 'del(.id) | {dashboard: ., overwrite: true}' "Suricata IDS_IPS Dashboard_fixed.json")
-   ```
+**Symptom:** the datasource "Save & test" is red, or green but every query
+returns nothing.
 
-### 2. Field Structure Mismatch
+Check in Connections → Data sources → your OpenSearch datasource:
 
-**Symptom**: Some panels work, others show "No Data"
+| Setting | Value |
+|---------|-------|
+| URL | `http://localhost:9200` (Grafana and OpenSearch on the same host) or `http://<SIEM_IP>:9200` |
+| Index name | `suricata-*` (`pfblockerng-*` for the pfBlockerNG datasource) |
+| Pattern | No pattern |
+| Time field name | `@timestamp` |
+| Flavor / Version | OpenSearch / what `curl http://<SIEM_IP>:9200` reports (2.19.4 with `install.sh`) |
+| Log message field | leave empty |
 
-**Cause**: Dashboard queries use different field paths than actual data structure
+### 3. Time Range
 
-There are two possible data structures:
+**Symptom:** the dashboard is empty on "Last 24 hours" but a wider or narrower
+range shows data.
 
-#### Flat Structure (RECOMMENDED)
-```json
-{
-  "@timestamp": "2025-11-26T20:14:51.920Z",
-  "event_type": "alert",
-  "src_ip": "75.188.212.77",
-  "dest_ip": "149.154.167.220",
-  "alert": {
-    "signature": "ET CINS Active Threat Intelligence",
-    "severity": 3
-  }
-}
-```
-Dashboard queries: `event_type`, `src_ip`, `alert.signature`
+Compare the dashboard's range with the latest event timestamp from the check at
+the top. Common cases: the forwarder was only just (re)started and Suricata is
+quiet; the SIEM server's clock is wrong (`timedatectl`); or pfSense's clock is
+wrong, which puts events in the future where a "Last N" range never looks.
+`@timestamp` is taken from Suricata's own timestamp, so a skewed pfSense clock
+shows up here.
 
-#### Nested Structure (OLD - NOT RECOMMENDED)
-```json
-{
-  "@timestamp": "2025-11-26T20:14:51.920Z",
-  "suricata": {
-    "eve": {
-      "event_type": "alert",
-      "src_ip": "75.188.212.77",
-      "alert": {
-        "signature": "ET CINS Active Threat Intelligence"
-      }
-    }
-  }
-}
-```
-Dashboard queries: `suricata.eve.event_type`, `suricata.eve.src_ip`
+### 4. Field Name Mismatch
 
-**How to identify which structure you have**:
+**Symptom:** some panels work, others (usually the terms/pie panels) are empty.
+
+Events are indexed **flat**: `event_type`, `src_ip`, `in_iface`, `alert.signature`,
+`geoip_src.location`, and so on, at the document root. Confirm:
+
 ```bash
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | \
-  jq '.hits.hits[0]._source | keys[0:10]'
-
-# Flat structure: ["@timestamp", "event_type", "src_ip", "dest_ip", "alert"]
-# Nested structure: ["@timestamp", "suricata"]
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc' | jq '.hits.hits[0]._source | keys'
+# expected: ["@timestamp", "alert", "dest_ip", "dest_port", "event_type", "flow_id", "in_iface", "proto", "src_ip", ...]
 ```
 
-**Fix for nested → flat conversion**:
+Then check the field *type* the aggregation needs. The index template maps the
+aggregated fields as `keyword` (no `.keyword` suffix needed), `alert.signature`
+as `text` with a `.keyword` sub-field, and `geoip_*.location` as `geo_point`:
 
-1. Update Logstash config (`/etc/logstash/conf.d/suricata.conf`):
-   ```ruby
-   filter {
-     # Parse JSON directly to root level
-     if [event][original] {
-       json {
-         source => "[event][original]"
-       }
-     } else if [message] {
-       json {
-         source => "message"
-       }
-     }
-     
-     # Handle timestamp
-     if [timestamp] {
-       date {
-         match => [ "timestamp", "ISO8601" ]
-         target => "@timestamp"
-       }
-     }
-     
-     mutate {
-       remove_field => ["message", "[event][original]"]
-     }
-   }
-   ```
-
-2. Restart Logstash:
-   ```bash
-   sudo systemctl restart logstash
-   ```
-
-3. Wait for new data to flow with flat structure
-
-4. Update dashboard if needed (should already use flat structure)
-
-### 3. Alert Events Not Forwarded
-
-**Symptom**: DNS, TLS, HTTP panels work but alert panels empty
-
-**Cause**: Forwarder starts tailing from EOF (end of file), missing historical alerts
-
-**Why this happens**:
-The forwarder uses `f.seek(0, 2)` to position at end of file. This is intentional - we don't want to re-send gigabytes of old logs every time the forwarder restarts. However, this means:
-- Alerts that existed BEFORE forwarder started won't be indexed
-- Only NEW alerts (after forwarder starts) will appear
-
-**How to verify**:
 ```bash
-# Check when forwarder started
-ssh root@192.168.1.1 "ps -o lstart -p \$(pgrep -f forward-suricata)"
-
-# Check alert timestamps in eve.json
-ssh root@192.168.1.1 "grep '\"event_type\":\"alert\"' /var/log/suricata/suricata_*/eve.json | \
-  jq -r '.timestamp' | sort"
-
-# If all alerts are BEFORE forwarder start time, they won't be in OpenSearch
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_mapping' \
+  | jq '.[].mappings.properties | {event_type, in_iface, sig: .alert.properties.signature, loc: .geoip_src.properties.location}' | head -40
 ```
 
-**Fix**:
-Wait for NEW alerts to be generated, or trigger test alerts:
+If a field shows `"type": "text"` where the panel aggregates on it directly, the
+index was created before the template was applied. Apply the template
+(`./scripts/install-opensearch-config.sh`) and either wait for tomorrow's index
+or delete/reindex today's. Field-by-field reference:
+[FIELD_REFERENCE.md](../reference/FIELD_REFERENCE.md).
+
+### 5. Alert Panels Empty, Everything Else Fine
+
+**Symptom:** DNS, TLS, HTTP and flow panels populate; alert panels do not.
+
+**Cause A – no alerts yet.** The forwarder tails from the end of `eve.json`, so
+alerts logged before it started are never indexed. Check:
 ```bash
-# Test with Telegram (if not blocked)
-curl -s https://api.telegram.org > /dev/null
-
-# Test with suspicious HTTP patterns
-for i in {1..5}; do curl -s http://testmynids.org/uid/index.html > /dev/null; sleep 1; done
+ssh admin@<PFSENSE_IP> 'grep -h "\"event_type\":\"alert\"" /var/log/suricata/*/eve.json | tail -3 | jq -r .timestamp'
+ssh admin@<PFSENSE_IP> 'ps -o lstart= -p $(cat /var/run/suricata_forwarder.child.pid)'
 ```
+If every alert predates the forwarder start, wait, or generate a benign test
+alert (for example fetch `http://testmynids.org/uid/index.html` from a LAN host;
+ET Open rule 2100498 fires on it).
 
-**Permanent solution - Add custom test rules**:
-```bash
-# On pfSense, add test rule
-ssh root@192.168.1.1
-echo 'alert http any any -> any any (msg:"TEST ALERT: HTTP Traffic Detected"; sid:9000001; rev:1;)' >> \
-  /usr/local/etc/suricata/suricata_55721_ix0/rules/custom.rules
+**Cause B – IPS drops not logged as alerts.** In inline IPS mode Suricata can log
+blocked traffic as `event_type: "drop"` only. In pfSense: Services → Suricata →
+Interface → *EVE Output Settings*, make sure **Alert** is among the EVE log types.
+Blocked alerts then carry `alert.action: "blocked"`.
 
-# Reload rules
-/usr/local/bin/suricatasc -c 'reload-rules' /var/run/suricata-ctrl-socket-55721
+### 6. pfBlockerNG Panels Empty
 
-# Generate test traffic
-curl http://example.com
-```
-
-### 4. Time Range Issues
-
-**Symptom**: Dashboard shows "No Data" with default 24h range, but data exists
-
-**Cause**: 
-- Logstash config changed recently (e.g., nested → flat)
-- Old data (24 hours) is one structure, new data (5 minutes) is different structure
-- Dashboard queries match only one structure
-
-**How to identify**:
-```bash
-# Check data distribution
-curl -s "http://localhost:9200/_search?size=0" -H 'Content-Type: application/json' \
-  -d '{"aggs":{"has_nested":{"filter":{"exists":{"field":"suricata.eve.event_type"}}},"has_flat":{"filter":{"exists":{"field":"event_type"}}}}}'
-
-# Example output:
-# nested: 1,110,079 docs (98% of data)
-# flat: 20,240 docs (2% of data - last few minutes)
-```
-
-**Fix**:
-1. **Quick fix**: Adjust Grafana time range to match when new data started flowing
-   - Change from "Last 24 hours" to "Last 5 minutes"
-   - Gradually increase as more data accumulates
-
-2. **Permanent fix**: Choose one structure and stick with it
-   - Recommended: Flat structure (simpler, less nesting)
-   - Update Logstash config to flatten
-   - Wait for 24 hours of new flat data
-   - OR reindex old data (advanced, see below)
-
-### 5. IPS Mode - Drops vs Alerts
-
-**Symptom**: Events flow but no alerts, using IPS mode
-
-**Cause**: Rules set to `drop` action instead of `alert`
-
-Suricata IPS mode can:
-- DROP and log as `event_type: "drop"` 
-- DROP and log as `event_type: "alert"` (with EVE alert logging enabled)
-- ALERT without dropping
-
-**How to identify**:
-```bash
-# Check rule actions
-ssh root@192.168.1.1 "head -20 /usr/local/etc/suricata/suricata_*/rules/suricata.rules | grep -E '^(alert|drop)'"
-
-# All drop? Rules are in IPS mode
-# All alert? Rules are in IDS mode
-```
-
-**Fix**:
-In pfSense GUI:
-1. Go to **Services** > **Suricata** > **Interface: ix0 (WAN)**
-2. Check **EVE Output Settings** tab
-3. Ensure **Alert** is enabled in EVE log types
-4. This makes drops also log as alerts for dashboard visibility
-
-## Prevention
-
-### Best Practices
-
-1. **Use flat structure**: Simpler queries, easier debugging
-2. **Deploy with setup.sh**: Ensures correct config from start
-3. **Monitor forwarder**: Use `./scripts/status.sh` regularly
-4. **Test after changes**: Always verify dashboard after Logstash config updates
-5. **Document datasource UID**: Save it in config.env for easy reference
-
-### Monitoring Script
-
-Add to cron:
-```bash
-# /etc/cron.hourly/check-suricata-dashboard
-#!/bin/bash
-ALERT_COUNT=$(curl -s "http://localhost:9200/suricata-*/_search?size=0" -H 'Content-Type: application/json' \
-  -d '{"query":{"bool":{"must":[{"term":{"event_type.keyword":"alert"}},{"range":{"@timestamp":{"gte":"now-1h"}}}]}}}' | \
-  jq '.hits.total.value')
-
-if [ "$ALERT_COUNT" -eq 0 ]; then
-  echo "WARNING: No alerts in last hour - check dashboard and forwarder"
-  # Send notification
-fi
-```
+Those panels read `pfblockerng-*`, which is written by Telegraf on pfSense, not
+by the Suricata forwarder. Check `curl -s 'http://<SIEM_IP>:9200/pfblockerng-*/_count'`.
+Zero means Telegraf's `[[outputs.opensearch]]` is not configured
+([TELEGRAF_PFBLOCKER_SETUP.md](../pfsense/TELEGRAF_PFBLOCKER_SETUP.md)); a stale
+latest event usually means pfSense's `filterlog` stopped writing after log
+rotation ([PFSENSE_FILTERLOG_ROTATION_FIX.md](PFSENSE_FILTERLOG_ROTATION_FIX.md)).
 
 ## Verification
 
-After fixes, verify everything works:
-
 ```bash
-# 1. Check data structure
-curl -s "http://localhost:9200/suricata-*/_search?size=1&sort=@timestamp:desc" | \
-  jq '.hits.hits[0]._source | keys'
+# 1. Flat documents
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search?size=1&sort=@timestamp:desc' | jq '.hits.hits[0]._source | keys'
 
-# 2. Check recent alerts
-curl -s "http://localhost:9200/suricata-*/_search?size=0" -H 'Content-Type: application/json' \
-  -d '{"query":{"bool":{"must":[{"term":{"event_type.keyword":"alert"}},{"range":{"@timestamp":{"gte":"now-5m"}}}]}}}' | \
-  jq '.hits.total.value'
+# 2. Recent alerts
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_count' -H 'Content-Type: application/json' \
+  -d '{"query":{"bool":{"filter":[{"term":{"event_type":"alert"}},{"range":{"@timestamp":{"gte":"now-1h"}}}]}}}' | jq .count
 
-# 3. Check datasource in dashboard
-curl -s -u admin:admin "http://localhost:3000/api/dashboards/uid/suricata-complete" | \
-  jq '.dashboard.panels[0].datasource.uid'
+# 3. Per-interface distribution (the Per-Interface dashboard's main query)
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search' -H 'Content-Type: application/json' \
+  -d '{"size":0,"query":{"range":{"@timestamp":{"gte":"now-15m"}}},"aggs":{"ifaces":{"terms":{"field":"in_iface"}}}}' \
+  | jq '.aggregations.ifaces.buckets'
 
-# 4. Open Grafana and verify panels load
-# http://localhost:3000/d/suricata-complete
+# 4. Dashboard datasource resolved
+curl -s -u admin:<password> 'http://<SIEM_IP>:3000/api/dashboards/uid/suricata_ids_ips' | jq '.dashboard.panels[0].datasource.uid'
+
+# 5. Open http://<SIEM_IP>:3000/d/suricata_ids_ips
 ```
 
-All panels should show data within your selected time range!
+## Prevention
 
-## Advanced: Reindexing Old Data
+1. Deploy with `./setup.sh`; it applies the template before data flows and imports dashboards with the datasource resolved.
+2. Run `./scripts/status.sh` after any change to Logstash, OpenSearch or the forwarder.
+3. Keep the pfSense and SIEM clocks in sync (both should use NTP).
+4. When editing panels, aggregate on the `keyword`-mapped fields listed in [FIELD_REFERENCE.md](../reference/FIELD_REFERENCE.md).
 
-If you need historical data with new structure:
+---
+
+## Appendix: Migrating from the old nested layout (pre-2025-11)
+
+*Historical. Only relevant if your OpenSearch still holds indices written by a
+pipeline from before November 2025.*
+
+Early versions of this project's Logstash pipeline nested every field under
+`suricata.eve.*` (`suricata.eve.event_type`, `suricata.eve.src_ip`, ...). The
+current pipeline, dashboards and index template all use the flat layout, and a
+mix of both in one index pattern makes panels show partial data depending on the
+time range.
+
+Check whether any nested documents remain:
+```bash
+curl -s 'http://<SIEM_IP>:9200/suricata-*/_search?size=0' -H 'Content-Type: application/json' \
+  -d '{"aggs":{"nested":{"filter":{"exists":{"field":"suricata.eve.event_type"}}},"flat":{"filter":{"exists":{"field":"event_type"}}}}}' \
+  | jq '.aggregations | {nested: .nested.doc_count, flat: .flat.doc_count}'
+```
+
+If `nested` is non-zero, first make sure the deployed pipeline is current
+(`./setup.sh` step 3 redeploys `config/logstash-suricata.conf`). Then either
+wait for the old indices to age out under your retention policy, delete them,
+or reindex them into the flat shape:
 
 ```bash
-# Create reindex script
-curl -X POST "http://localhost:9200/_reindex" -H 'Content-Type: application/json' -d'
+curl -X POST 'http://<SIEM_IP>:9200/_reindex?wait_for_completion=false' -H 'Content-Type: application/json' -d '
 {
-  "source": {
-    "index": "suricata-*",
-    "query": {
-      "exists": {
-        "field": "suricata.eve.event_type"
-      }
-    }
-  },
-  "dest": {
-    "index": "suricata-reindexed"
-  },
-  "script": {
-    "source": "ctx._source = ctx._source.suricata.eve; ctx._source.remove(\"suricata\")",
-    "lang": "painless"
-  }
-}
-'
-
-# Monitor progress
-curl "http://localhost:9200/_tasks?detailed=true&actions=*reindex"
+  "source": { "index": "suricata-*", "query": { "exists": { "field": "suricata.eve.event_type" } } },
+  "dest":   { "index": "suricata-reindexed" },
+  "script": { "lang": "painless",
+              "source": "ctx._source.putAll(ctx._source.suricata.eve); ctx._source.remove(\"suricata\")" }
+}'
+curl -s 'http://<SIEM_IP>:9200/_tasks?detailed=true&actions=*reindex' | jq
 ```
 
-**Warning**: This can take hours for large indices!
-
-## Summary
-
-The "No Data" issue has multiple causes:
-1. **Datasource variable not resolved** → Replace with actual UID
-2. **Field structure mismatch** → Update Logstash to flatten
-3. **Historical alerts not forwarded** → Wait for new alerts
-4. **Time range too broad** → Narrow to recent data
-5. **IPS mode logging** → Enable EVE alert output
-
-Most issues are solved by:
-- Using the provided Logstash config (flat structure)
-- Fixing datasource UID in dashboard JSON
-- Adjusting time range to match data availability
-
-The dashboard itself works perfectly - it's all about data structure alignment!
+`suricata-reindexed` matches the `suricata-*` pattern, so it receives the flat
+template mapping and is picked up by the dashboards. Reindexing millions of
+documents takes hours; deleting the old daily indices is usually the better
+trade.

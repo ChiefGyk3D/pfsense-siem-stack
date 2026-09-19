@@ -1,53 +1,27 @@
 # pfSense SIEM Stack - Management Console
 
-> **Complete command-line interface** for managing your pfSense monitoring infrastructure
+> Menu-driven front end for the scripts in this repository
 
 ## Overview
 
-The `pfsense-siem` management console provides a unified interface for installing, configuring, and managing your entire pfSense SIEM stack. No need to remember multiple scripts or commands - everything is accessible from one interactive menu.
+`pfsense-siem` is an interactive menu that wraps `install.sh`, `setup.sh` and the
+utilities in `scripts/`. Every option maps to a script you can also run directly; the
+console just saves you remembering names and arguments. This page describes what each
+option does and which script it calls.
+
+For the end-to-end first install, follow [QUICK_START.md](../../QUICK_START.md) or the
+[New User Checklist](../install/NEW_USER_CHECKLIST.md); this page is the reference you
+come back to afterwards.
 
 ## Quick Start
 
 ```bash
-# Make executable
 chmod +x pfsense-siem
-
-# Run the management console
 ./pfsense-siem
 ```
 
----
-
-## Features
-
-### 🚀 Installation & Setup
-- **One-command SIEM installation** - OpenSearch, Logstash, Grafana
-- **Automated pfSense deployment** - Forwarder and watchdog setup
-- **OpenSearch configuration** - Index templates and settings
-- **Dashboard import guidance** - All three dashboards with instructions
-
-### 🔧 System Management
-- **Health checks** - Comprehensive status of all components
-- **Service restart** - Graceful restart of SIEM services
-- **Log viewing** - Real-time logs from any component
-- **Retention management** - Adjust data retention policies
-
-### 📡 pfSense Operations
-- **Forwarder status** - Check if forwarder is running
-- **Forwarder restart** - Stop and start forwarder
-- **Forwarder logs** - Real-time forwarder activity
-- **Connectivity testing** - Verify pfSense connection
-
-### 🛠️ Advanced Features
-- **End-to-end verification** - Test complete data flow
-- **Custom SID management** - Configure Suricata signatures
-- **Telegram alerts** - Setup notification integration
-- **Backup/Restore** - Save and restore configurations
-
-### 📚 Documentation Access
-- **Quick Start Guide** - View setup documentation
-- **Troubleshooting** - Access problem-solving guides
-- **Configuration display** - Show current settings
+Options 1 and 6 need root (`sudo ./pfsense-siem`). Everything else runs as your normal
+user, using SSH to reach pfSense as `PFSENSE_USER`.
 
 ---
 
@@ -57,15 +31,15 @@ chmod +x pfsense-siem
 ═══ Main Menu ═══
 
 Installation:
-  1) Install SIEM Stack
-  2) Deploy to pfSense
-  3) Configure OpenSearch
-  4) Import Dashboards
+  1) Install SIEM Stack (OpenSearch + Logstash + Grafana)
+  2) Deploy to pfSense (Forwarder + Watchdog)
+  3) Configure OpenSearch (Index templates + Settings)
+  4) Import Dashboards to Grafana
 
 Management:
-  5) Check System Status
-  6) Restart Services
-  7) View Logs
+  5) Check System Status (Health check all components)
+  6) Restart Services (OpenSearch + Logstash + Grafana)
+  7) View Logs (OpenSearch / Logstash / Grafana / Forwarder)
   8) Configure Retention Policy
 
 pfSense Operations:
@@ -75,9 +49,9 @@ pfSense Operations:
  12) Test pfSense Connectivity
 
 Advanced:
- 13) Verify Data Flow
- 14) Configure Custom SIDs
- 15) Setup Telegram Alerts
+ 13) Verify Data Flow (End-to-end test)
+ 14) Configure Custom SIDs (Suricata rules)
+ 15) Search Suricata Alerts Mentioning Telegram (app)
  16) Backup Configuration
  17) Restore Configuration
 
@@ -92,791 +66,372 @@ Checks:
   0) Exit
 ```
 
----
-
-## Detailed Feature Guide
-
-### Installation Functions
-
-#### 1. Install SIEM Stack
-
-**What it does:**
-- Checks system requirements (RAM, disk, OS)
-- Interactive configuration wizard
-- Installs OpenSearch 2.x
-- Installs Logstash 8.x
-- Installs Grafana 12.x
-- Configures firewall rules
-- Sets up data retention
-
-**Requirements:**
-- Root/sudo access
-- Ubuntu 22.04+ or Debian 11+
-- 8GB+ RAM (16GB recommended)
-- 100GB+ disk space
-
-**Usage:**
-```bash
-# From menu: Option 1
-# Or directly:
-sudo ./install.sh
-```
-
-**Interactive prompts:**
-1. Monitoring mode (Suricata / Telegraf / Both)
-2. SIEM server IP (auto-detected)
-3. pfSense IP address
-4. Data retention (days)
-5. Grafana admin password
-
-**Output:**
-- Generates `/tmp/deploy-to-pfsense.sh` for pfSense deployment
-- Creates installation log at `/var/log/pfsense-monitoring-install.log`
-
-#### 2. Deploy to pfSense
-
-**What it does:**
-- Tests SSH connectivity to pfSense
-- Deploys Suricata forwarder Python script
-- Installs watchdog for auto-restart
-- Configures cron job for monitoring
-- Starts forwarder and verifies
-
-**Requirements:**
-- `config.env` must be configured
-- SSH access to pfSense (key or password)
-- Python 3.11 on pfSense
-- Suricata installed and running
-
-**Usage:**
-```bash
-# From menu: Option 2
-# Or directly:
-./setup.sh
-```
-
-**Verification:**
-- Shows forwarder PID
-- Lists monitored interfaces (eve.json files)
-- Checks initial event count in OpenSearch
-
-#### 3. Configure OpenSearch
-
-**What it does:**
-- Creates index templates with geo_point mapping
-- Enables auto-create for `suricata-*` indices
-- Configures field mappings for proper geomap display
-- Sets up cluster settings
-
-**Requirements:**
-- OpenSearch must be running
-- Network access to OpenSearch (port 9200)
-
-**Usage:**
-```bash
-# From menu: Option 3
-# Or directly:
-./scripts/install-opensearch-config.sh
-```
-
-**Important:**
-This must be run **before** any Suricata data flows, otherwise you'll need to reindex.
-
-#### 4. Import Dashboards
-
-**What it does:**
-- Shows available dashboards with descriptions
-- Provides step-by-step import instructions
-- Opens dashboard import documentation
-
-**Dashboards:**
-1. **pfsense_pfblockerng_system.json** (InfluxDB + OpenSearch-pfBlockerNG)
-   - pfSense system metrics (InfluxDB)
-   - Network performance (InfluxDB)
-   - pfBlockerNG statistics (OpenSearch-pfBlockerNG)
-
-2. **Suricata_IDS_IPS.json** (OpenSearch)
-   - WAN-side security
-   - Attack visualization
-   - Geographic mapping
-
-3. **Suricata_Per_Interface.json** (OpenSearch)
-   - Per-VLAN monitoring
-   - Dynamic interface sections
-   - Internal threat detection
-
-**Manual steps:**
-1. Open Grafana at `http://SIEM_IP:3000`
-2. Login with admin credentials
-3. Go to: Dashboards → Import
-4. Upload JSON file
-5. Select datasource
-6. Click Import
+If `config.env` is missing, any option that needs it offers to create one from
+`config.env.example` and then returns to the menu so you can edit it.
 
 ---
 
-### Management Functions
+## Installation (1-4)
 
-#### 5. Check System Status
+### 1. Install SIEM Stack
 
-**Comprehensive health check:**
+Runs `sudo ./install.sh` on the SIEM server: checks RAM/disk/OS, walks through an
+interactive configuration (monitoring mode, SIEM IP, pfSense IP, retention days, Grafana
+password), installs OpenSearch 2.x, Logstash 8.x and Grafana 12.x, opens firewall ports,
+and applies the retention policy. Writes a transcript to
+`/var/log/pfsense-monitoring-install.log`.
 
-**SIEM Server:**
-- ✓ OpenSearch connectivity and cluster health
-- ✓ Auto-create index setting verification
-- ✓ Logstash UDP port listening
-- ✓ Index list and document counts
-- ✓ Latest event timestamp
+Requirements: root, Ubuntu 22.04+/Debian 11+, 8 GB RAM (16 GB recommended), 100 GB disk.
+Details: [INSTALL_SIEM_STACK.md](../install/INSTALL_SIEM_STACK.md).
 
-**pfSense:**
-- ✓ Forwarder process running
-- ✓ Watchdog cron job installed
-- ✓ Monitored interfaces list
-- ✓ Recent forwarder activity
+### 2. Deploy to pfSense
 
-**Data Flow:**
-- ✓ Event count by day
-- ✓ Events per second rate
-- ✓ Data freshness (last event age)
+Runs `./setup.sh`. Against pfSense it detects the Python interpreter, deploys
+`/usr/local/bin/forward-suricata-eve.py` with your `config.env` values baked in, installs
+the rc.d service `/usr/local/etc/rc.d/suricata_forwarder.sh` (boot start), installs the
+watchdog `/usr/local/bin/suricata-forwarder-watchdog.sh` in root's crontab (every minute),
+starts the service and confirms a PID. It also applies the OpenSearch template and
+deploys the Logstash pipeline, so it is safe and normal to re-run it after a pfSense
+upgrade or a config change.
 
-**Usage:**
-```bash
-# From menu: Option 5
-# Or directly:
-./scripts/status.sh
-```
+Requirements: `config.env` filled in, SSH to pfSense as `PFSENSE_USER` (key auth
+recommended), Suricata installed and running, Python 3 on pfSense (ships with pfSense).
+Details: [INSTALL_PFSENSE_FORWARDER.md](../install/INSTALL_PFSENSE_FORWARDER.md) and
+[SURICATA_FORWARDER_MONITORING.md](SURICATA_FORWARDER_MONITORING.md).
 
-**Exit codes:**
-- `0` - All checks passed
-- `>0` - Number of failed checks
+### 3. Configure OpenSearch
 
-#### 6. Restart Services
+Runs `./scripts/install-opensearch-config.sh`: applies the `suricata-*` index template
+(geo_point mapping for the map panels), enables `action.auto_create_index` for
+`suricata-*` and `pfblockerng-*`, and sets cluster settings. Run this **before** the first
+events arrive; indices created without the template need reindexing to get geo_point.
+setup.sh (option 2) does this too, so you only need option 3 on its own if you skipped
+setup.sh or changed the template.
 
-**Restarts SIEM services in proper order:**
+### 4. Import Dashboards
 
-1. **OpenSearch** (wait for cluster to stabilize)
-2. **Logstash** (wait for pipeline to load)
-3. **Grafana** (wait for web UI)
+Prints the list of dashboards and the manual Grafana import steps (Dashboards > Import >
+upload JSON > pick datasource), then opens
+[INSTALL_DASHBOARD.md](../install/INSTALL_DASHBOARD.md). It does not call the Grafana API.
 
-**Requirements:**
-- Root/sudo access
+Dashboards shipped in `dashboards/` (full inventory and datasource requirements in
+[dashboards/README.md](../../dashboards/README.md)):
 
-**Usage:**
-```bash
-# From menu: Option 6
-# Or directly:
-sudo ./scripts/restart-services.sh
-```
+| File | Datasource(s) | Shows |
+|------|---------------|-------|
+| `Suricata_IDS_IPS.json` | OpenSearch (`suricata-*`) | WAN-side alerts, top signatures, GeoIP map |
+| `Suricata_Per_Interface.json` | OpenSearch (`suricata-*`) | per-interface/VLAN alert views driven by `in_iface` |
+| `pfsense_pfblockerng_system.json` | InfluxDB + OpenSearch (`pfblockerng-*`) | pfSense system metrics, interfaces, pfBlockerNG blocks/DNSBL |
+| `windows_exporter.json` | Prometheus | Windows hosts via windows_exporter |
+| `prometheus_stats.json` | Prometheus | Prometheus server self-metrics |
+| `docker_container_monitoring.json` | Prometheus (cAdvisor) | container CPU/memory/network |
+| `wazuh/*.json` | OpenSearch (Wazuh indexer) | security overview, vulnerability detection, FIM (see `dashboards/wazuh/README.md`) |
 
-**Verification:**
-- Checks service status after each restart
-- Reports failures with log viewing commands
-
-#### 7. View Logs
-
-**Real-time log viewing:**
-
-**Options:**
-1. **OpenSearch** - `journalctl -u opensearch -f`
-2. **Logstash** - `journalctl -u logstash -f`
-3. **Grafana** - `journalctl -u grafana-server -f`
-4. **Forwarder** - SSH to pfSense, tail system log
-5. **All SIEM** - Combined view of all services
-
-**Usage:**
-- Select log source from menu
-- Press `Ctrl+C` to exit log view
-- Automatically follows new entries
-
-**Troubleshooting tips:**
-- Look for `ERROR` or `WARN` messages
-- Check timestamps for recent issues
-- Watch for connection failures
-
-#### 8. Configure Retention Policy
-
-**Adjust data retention:**
-
-**What it does:**
-- Configures OpenSearch Index Lifecycle Management (ILM)
-- Sets delete_after period for old indices
-- Updates `config.env` with new retention
-
-**Default:** 30 days
-
-**Recommended:**
-- **Home lab:** 30-90 days
-- **Small business:** 90-180 days
-- **Enterprise:** 365+ days (regulatory compliance)
-
-**Disk calculation:**
-```
-Disk = Events/Day × Event_Size × Retention_Days
-
-Example:
-  10,000 events/day × 2KB × 90 days = 1.7GB
-  100,000 events/day × 2KB × 90 days = 17GB
-  1,000,000 events/day × 2KB × 90 days = 170GB
-```
-
-**Usage:**
-```bash
-# From menu: Option 8
-# Or directly:
-./scripts/configure-retention-policy.sh 90
-```
+The console's own list only names the first three; the others are imported the same way.
 
 ---
 
-### pfSense Operations
+## Management (5-8)
 
-#### 9. Check Forwarder Status
+### 5. Check System Status
 
-**What it checks:**
-- Forwarder process running (PID)
-- Monitored interfaces (lsof eve.json files)
-- Recent log activity (last 10 entries)
-- Watchdog cron job status
+Runs `./scripts/status.sh`, the single most useful command in the repository. It checks,
+in order:
 
-**Output example:**
+- **SIEM server:** OpenSearch reachable and cluster health; auto-create enabled for
+  `suricata-*` (and `pfblockerng-*`); Logstash UDP port listening; `suricata-*` index list
+  with document counts; total events; newest `@timestamp` and its age.
+- **pfBlockerNG:** `pfblockerng-*` document counts (IP block and DNSBL), newest event age.
+- **pfSense (over SSH):** forwarder process running with PID (flags duplicates); `eve.json`
+  files it has open; watchdog line in root's crontab; number of Suricata `eve.json` files
+  and whether they were written in the last 5 minutes; **filterlog health** (filter.log
+  age and whether `filterlog` has the file open, see
+  [PFSENSE_FILTERLOG_ROTATION_FIX.md](../troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md)).
+
+Exit code `0` means every check passed; otherwise `1`, with the count of failed checks and
+common fixes printed in the summary. Suitable for running from a SIEM-side cron.
+
+### 6. Restart Services
+
+Runs `sudo ./scripts/restart-services.sh`: restarts OpenSearch, waits for the cluster,
+then Logstash, then Grafana, reporting each service's status. Root required.
+
+### 7. View Logs
+
+Follows one log until Ctrl+C:
+
+| Choice | Command |
+|--------|---------|
+| 1 OpenSearch | `journalctl -u opensearch -f` |
+| 2 Logstash | `journalctl -u logstash -f` |
+| 3 Grafana | `journalctl -u grafana-server -f` |
+| 4 Forwarder | `ssh PFSENSE_USER@PFSENSE_HOST 'tail -f /var/log/system.log \| grep suricata'` |
+| 5 All SIEM | `journalctl -u opensearch -u logstash -u grafana-server -f` |
+
+Choice 4 shows the forwarder's and watchdog's syslog lines. Python tracebacks from a
+crashing forwarder go to `/var/log/suricata-forwarder.log` on pfSense instead; see the
+[day-2 table](SURICATA_FORWARDER_MONITORING.md#day-2-quick-reference).
+
+### 8. Configure Retention Policy
+
+Prompts for a number of days, runs `./scripts/configure-retention-policy.sh <DAYS>`, and
+writes the value back to `RETENTION_DAYS` in `config.env`.
+
+The script creates an OpenSearch **Index State Management (ISM)** policy named
+`delete-after-<DAYS>d` that deletes `suricata-*` indices once they reach that age, and
+attaches it to existing indices. (OpenSearch uses ISM; there is no Elasticsearch-style ILM
+here.) Run directly, the script defaults to 90 days and takes an optional second argument
+for the index pattern, e.g. `./scripts/configure-retention-policy.sh 90 'pfblockerng-*'`.
+The `config.env` default is 30 days.
+
+Rough sizing: `events/day x bytes/event x days`. Measure with
+`curl -s http://<SIEM_IP>:9200/_cat/indices/suricata-*?v&h=index,docs.count,store.size`
+after a few days. Details and the policy-change caveats:
+[MULTI_INTERFACE_RETENTION.md](MULTI_INTERFACE_RETENTION.md).
+
+---
+
+## pfSense Operations (9-12)
+
+### 9. Check Forwarder Status
+
+Over SSH: finds the `forward-suricata-eve.py` PID, lists the `eve.json` files it has open
+(`lsof`), and shows the last 10 `suricata-forwarder` lines from `/var/log/system.log`.
+
 ```
 ✓ Forwarder is running
   PID: 12345
 
 Monitored interfaces:
-  • /var/log/suricata/suricata_ix055721/eve.json
-  • /var/log/suricata/suricata_lagg1.10020460/eve.json
-  • /var/log/suricata/suricata_lagg1.20049359/eve.json
+  • /var/log/suricata/suricata_igc012345/eve.json
+  • /var/log/suricata/suricata_igc167890/eve.json
+  • /var/log/suricata/suricata_lagg0.10024680/eve.json
 
-Recent activity:
-  Nov 27 10:15:23 forwarder: Sent 150 events to <SIEM_IP>:5140
+Recent activity (last 10 entries):
+  Sep 18 10:15:23 pfSense suricata-forwarder: Starting — N interface(s), target=<SIEM_IP>:5140, GeoIP=enabled
+  Sep 18 10:15:23 pfSense suricata-forwarder: Monitoring suricata_igc012345 (...) — GeoIP: enabled
 ```
 
-#### 10. Restart Forwarder
+If it is not running, use option 10; the watchdog will also restart it within a minute on
+its own.
 
-**When to use:**
-- Forwarder not running
-- Forwarder stuck or high CPU
-- After forwarder script update
-- After Suricata restart
+### 10. Restart Forwarder
 
-**Process:**
-1. Kills existing forwarder process
-2. Waits 2 seconds
-3. Starts new forwarder instance
-4. Verifies startup (PID check)
+If `/usr/local/etc/rc.d/suricata_forwarder.sh` exists (it does on any setup.sh deployment),
+runs `service suricata_forwarder.sh restart` on pfSense and confirms the new PID. On a box
+without the rc.d script it falls back to `pkill -f forward-suricata-eve` followed by a
+direct start; re-run `./setup.sh` to get the service installed properly.
 
-**Usage:**
+Use it after editing the forwarder or `config.env` (redeploy with option 2 first), after
+adding a Suricata interface (new `eve.json` files are discovered at start), or when the
+process is stuck. If the restart fails:
+
 ```bash
-# From menu: Option 10
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
+ssh admin@<PFSENSE_IP> 'tail -50 /var/log/suricata-forwarder.log'   # Python errors
+ssh admin@<PFSENSE_IP> 'tail -50 /var/log/system.log | grep suricata'
+ssh admin@<PFSENSE_IP> 'ls -la /usr/local/bin/forward-suricata-eve.py; head -1 /usr/local/bin/forward-suricata-eve.py'
 ```
 
-**Troubleshooting:**
-If forwarder fails to start, check:
-1. Python 3.11 available: `which python3.11`
-2. Script exists: `ls -la /usr/local/bin/forward-suricata-eve.py`
-3. Script executable: `chmod +x /usr/local/bin/forward-suricata-eve.py`
-4. Logs: `tail -50 /var/log/system.log | grep suricata`
+A shebang pointing at a Python that no longer exists (after a pfSense upgrade) is the
+usual cause; `./setup.sh` re-detects it.
 
-#### 11. View Forwarder Logs
+### 11. View Forwarder Logs
 
-**Real-time forwarder activity:**
+`tail -f /var/log/system.log | grep suricata` on pfSense until Ctrl+C. You will see
+startup lines, one `Monitoring ...` line per interface, `Rotation detected, reopening`
+when Suricata rotates a log, send errors, and `suricata-watchdog` lines when the watchdog
+had to restart the process.
 
-**Shows:**
-- Event sending confirmations
-- Connection errors to SIEM
-- Interface monitoring status
-- GeoIP enrichment results
-- Rotation handling events
+### 12. Test pfSense Connectivity
 
-**Usage:**
-```bash
-# From menu: Option 11
-```
+Four quick checks against `PFSENSE_HOST`: ICMP ping, non-interactive SSH as
+`PFSENSE_USER`, Suricata package present (`pkg info`), and a Python 3 interpreter
+(`which python3 || which python3.11`).
 
-**Press `Ctrl+C` to exit**
-
-**Log examples:**
-```
-suricata-forwarder: Started monitoring 15 interfaces
-suricata-forwarder: Sent 150 events to <SIEM_IP>:5140
-suricata-forwarder: GeoIP: 203.0.113.1 -> US, New York
-suricata-forwarder-watchdog: Forwarder running (PID: 12345, CPU: 2.5%)
-```
-
-#### 12. Test pfSense Connectivity
-
-**Comprehensive connectivity test:**
-
-**Tests:**
-1. **Ping** - Basic network reachability
-2. **SSH** - SSH access with key or password
-3. **Suricata** - Package installed check
-4. **Python 3.11** - Python interpreter available
-
-**Usage:**
-```bash
-# From menu: Option 12
-```
-
-**Output:**
 ```
 Testing connection to 192.168.1.1...
 
   Ping test... ✓
   SSH test... ✓
   Suricata installed... ✓
-  Python 3.11 available... ✓
+  Python 3 available... ✓
 ```
 
-**Troubleshooting:**
-- **Ping fails:** Firewall rule or routing issue
-- **SSH fails:** Enable SSH in pfSense: System → Advanced → Secure Shell
-- **Suricata not installed:** Install from Package Manager
-- **Python not found:** pfSense 2.7+ includes Python 3.11
+- Ping fails: routing or a pfSense rule blocking ICMP from the SIEM host.
+- SSH fails: enable SSH under System > Advanced > Secure Shell, and set up key auth
+  (`ssh-copy-id admin@<PFSENSE_IP>`); the check uses `BatchMode`, so password-only access
+  shows as a failure even if interactive SSH works.
+- Suricata missing: install from System > Package Manager.
+- Python missing: pfSense 2.7+ ships Python 3; otherwise `pkg install python311`.
+
+Option 21 (Preflight) does a more thorough version of this.
 
 ---
 
-### Advanced Functions
+## Advanced (13-17)
 
-#### 13. Verify Data Flow
+### 13. Verify Data Flow
 
-**End-to-end data flow test:**
+End-to-end check: OpenSearch reachable; `_count` on `suricata-*`; newest `@timestamp`;
+forwarder PID on pfSense. Then prints a test you run from a host behind pfSense:
 
-**Checks:**
-1. OpenSearch connectivity
-2. Event count in indices
-3. Latest event timestamp
-4. Forwarder running status
-
-**Usage:**
 ```bash
-# From menu: Option 13
+curl http://testmyids.com
 ```
 
-**Includes test alert generation:**
-```
-Run this from any machine behind pfSense:
-  curl http://testmyids.com
-```
+which triggers the `GPL ATTACK_RESPONSE id check returned root` signature; it should show
+up in Grafana within about 30 seconds.
 
-This generates a test IDS alert that should appear in Grafana within 30 seconds.
-
-**Output example:**
 ```
 1. OpenSearch connectivity... ✓
-2. Checking for events... ✓ 123,456 events
-3. Latest event age... ✓ 2024-11-27T10:15:30Z
+2. Checking for events... ✓ 123456 events
+3. Latest event age... ✓ 2026-09-18T10:15:30.000Z
 4. Forwarder status... ✓ Running (PID: 12345)
 ```
 
-#### 14. Configure Custom SIDs
+### 14. Configure Custom SIDs
 
-**Manage Suricata signature IDs:**
+Runs `./scripts/check_custom_sids.sh` to compare the `disablesid.conf`/`enablesid.conf`
+on pfSense with the versions in `config/sid/`. See
+[config/sid/README.md](../../config/sid/README.md) and the
+[Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md).
 
-**Features:**
-- Check enabled/disabled rules
-- Verify custom disablesid.conf
-- Compare with repository defaults
-- Apply changes to pfSense
+### 15. Search Suricata Alerts Mentioning Telegram (app)
 
-**Usage:**
-```bash
-# From menu: Option 14
-# Or directly:
-./scripts/check_custom_sids.sh
-```
+Runs `./scripts/check-telegram-alerts.sh`. Despite the historical function name, this
+has **nothing to do with Telegram notifications**. It searches recent Suricata alerts on
+pfSense for signatures whose name contains "Telegram" (the messaging app, e.g. ET POLICY
+rules), and prints the matching alerts, the top source IPs, and a per-hour count. It is a
+canned example of hunting for one application's traffic in the alert stream.
 
-**See also:**
-- [SID Management Documentation](../../config/sid/README.md)
-- [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.md)
+Note: the script reads `PFSENSE_HOST` and `PFSENSE_USER` from `config.env`; run it directly to override them: `./scripts/check-telegram-alerts.sh <PFSENSE_IP> [PFSENSE_USER]`.
 
-#### 15. Setup Telegram Alerts
+Alerting to Telegram (or anything else) is a Grafana feature: Alerting > Contact points.
 
-**Configure Telegram notifications:**
+### 16. Backup Configuration
 
-**Features:**
-- Test Telegram bot connectivity
-- Configure alert thresholds
-- Setup alert messages
-- Test notification delivery
+Creates `~/pfsense-siem-backups/backup_YYYYMMDD_HHMMSS.tar.gz` containing `config.env`,
+`dashboards/` and `config/` (Logstash pipeline, OpenSearch templates, SID lists). It does
+**not** include OpenSearch data or Grafana's own database; export dashboards you have
+modified in Grafana separately (Dashboard settings > JSON Model).
 
-**Requirements:**
-- Telegram bot token (from @BotFather)
-- Chat ID (from bot or IDBot)
+Equivalent: `tar -czf ~/backup.tar.gz config.env dashboards/ config/`.
 
-**Usage:**
-```bash
-# From menu: Option 15
-# Or directly:
-./scripts/check-telegram-alerts.sh
-```
+### 17. Restore Configuration
 
-#### 16. Backup Configuration
-
-**Backup all configurations:**
-
-**Includes:**
-- `config.env` settings
-- Dashboards (all JSON files)
-- Config files (logstash, templates)
-- Custom scripts
-
-**Excludes:**
-- OpenSearch data
-- Log files
-- Temporary files
-
-**Backup location:**
-```
-~/pfsense-siem-backups/backup_YYYYMMDD_HHMMSS.tar.gz
-```
-
-**Usage:**
-```bash
-# From menu: Option 16
-```
-
-**Manual backup:**
-```bash
-tar -czf ~/backup.tar.gz config.env dashboards/ config/
-```
-
-#### 17. Restore Configuration
-
-**Restore from backup:**
-
-**What it does:**
-- Lists available backups
-- Extracts selected backup
-- Overwrites current configuration
-
-**⚠️ Warning:** This will overwrite:
-- `config.env`
-- All dashboards
-- Configuration files
-
-**Usage:**
-```bash
-# From menu: Option 17
-```
-
-**Recommendation:**
-Create a backup before restoring in case you need to rollback.
+Lists the archives in `~/pfsense-siem-backups/`, asks which to restore, and extracts it
+over the repository directory, overwriting `config.env`, `dashboards/` and `config/`.
+Take a fresh backup (option 16) first if you may want to roll back.
 
 ---
 
-### Documentation Functions
+## Documentation and Checks (18-21)
 
-#### 18. View Quick Start Guide
-
-Opens `QUICK_START.md` for reference.
-
-**Includes:**
-- 15-minute deployment walkthrough
-- System requirements
-- Installation steps
-- Verification procedures
-
-#### 19. Open Troubleshooting Guide
-
-Opens `docs/troubleshooting/TROUBLESHOOTING.md` for problem-solving.
-
-**Covers:**
-- Common issues and fixes
-- Dashboard "No Data" problems
-- Forwarder issues
-- OpenSearch configuration
-- Log rotation problems
-
-#### 20. Show Configuration
-
-Displays current `config.env` settings:
-
-**Shows:**
-- SIEM server details (IP, ports)
-- pfSense connection info
-- Index configuration
-- Retention settings
-- Debug mode status
-
-#### 21. Preflight Check
-
-Runs `scripts/preflight.sh` — validates `config.env`, SSH access to pfSense and the
-SIEM server, Python on pfSense, OpenSearch reachability, and GeoIP database presence.
-Run this before Options 1–2 (or before `install.sh`/`setup.sh` from the shell).
+- **18. View Quick Start Guide:** opens [QUICK_START.md](../../QUICK_START.md) in `less`.
+- **19. Open Troubleshooting Guide:** opens
+  [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md).
+- **20. Show Configuration:** prints the effective `config.env` values (SIEM host and ports,
+  pfSense host and user, index prefix, retention, debug flag) and the path to the file.
+- **21. Preflight Check:** runs `./scripts/preflight.sh`, which validates `config.env`, SSH
+  to pfSense and (if set) the SIEM server, Python on pfSense, OpenSearch reachability and
+  GeoIP database presence. Run it before options 1-2, or before `install.sh`/`setup.sh`
+  from the shell. See [scripts/README.md](../../scripts/README.md).
 
 ---
 
-## Configuration File
+## Configuration File (config.env)
 
-### config.env
+`config.env` is read by the console and by every script. Create it from the example:
 
-**Required variables:**
-```bash
-# SIEM Server
-SIEM_HOST=<SIEM_IP>           # Your SIEM server IP
-
-# pfSense
-PFSENSE_HOST=192.168.1.1           # Your pfSense IP
-PFSENSE_USER=root                  # SSH user (default: root)
-
-# Optional settings
-OPENSEARCH_PORT=9200               # OpenSearch HTTP port
-LOGSTASH_UDP_PORT=5140             # Logstash Suricata input
-GRAFANA_PORT=3000                  # Grafana web UI
-INDEX_PREFIX=suricata              # Index name prefix
-RETENTION_DAYS=30                  # Data retention
-DEBUG_ENABLED=False                # Debug logging
-```
-
-**Creating config.env:**
-
-Option 1: Copy from example
 ```bash
 cp config.env.example config.env
 nano config.env
 ```
 
-Option 2: Let management console create it
-```bash
-./pfsense-siem
-# Select any option, it will prompt to create config.env
-```
+Every variable in `config.env.example`:
+
+| Variable | Default | Used for |
+|----------|---------|----------|
+| `SIEM_HOST` | `192.168.1.10` | IP of the server running OpenSearch/Logstash/Grafana; baked into the forwarder as its UDP target. **Required.** |
+| `OPENSEARCH_PORT` | `9200` | OpenSearch HTTP port |
+| `LOGSTASH_UDP_PORT` | `5140` | Logstash UDP input the forwarder sends to |
+| `GRAFANA_PORT` | `3000` | Grafana web UI |
+| `GRAFANA_ADMIN_USER` | `admin` | shown in dashboard-import instructions |
+| `GRAFANA_ADMIN_PASS` | `admin` | change it; do not run Grafana with the default |
+| `SIEM_SSH_USER` | (commented; your current user) | SSH user setup.sh uses to deploy the Logstash pipeline on the SIEM server |
+| `PFSENSE_HOST` | `192.168.1.1` | pfSense IP. **Required.** |
+| `PFSENSE_USER` | `admin` | SSH user on pfSense (`admin` on pfSense CE 2.7+; `root` on older releases) |
+| `DEBUG_ENABLED` | `false` | forwarder writes a verbose per-event debug log on pfSense; troubleshooting only |
+| `DEBUG_LOG` | `/var/log/suricata_forwarder_debug.log` | where that debug log goes |
+| `INDEX_PREFIX` | `suricata` | index name prefix (`suricata-YYYY.MM.dd`) |
+| `RETENTION_DAYS` | `30` | days to keep data; applied through `scripts/configure-retention-policy.sh` |
+| `INFLUXDB_HOST` | `localhost` | InfluxDB for pfSense system metrics via Telegraf |
+| `INFLUXDB_PORT` | `8086` | InfluxDB port |
+| `INFLUXDB_DATABASE` | `pfsense` | InfluxDB database name |
+| `INFLUXDB_USER` / `INFLUXDB_PASS` | (commented) | InfluxDB credentials if authentication is enabled |
+| `GEOIP_DB_PATH` | (commented; auto-detected) | override only if your GeoLite2 `.mmdb` is in a non-standard location on pfSense |
+
+`pfblockerng-*` indices need no setting here; Telegraf's `[[outputs.opensearch]]` names
+them. Field-level detail is in [CONFIGURATION.md](../reference/CONFIGURATION.md).
 
 ---
 
 ## Common Workflows
 
-### First-Time Setup
+**First-time setup:** follow [QUICK_START.md](../../QUICK_START.md). In console terms it is
+21 (preflight) > 1 (install, as root) > 2 (deploy; also configures OpenSearch) > 4 (import
+dashboards) > 13 (verify). The
+[New User Checklist](../install/NEW_USER_CHECKLIST.md) has the long form with validation
+steps.
 
-```bash
-# 1. Run management console
-./pfsense-siem
+**Daily / weekly:** option 5. It covers the SIEM, the forwarder, the watchdog and
+filterlog in one pass and exits non-zero on trouble.
 
-# 2. Install SIEM stack (Option 1)
-#    - Answer configuration questions
-#    - Wait for installation (15-20 minutes)
+**Something is wrong:**
 
-# 3. Configure OpenSearch (Option 3)
-#    - Sets up index templates
-#    - Enables auto-create
+| Symptom | Try |
+|---------|-----|
+| No data in Grafana | 13 (where does the chain break?), then 9 and 7/2 (Logstash) |
+| Forwarder not running | 10, then 11 to watch it start; if it dies again, see [SURICATA_FORWARDER_MONITORING.md](SURICATA_FORWARDER_MONITORING.md#troubleshooting) |
+| pfBlockerNG panels empty | 5 shows filterlog health; fix per [PFSENSE_FILTERLOG_ROTATION_FIX.md](../troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md) |
+| SIEM services down | 6, then 5 |
+| After a pfSense upgrade | 2 (re-run setup.sh), then 5; see [PFSENSE_UPGRADE_GUIDE.md](../pfsense/PFSENSE_UPGRADE_GUIDE.md) |
 
-# 4. Deploy to pfSense (Option 2)
-#    - Deploys forwarder
-#    - Starts monitoring
+Everything else: [TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md).
 
-# 5. Import dashboards (Option 4)
-#    - Follow Grafana import instructions
-
-# 6. Verify (Option 13)
-#    - Check data flow end-to-end
-```
-
-### Daily Operations
-
-```bash
-# Check system health
-./pfsense-siem → Option 5
-
-# View forwarder status
-./pfsense-siem → Option 9
-
-# Check forwarder logs
-./pfsense-siem → Option 11
-```
-
-### Troubleshooting
-
-```bash
-# No data in Grafana?
-./pfsense-siem → Option 13  # Verify data flow
-./pfsense-siem → Option 9   # Check forwarder
-./pfsense-siem → Option 7   # View Logstash logs
-
-# Forwarder not running?
-./pfsense-siem → Option 10  # Restart forwarder
-./pfsense-siem → Option 11  # Check logs
-
-# Services down?
-./pfsense-siem → Option 6   # Restart services
-./pfsense-siem → Option 5   # Check status
-```
-
-### Maintenance
-
-```bash
-# Weekly
-./pfsense-siem → Option 5   # Health check
-
-# Monthly
-./pfsense-siem → Option 16  # Backup config
-
-# As needed
-./pfsense-siem → Option 8   # Adjust retention
-./pfsense-siem → Option 14  # Update SIDs
-```
+**Periodic maintenance:** 16 (backup) monthly; 8 (retention) when disk fills or you want
+more history; 14 (SIDs) after tuning rules.
 
 ---
 
 ## Exit Codes
 
-The management console and underlying scripts use standard exit codes:
-
-- **0** - Success, all checks passed
-- **1** - General error
-- **>1** - Number of failed checks (status.sh)
+- `0`: success / all checks passed
+- `1`: general error, or (for `status.sh`) one or more checks failed; the count is printed
 
 ---
 
-## Logging
+## Troubleshooting the Console Itself
 
-### Installation Log
-```
-/var/log/pfsense-monitoring-install.log
-```
-Complete installation transcript for troubleshooting.
-
-### Service Logs
-```bash
-# OpenSearch
-sudo journalctl -u opensearch -n 100
-
-# Logstash
-sudo journalctl -u logstash -n 100
-
-# Grafana
-sudo journalctl -u grafana-server -n 100
-
-# Forwarder (pfSense)
-ssh root@pfsense 'tail -100 /var/log/system.log | grep suricata'
-```
-
----
-
-## Tips & Best Practices
-
-### Performance
-
-1. **Use the status check regularly**
-   - Run `Option 5` daily or weekly
-   - Watch for event count drops
-   - Monitor latest event age
-
-2. **Monitor disk space**
-   ```bash
-   df -h /
-   curl -s http://localhost:9200/_cat/indices/suricata-*?v
-   ```
-
-3. **Adjust retention as needed**
-   - Start with 30 days
-   - Increase if you have disk space
-   - Decrease if disk fills up
-
-### Security
-
-1. **Change Grafana password**
-   - Don't use default `admin/admin`
-   - Set during installation or after
-
-2. **Use SSH keys for pfSense**
-   - More secure than password
-   - Required for automated scripts
-
-3. **Restrict OpenSearch access**
-   - Bind to localhost if SIEM is single-server
-   - Use firewall rules for multi-server
-
-### Reliability
-
-1. **Backup regularly**
-   - Use `Option 16` monthly
-   - Store backups off-server
-
-2. **Test forwarder watchdog**
-   - Kill forwarder: `pkill -f forward-suricata`
-   - Wait 1 minute
-   - Check if it restarted automatically
-
-3. **Monitor forwarder logs**
-   - Check for connection errors
-   - Watch for rotation issues
-   - Verify all interfaces monitored
-
----
-
-## Troubleshooting the Management Console
-
-### Menu doesn't display properly
-
-**Problem:** Colors/characters not rendering
-
-**Solution:**
-```bash
-# Check TERM environment
-echo $TERM
-
-# Should be: xterm-256color or similar
-# If not, set it:
-export TERM=xterm-256color
-```
-
-### "Command not found"
-
-**Problem:** Script not executable
-
-**Solution:**
-```bash
-chmod +x pfsense-siem
-```
-
-### Config file issues
-
-**Problem:** Management console can't find config.env
-
-**Solution:**
-```bash
-# Create from example
-cp config.env.example config.env
-
-# Edit with your settings
-nano config.env
-```
-
-### Permission denied errors
-
-**Problem:** Some options require root/sudo
-
-**Solution:**
-```bash
-# Run with sudo
-sudo ./pfsense-siem
-
-# Or specific option
-sudo ./install.sh
-sudo ./scripts/restart-services.sh
-```
+- **Garbled menu / colours:** `export TERM=xterm-256color`.
+- **`command not found`:** `chmod +x pfsense-siem` and run it as `./pfsense-siem`.
+- **Can't find config.env:** `cp config.env.example config.env` and edit it, or accept the
+  prompt the console offers.
+- **Permission denied:** options 1 and 6 need `sudo ./pfsense-siem` (or `sudo ./install.sh`,
+  `sudo ./scripts/restart-services.sh`).
+- **SSH prompts for a password inside the console:** set up key auth to pfSense
+  (`ssh-copy-id admin@<PFSENSE_IP>`); several checks use `BatchMode=yes` and will report
+  failure rather than prompt.
 
 ---
 
 ## Support & Documentation
 
-**Complete documentation:**
 - [Main README](../../README.md)
 - [Quick Start](../../QUICK_START.md)
 - [Troubleshooting](../troubleshooting/TROUBLESHOOTING.md)
 - [Documentation Index](../DOCUMENTATION_INDEX.md)
+- [Scripts Reference](../../scripts/README.md)
 
-**Get help:**
-- GitHub Issues: https://github.com/ChiefGyk3D/pfsense_siem_stack/issues
-- GitHub Discussions: https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions
-
-**Community:**
-- Share your deployment experiences
-- Report bugs and request features
-- Contribute improvements
-
----
-
-**Built with ❤️ for the pfSense and open-source security community**
+Issues and discussions: https://github.com/ChiefGyk3D/pfsense-siem-stack

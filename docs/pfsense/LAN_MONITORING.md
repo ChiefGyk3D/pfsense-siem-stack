@@ -2,31 +2,39 @@
 
 ## Overview
 
-**East-West traffic** refers to lateral movement within your network (between VLANs, hosts on the same subnet, or across internal segments). This is critical for detecting:
+**East-west traffic** is lateral movement inside your network: between VLANs, between hosts on the same subnet, or from an internal host toward internal servers. WAN-only IDS/IPS never sees it. Monitoring internal interfaces with Suricata catches:
 
 - Compromised hosts spreading malware
 - Insider threats
-- Lateral movement after initial breach
-- Internal reconnaissance/scanning
+- Lateral movement after an initial breach
+- Internal reconnaissance and scanning
 
-This guide shows how to configure Suricata to monitor **internal traffic** in addition to WAN-facing IDS/IPS.
+This guide covers how to add Suricata IDS instances on internal VLANs, which rules to run there, and how to use the per-interface dashboard. It applies to any pfSense box; only the [forwarder](#integration-with-the-forwarder) and [Grafana](#grafana-dashboard-for-lan-monitoring) sections depend on this repository's SIEM stack.
+
+**Cost first:** every monitored interface is a separate Suricata process with its own copy of the rule set. On the reference deployment (8-core Intel Atom C3758, 16 GB) 13 VLAN instances in IDS mode roughly double the steady-state CPU compared with the two WAN instances alone. Monitor the segments where the visibility is worth that — usually IoT and guest first, trusted last. [SURICATA_OPTIMIZATION_GUIDE.md](SURICATA_OPTIMIZATION_GUIDE.md#which-interfaces-to-monitor) has the sizing background.
 
 ---
 
-## Architecture
+## Example Topology
+
+Everything below uses this **example topology**. Substitute your own interface names, VLAN IDs and subnets throughout.
+
+| Interface | Role | Subnet | Suricata mode |
+|-----------|------|--------|---------------|
+| `igc0` | WAN | (public) | Inline IPS |
+| `igc1.10` | **Trusted** VLAN (workstations) | `10.10.10.0/24` | IDS |
+| `igc1.20` | **IoT** VLAN (TVs, cameras, smart devices) | `10.10.20.0/24` | IDS |
+| `igc1.30` | **Guest** VLAN | `10.10.30.0/24` | IDS |
 
 ```
-Internet → WAN (ix0) [Inline IPS] → pfSense → Internal VLANs
-                                                     ↓
-                                            [IDS on VLANs]
-                                            (lagg1.*, etc.)
-                                                     ↓
-                                          Detect RFC1918 → RFC1918
+Internet → igc0 (WAN) [Inline IPS] → pfSense → igc1.10 Trusted  [IDS]
+                                              → igc1.20 IoT      [IDS]
+                                              → igc1.30 Guest    [IDS]
+                                                       ↓
+                                        detect 10.10.x.x → 10.10.y.y
 ```
 
-**Key Principle**: 
-- **WAN interfaces**: Inline IPS (block threats)
-- **Internal VLANs**: IDS mode (alert only, don't break internal traffic)
+**Key principle:** inline IPS on WAN (block), IDS on internal VLANs (alert only, never break internal traffic).
 
 ---
 
@@ -34,151 +42,99 @@ Internet → WAN (ix0) [Inline IPS] → pfSense → Internal VLANs
 
 ### 1. Enable Suricata on Internal Interfaces
 
-**Services → Suricata → Interfaces → Add**
-
-For each internal VLAN (e.g., `lagg1.100`, `lagg1.200`, `lagg1.220`):
+**Services → Suricata → Interfaces → Add**, once per VLAN:
 
 | Setting | Value | Reason |
 |---------|-------|--------|
-| **Interface** | lagg1.100 (or your VLAN) | Interface to monitor |
-| **Description** | LAN_VLAN10_IDS | Clear naming |
-| **Enable** | ✓ | Activate monitoring |
-| **IPS Mode** | ❌ (IDS only) | Don't block internal traffic (alert only) |
-| **Promiscuous Mode** | ✓ | See all traffic on segment |
-| **HOME_NET** | `192.168.0.0/16,10.0.0.0/8,172.16.0.0/12` | Your internal networks |
+| **Interface** | `igc1.20` (your VLAN) | Interface to monitor |
+| **Description** | `IoT_IDS` | Clear naming; this becomes the instance name in logs |
+| **Enable** | ✓ | |
+| **IPS Mode** | Legacy or Inline, but **do not enable blocking** | Alert only on internal segments |
+| **Promiscuous Mode** | Off unless needed | Needed only when Suricata must see traffic not addressed to the firewall's own MAC — some VLAN/bridge setups or a mirror-port feed. On a routed VLAN interface the firewall already sees all inter-VLAN traffic |
+| **HOME_NET** | `10.10.0.0/16` (your internal ranges) | Defines "inside" for the rules |
 | **EXTERNAL_NET** | `!$HOME_NET` | Everything else |
 
-**Repeat for each VLAN** you want to monitor.
+Note that on a routed VLAN Suricata only sees traffic that **crosses the firewall** — VLAN-to-VLAN, VLAN-to-WAN. Host-to-host traffic within the same VLAN stays on the switch and is invisible unless you feed a mirror port to a dedicated interface.
 
 ### 2. Rule Selection for LAN Monitoring
 
-**Services → Suricata → {Interface} → Rules**
+**Services → Suricata → {Interface} → Categories**
 
-Enable these rulesets for internal monitoring:
+Enable these for internal monitoring:
 
 | Ruleset | Purpose | Priority |
 |---------|---------|----------|
-| **ET malware** | Detect C&C beaconing from internal hosts | High |
-| **ET exploit** | Detect exploit attempts (lateral movement) | High |
-| **ET policy** | Detect policy violations (torrents, etc.) | Medium |
-| **ET scan** | Detect internal port scanning | High |
-| **ET compromised** | Known compromised host signatures | High |
-| **ET worm** | Worm propagation (WannaCry, NotPetya, etc.) | High |
+| **emerging-malware** | C2 beaconing from internal hosts | High |
+| **emerging-exploit** | Exploit attempts (lateral movement) | High |
+| **emerging-scan** | Internal port scanning | High |
+| **emerging-compromised** | Known compromised host signatures | High |
+| **emerging-worm** | Worm propagation (WannaCry, NotPetya, ...) | High |
+| **emerging-policy** | Policy violations (torrents, unauthorized protocols) | Medium |
 
-**Disable or tune:**
-- `ET INFO` rules (too noisy for internal networks)
-- `ET dns` rules (unless you want to monitor internal DNS queries)
+Disable or tune:
+- `emerging-info` (too noisy on internal networks)
+- `emerging-dns` (unless you want to see internal DNS queries)
+- Anything you already disabled globally — see [config/sid/README.md](../../config/sid/README.md)
 
-**Custom rule example** (detect SMB brute force):
+**Custom rule example** (SMB brute force between internal hosts):
+
 ```
-alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"ET SCAN SMB Brute Force Attempt"; flow:to_server; content:"|ff|SMB|72|"; offset:4; depth:5; threshold:type threshold, track by_src, count 10, seconds 60; sid:9000001; rev:1;)
+alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"LOCAL SMB connection burst to internal host"; flow:to_server; threshold:type threshold, track by_src, count 10, seconds 60; sid:9000001; rev:2;)
 ```
 
-Add to **Local.rules** for custom detections.
+Paste custom rules into **Services → Suricata → {Interface} → Rules → Category: custom.rules**. They are stored in `config.xml` and survive rule updates; files dropped into the instance directory are not.
 
-### 3. Configure Interface-Specific Tuning
+### 3. Per-VLAN Tuning
 
-**Per-VLAN Policy Examples:**
+**IoT VLAN (`igc1.20`)** — high suspicion:
+- IDS mode; malware, exploit, scan, worm rules all on
+- Firewall rules block IoT → Trusted at the pf level; Suricata alerts on any attempt that gets through or is even tried
+- Expect the most alerts here; smart TVs and cameras are noisy
 
-**IoT VLAN (lagg1.200)** - High Security:
-- IDS mode (alert only)
-- All malware, exploit, scan rules enabled
-- Block unexpected outbound connections at firewall level
-- Alert on any RFC1918 → RFC1918 traffic (IoT shouldn't talk to other VLANs)
+**Trusted VLAN (`igc1.10`)** — balanced:
+- IDS mode; malware, exploit, compromised rules
+- Allow normal business traffic (SMB, RDP within the VLAN)
+- Alert on cross-VLAN access attempts toward IoT or servers
 
-**Corporate VLAN (lagg1.100)** - Balanced:
-- IDS mode
-- Malware, exploit, compromised rules
-- Allow normal business traffic (SMB, RDP within VLAN)
-- Alert on cross-VLAN access attempts
-
-**NAS/Server VLAN (lagg1.150)** - Light Monitoring:
-- IDS mode
-- Exploit and compromised rules only
-- Trust internal traffic but alert on anomalies
+**Guest VLAN (`igc1.30`)** — light:
+- IDS mode; exploit and compromised rules only
+- Guests are isolated by firewall rules anyway; Suricata is here to spot an infected guest device scanning
 
 ---
 
 ## Grafana Dashboard for LAN Monitoring
 
+*(SIEM stack)*
+
 ### Suricata Per-Interface Dashboard
 
-**Dashboard**: `dashboards/Suricata_Per_Interface.json` ✅ **Production Ready**
+**Dashboard**: `dashboards/Suricata_Per_Interface.json`
 
-This dashboard provides **dynamic per-interface monitoring** with automatically repeating sections for each VLAN/interface you select.
+Dynamic per-interface monitoring: pick one, several or all interfaces, and the dashboard repeats a full row of panels for each.
 
-#### Dashboard Features
+#### Panels (per interface)
 
-- **Multi-Select Interface Variable**: Choose one, multiple, or all interfaces
-- **Dynamic Row Repeating**: Automatically creates a monitoring section for each selected interface
-- **Complete Per-Interface Analytics**: Each interface gets its own set of panels
-
-#### Panels (Per Interface)
-
-1. **Events & Alerts Counter**
-   - Total events and alerts for this interface
-   - Color-coded thresholds (green/yellow/red)
-   - Sparkline showing trend
-
-2. **Top Alert Signatures**
-   - Pie chart of most triggered IDS rules
-   - Shows signature name and count
-   - Hover to see details
-
-3. **Alerts Timeline**
-   - Time series graph of alerts over time
-   - Identifies attack patterns and spikes
-
-4. **Top Source IPs**
-   - Bar chart of internal hosts generating most alerts
-   - Useful for identifying compromised devices
-
-5. **Top Destination IPs**
-   - Bar chart of most targeted internal hosts
-   - Identifies attack targets
-
-6. **Alert Logs Table**
-   - Complete alert details per interface
-   - Columns: Time, Category, Signature, Action, Severity, Protocol, IPs, Ports, Countries
-   - 50 most recent alerts
+1. **Events & alerts counter** — totals with colour thresholds and a sparkline
+2. **Top alert signatures** — pie chart of `alert.signature`
+3. **Alerts timeline** — time series
+4. **Top source IPs** — internal hosts generating the most alerts (`src_ip`)
+5. **Top destination IPs** — most-targeted internal hosts (`dest_ip`)
+6. **Alert log table** — time, category, signature, action, severity, protocol, IPs, ports, countries
 
 #### How to Use
 
-1. **Import Dashboard**:
-   ```bash
-   Grafana → Dashboards → Import → Upload dashboards/Suricata_Per_Interface.json
-   ```
-
-2. **Select Interfaces**:
-   - Use the interface dropdown at the top
-   - Select specific VLANs (e.g., `lagg1.100`, `lagg1.200`)
-   - Or select "All" to see all interfaces
-
-3. **Customize Thresholds**:
-   - Edit dashboard
-   - Adjust threshold values per your traffic volume
-   - WAN interfaces: Higher thresholds (500/2000 alerts)
-   - LAN interfaces: Lower thresholds (50/200 alerts)
+1. **Import**: Grafana → Dashboards → Import → upload `dashboards/Suricata_Per_Interface.json`
+2. **Select interfaces**: the `interface` variable is populated from the `in_iface` field; pick `igc1.10`, `igc1.20`, ... or *All*
+3. **Adjust thresholds**: WAN interfaces want higher thresholds (500/2000 alerts) than VLANs (50/200)
 
 #### Example Use Cases
 
-**Monitor IoT VLAN Only**:
-- Interface Variable: Select `lagg1.200` (IoT VLAN)
-- See only IoT-specific alerts and events
-- Identify compromised IoT devices
-
-**Compare Multiple VLANs**:
-- Interface Variable: Select `lagg1.100`, `lagg1.200`, `lagg1.220`
-- See side-by-side comparison of alert volumes
-- Identify which VLAN has most activity
-
-**Full Network View**:
-- Interface Variable: Select "All"
-- See every monitored interface with its own section
-- Scroll through to review all VLANs
+- **IoT only**: select `igc1.20` — spot a compromised device
+- **Compare VLANs**: select `igc1.10`, `igc1.20`, `igc1.30` side by side
+- **Full view**: *All*
 
 ![Per-Interface Dashboard](../../media/Suricata%20Per-Interface%20Dashboard.png)
-*Example of dynamic interface sections - each VLAN gets complete monitoring*
+*Each selected interface gets its own complete monitoring section*
 
 ---
 
@@ -186,211 +142,177 @@ This dashboard provides **dynamic per-interface monitoring** with automatically 
 
 ### 1. Compromised IoT Device
 
-**Scenario**: Smart TV on IoT VLAN gets compromised, tries to scan internal network.
+**Scenario**: a smart TV on the IoT VLAN is compromised and scans the Trusted VLAN.
 
-**Detection**:
-- Suricata on `lagg1.200` (IoT VLAN) sees scan attempts
-- Alert: `ET SCAN Potential Port Scan`
-- Dashboard shows unusual traffic from `192.168.200.45` (TV) → `192.168.100.0/24` (Corporate VLAN)
+**Detection**: the `igc1.20` instance sees `ET SCAN Potential Port Scan`-class alerts from `10.10.20.45` toward `10.10.10.0/24`.
 
-**Response**: Isolate device, investigate
+**Response**: isolate the device, investigate.
 
-### 2. Lateral Movement After Breach
+### 2. Lateral Movement After a Breach
 
-**Scenario**: Attacker compromises workstation on Corporate VLAN, tries to pivot to Server VLAN.
+**Scenario**: an attacker on a Trusted-VLAN workstation pivots toward a file server.
 
-**Detection**:
-- Suricata on `lagg1.100` sees exploit attempt
-- Alert: `ET EXPLOIT Windows SMB Remote Code Execution`
-- Traffic from `192.168.100.55` → `192.168.150.10` (NAS)
+**Detection**: `ET EXPLOIT ... SMB Remote Code Execution` from `10.10.10.55` to `10.10.10.200`.
 
-**Response**: Quarantine workstation, check Server VLAN for compromise
+**Response**: quarantine the workstation, check the server.
 
-### 3. Internal C&C Beaconing
+### 3. Internal C2 Beaconing
 
-**Scenario**: Malware on workstation tries to beacon to attacker's internal C&C (pivot point).
+**Scenario**: malware beacons to an attacker-controlled internal pivot.
 
-**Detection**:
-- Suricata sees periodic connections to unusual internal IP
-- Alert: `ET MALWARE Possible C&C Traffic`
-- Repeated connections from `192.168.100.75` → `192.168.100.200` on high port
+**Detection**: periodic connections from `10.10.10.75` to `10.10.10.200` on an odd high port; `ET MALWARE` alerts if the beacon matches a signature.
 
-**Response**: Investigate both hosts, check for lateral spread
+**Response**: investigate both hosts.
 
 ---
 
-## Integration with Forwarder
+## Integration with the Forwarder
 
-The **forwarder automatically handles all Suricata instances**, including LAN interfaces:
+*(SIEM stack)*
 
-```bash
-# Forwarder discovers ALL eve.json files
-/var/log/suricata/suricata_ix055721/eve.json      # WAN
-/var/log/suricata/suricata_lagg1.10020460/eve.json # VLAN 100
-/var/log/suricata/suricata_lagg1.20049359/eve.json # VLAN 200
-# ... etc.
+The forwarder discovers **every** Suricata instance automatically, including the VLAN ones — no configuration change is needed when you add an interface:
+
+```
+/var/log/suricata/suricata_igc0<id>/eve.json        # WAN
+/var/log/suricata/suricata_igc1.10<id>/eve.json     # Trusted VLAN
+/var/log/suricata/suricata_igc1.20<id>/eve.json     # IoT VLAN
+/var/log/suricata/suricata_igc1.30<id>/eve.json     # Guest VLAN
 ```
 
-**No additional configuration needed** — forwarder tails all instances and forwards to Logstash with the same enrichment (GeoIP, interface normalization).
+(`<id>` is a numeric suffix the pfSense package assigns per instance.)
 
-**Verify:**
+Verify:
+
 ```bash
-# Check forwarder is monitoring LAN interfaces
-ssh root@192.168.1.1 "ps aux | grep forward-suricata-eve.py | grep -v grep | awk '{print \$2}' | xargs -I {} lsof -p {} 2>/dev/null | grep 'eve.json'"
+ssh admin@<PFSENSE_IP> "ps aux | grep '[f]orward-suricata-eve.py' | awk '{print \$2}' | xargs -I{} lsof -p {} 2>/dev/null | grep eve.json"
 ```
 
-Should see multiple `eve.json` files (one per interface).
+You should see one `eve.json` per interface.
 
 ---
 
 ## Grafana Filtering for LAN vs WAN
 
-### WAN Dashboard
-Filter: `suricata.eve.in_iface:(ix0 OR ix1)`
+All fields are flat root-level EVE fields (`in_iface`, `src_ip`, `dest_ip`, `event_type`, `alert.*`) — nothing is nested under a `suricata.eve.*` prefix.
 
-### LAN Dashboard
-Filter: `suricata.eve.in_iface:(lagg* OR vlan*)`
+**WAN only**
+```
+in_iface:igc0
+```
 
-### Lateral Movement Dashboard
-Filter: 
+**All VLANs**
 ```
-suricata.eve.src_ip:(192.168.0.0/16 OR 10.0.0.0/8) 
-AND suricata.eve.dest_ip:(192.168.0.0/16 OR 10.0.0.0/8)
-AND suricata.eve.event_type:alert
+in_iface:igc1.*
 ```
+
+**Lateral movement (internal → internal alerts)**
+```
+event_type:alert AND src_ip:"10.0.0.0/8" AND dest_ip:"10.0.0.0/8"
+```
+
+`src_ip` and `dest_ip` are mapped as `ip`, so CIDR notation works directly in Lucene queries.
 
 ---
 
 ## Performance Considerations
 
-**Internal traffic volume is typically MUCH higher than WAN traffic.**
+Internal traffic volume is usually **much higher** than WAN traffic, and every VLAN instance is a full Suricata process.
 
-### Tuning Tips
-
-1. **Use IDS mode** (not inline IPS) on internal interfaces
-   - Inline mode adds latency
-   - IDS is sufficient for alerting
-
-2. **Selective rule enablement**
-   - Don't enable ALL rules on internal interfaces
-   - Focus on malware, exploit, scan rules
-   - Disable noisy INFO/DNS rules
-
-3. **Tune thresholds**
-   - Internal networks have more "chatty" traffic
-   - Increase thresholds for port scan rules to avoid false positives
-   - Example: Threshold 50 connections/min instead of 10
-
-4. **Exclude trusted internal traffic**
-   - **Services → Suricata → {Interface} → Pass Lists**
-   - Add trusted server-to-server traffic (e.g., NAS backups)
-
-5. **Monitor Suricata CPU usage**
-   ```bash
-   ssh root@192.168.1.1 "top -P | grep suricata"
-   ```
-   Each Suricata instance should stay under 50% CPU. If higher, reduce rules or increase hardware.
+1. **IDS, never inline blocking, on internal interfaces** — inline adds latency and a false positive breaks something internal
+2. **Selective categories** — malware, exploit, scan, worm; skip INFO/DNS/policy noise
+3. **Raise scan thresholds** — internal networks are chatty; 50 connections/min instead of 10
+4. **Pass lists** — **Services → Suricata → Pass Lists** for trusted server-to-server flows (backups, replication)
+5. **Watch CPU** — `ssh admin@<PFSENSE_IP> "top -P"`; each instance should sit well under 50% outside rule reloads. If not, drop categories or drop instances
 
 ---
 
 ## Alerting Strategy
 
-### High-Priority Alerts (Immediate Response)
+### High priority (act now)
 
 - Exploit attempts between VLANs
-- C&C beaconing from internal hosts
-- Brute force on critical services (RDP, SSH to servers)
+- C2 beaconing from internal hosts
+- Brute force on RDP/SSH toward servers
 - Worm propagation signatures
 
-**Grafana Alert**:
 ```
-Query: suricata.eve.event_type:alert AND suricata.eve.alert.severity:1 AND suricata.eve.src_ip:192.168.*
-Threshold: Count > 5 in 5 minutes
-Notification: Slack webhook + email
-```
-
-### Medium-Priority Alerts (Review Daily)
-
-- Port scans within VLAN
-- Policy violations (torrents, unauthorized protocols)
-- Unusual internal DNS queries
-
-**Grafana Alert**:
-```
-Query: suricata.eve.alert.signature:"*SCAN*" AND suricata.eve.src_ip:192.168.*
-Threshold: Count > 20 in 1 hour
-Notification: Email summary
+Query:      event_type:alert AND alert.severity:1 AND src_ip:"10.0.0.0/8"
+Threshold:  count > 5 in 5 minutes
+Notify:     chat webhook + email
 ```
 
-### Low-Priority Alerts (Review Weekly)
+### Medium priority (review daily)
 
-- INFO-level alerts
-- Generic policy violations
-- Benign reconnaissance
+- Port scans within a VLAN
+- Policy violations
+- Unusual internal DNS
 
-**No alerting** — dashboard review only.
+```
+Query:      alert.signature:*SCAN* AND src_ip:"10.0.0.0/8"
+Threshold:  count > 20 in 1 hour
+Notify:     daily email summary
+```
+
+### Low priority (review weekly)
+
+INFO-level and generic policy alerts — dashboard review only, no notifications.
 
 ---
 
 ## Testing & Validation
 
-### 1. Test Port Scan Detection
+### 1. Port scan detection
 
-From a test workstation on LAN:
+From a workstation on the Trusted VLAN:
 ```bash
-nmap -sS 192.168.X.0/24
+nmap -sS 10.10.20.0/24
 ```
+Expected: `ET SCAN`-class alerts on the `igc1.20` instance with `src_ip` = your workstation.
 
-**Expected**: Suricata alert `ET SCAN Potential Port Scan`
+### 2. Exploit detection
 
-### 2. Test Exploit Detection
-
-Use Metasploit on isolated test VLAN:
+On an **isolated** test VLAN with a deliberately vulnerable VM:
 ```bash
-# From Kali VM on test VLAN
 msfconsole
 use exploit/windows/smb/ms17_010_eternalblue
-set RHOST 192.168.X.Y
+set RHOST 10.10.30.50
 exploit
 ```
+Expected: `ET EXPLOIT ... MS17-010` alerts.
 
-**Expected**: Suricata alert `ET EXPLOIT MS17-010`
+### 3. Beacon pattern
 
-### 3. Test C&C Beaconing
-
-Simulate with curl:
 ```bash
-# From test workstation
-while true; do curl -s http://192.168.X.Y:8080/beacon; sleep 60; done
+while true; do curl -s http://10.10.10.200:8080/beacon; sleep 60; done
 ```
-
-**Expected**: Repeated connections visible in dashboard, possibly C&C alert if beacon pattern matches signatures.
+Expected: the periodic connection is visible in the per-interface dashboard; a C2 alert only if the pattern matches a signature.
 
 ---
 
 ## Best Practices
 
-1. **Segment your network** with VLANs (IoT, Corporate, Servers, Guest)
-2. **Run IDS on all internal VLANs** (alerts only, no blocking)
-3. **Tune rules per VLAN** (heavy on untrusted, light on trusted)
-4. **Monitor East-West traffic** with dedicated Grafana dashboard
-5. **Alert on anomalies** (high-priority only, avoid alert fatigue)
-6. **Review alerts weekly** to tune false positives
-7. **Test detection** with safe exploit frameworks on isolated VLANs
+1. **Segment** with VLANs (Trusted, IoT, Guest, Servers) before you monitor — monitoring a flat network tells you little
+2. **IDS on the VLANs that matter**, not automatically on all of them
+3. **Tune per VLAN** — heavy on untrusted segments, light on trusted ones
+4. **Use the per-interface dashboard** to compare segments
+5. **Alert only on high-priority signatures** to avoid alert fatigue
+6. **Review weekly** and push noisy SIDs into your disable list
+7. **Test detection** on isolated segments
 
 ---
 
 ## Further Reading
 
-- [Suricata Optimization Guide](SURICATA_OPTIMIZATION_GUIDE.md)
-- [PfBlockerNG Optimization](PFBLOCKERNG_OPTIMIZATION.md)
-- [Dashboard "No Data" Fix](../troubleshooting/DASHBOARD_NO_DATA_FIX.md)
+- [SURICATA_OPTIMIZATION_GUIDE.md](SURICATA_OPTIMIZATION_GUIDE.md) — full install and tuning guide
+- [SURICATA_CONFIGURATION.md](SURICATA_CONFIGURATION.md) — interface strategy and design decisions
+- [config/sid/README.md](../../config/sid/README.md) — disabling noisy rules
+- [PFBLOCKERNG_OPTIMIZATION.md](PFBLOCKERNG_OPTIMIZATION.md) — reputation blocking upstream of Suricata
+- [DASHBOARD_NO_DATA_FIX.md](../troubleshooting/DASHBOARD_NO_DATA_FIX.md) — when panels are empty
 
 ---
 
-**Next Steps**: 
-1. Import `Suricata_Per_Interface.json` dashboard
-2. Select interfaces to monitor (LAN VLANs)
-3. Test lateral movement detection
-4. Tune alert thresholds per VLAN
-5. Review dashboard data for anomalies
+**Next steps:**
+1. Add Suricata IDS instances on the VLANs you care about most
+2. Import `Suricata_Per_Interface.json`
+3. Run the scan test and confirm the alert reaches the dashboard
+4. Tune thresholds and disable noisy SIDs per VLAN

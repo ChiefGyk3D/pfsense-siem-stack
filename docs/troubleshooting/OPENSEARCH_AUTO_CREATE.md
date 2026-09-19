@@ -1,46 +1,53 @@
-# Critical OpenSearch Configuration
+# OpenSearch Auto-Create: The Midnight UTC Problem
 
-## The Midnight UTC Problem
+This is the one place the `action.auto_create_index` requirement is explained.
+[config/README.md](../../config/README.md) carries only the command;
+`setup.sh`, `install-opensearch-config.sh`, `status.sh` and
+`diagnose-and-repair.sh` all check or set it.
 
-### Symptom
-Dashboard stops receiving new data at exactly **midnight UTC** (7 PM EST). Last event shows timestamp `23:59:59`.
+## Symptom
 
-### Root Cause
-OpenSearch has `action.auto_create_index` set to `false` by default. This prevents automatic creation of new daily indices.
+The dashboards stop receiving data at exactly **midnight UTC** (whatever that is
+in your local time zone). The latest event in OpenSearch is stamped `23:59:5x`
+UTC; Suricata, the forwarder and Logstash all look healthy. The pfBlockerNG
+panels, fed by Telegraf, stop at the same moment.
 
-When Logstash tries to write events to a non-existent index (e.g., `suricata-2025.11.26`), or Telegraf tries to write pfBlockerNG data to a non-existent index (e.g., `pfblockerng-2025.11.26`), it fails with:
+## Root Cause
+
+Both writers use daily indices: Logstash writes `suricata-YYYY.MM.DD`
+(`index => "suricata-%{[@metadata][index_date]}"`, UTC) and Telegraf writes
+`pfblockerng-YYYY.MM.DD`. Neither creates the index explicitly; they rely on
+OpenSearch creating it on the first write of the day.
+
+If the cluster setting `action.auto_create_index` does not allow that index
+name, the first write after midnight fails:
+
 ```
-index_not_found_exception: no such index [suricata-2025.11.26]
+index_not_found_exception: no such index [suricata-YYYY.MM.DD]
 ```
 
-**Logstash does NOT retry** - it silently drops ALL events.
+Logstash's OpenSearch output treats a 404 on index as non-retryable and drops
+the event; Telegraf does the same. Every event is lost until the index exists.
+On some OpenSearch builds the default already permits any index; on others it is
+restricted, and a security-conscious admin may have set it to `false`. The
+setting is cheap to make explicit, so this project always sets it.
 
-### Why This Happens
-1. Logstash uses daily index pattern: `suricata-%{+YYYY.MM.dd}`
-2. At midnight UTC, the date changes (e.g., `2025.11.25` → `2025.11.26`)
-3. Logstash/Telegraf tries to write to the new index
-4. OpenSearch rejects the write because auto-create is disabled
-5. ALL events are lost until index is manually created
+## The Fix
 
-## The Solution
+### Automated (what setup.sh does)
 
-### Automated Fix (Recommended)
-Run the installer script during initial setup:
+`./setup.sh` step 2, or standalone:
 
 ```bash
-OPENSEARCH_HOST=<SIEM_IP> ./scripts/install-opensearch-config.sh
+./scripts/install-opensearch-config.sh
 ```
 
-This script:
-1. ✅ Applies Suricata index template with geo_point mappings
-2. ✅ Applies pfBlockerNG index template with keyword mappings
-3. ✅ Enables auto-create for `suricata-*` and `pfblockerng-*` indices
-4. ✅ Verifies configuration works
-5. ✅ Creates initial index
+That applies the two index templates (`suricata-template` for `suricata-*`,
+`pfblockerng` for `pfblockerng-*`), sets auto-create as below, verifies the
+template lands on a throw-away test index, and creates today's `suricata-` index.
 
-### Manual Fix
+### Manual
 
-#### 1. Enable Auto-Create
 ```bash
 curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   -H 'Content-Type: application/json' \
@@ -51,172 +58,82 @@ curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
   }'
 ```
 
-#### 2. Create Today's Index
-```bash
-TODAY=$(date -u +%Y.%m.%d)
-curl -XPUT "http://<SIEM_IP>:9200/suricata-${TODAY}" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "settings": {
-      "number_of_shards": 1,
-      "number_of_replicas": 0
-    }
-  }'
-```
+Use `persistent`, not `transient`, or the setting is lost at the next restart.
 
-#### 3. Verify Setting
-```bash
-curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
-```
-
-Expected output:
-```json
-{
-  "persistent": {
-    "action": {
-      "auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-    }
-  }
-}
-```
+The value is an allow-list of patterns. `suricata-*` and `pfblockerng-*` are this
+project's data; the dot-prefixed patterns are OpenSearch's own alerting,
+monitoring and ML indices, which also rely on auto-create. Anything else must be
+created explicitly, which is the safer default: a typo in a client's index name
+cannot silently create junk indices. Setting the value to `true` allows
+everything and is not recommended.
 
 ## Verification
 
-### Check for the Problem
 ```bash
-# Check if auto-create is disabled
-curl -s "http://<SIEM_IP>:9200/_cluster/settings" | jq '.persistent.action.auto_create_index'
-
-# If it returns null or "false", you have the problem
-```
-
-### Check Logstash Errors
-```bash
-ssh <user>@<SIEM_IP> 'journalctl -u logstash --since "10 minutes ago" | grep index_not_found'
-```
-
-If you see errors like:
-```
-Could not index event to OpenSearch. {:status=>404, :action=>["index", {:_index=>"suricata-2025.11.26"
-```
-
-The index doesn't exist and auto-create is disabled.
-
-### Verify Fix is Working
-```bash
-# 1. Check the setting is enabled
+# The setting
 curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+# expect: {"persistent":{"action":{"auto_create_index":"pfblockerng-*,suricata-*,.monitoring-*,..."}}}
 
-# 2. Check indices exist
-curl -s "http://<SIEM_IP>:9200/_cat/indices/suricata-*?v&s=index"
-
-# 3. Verify today's index exists
+# Today's index exists and is growing
 TODAY=$(date -u +%Y.%m.%d)
-curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}" | jq .
-
-# 4. Check event count is increasing
-curl -s "http://<SIEM_IP>:9200/suricata-*/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}/_count" | jq .count
 sleep 10
-curl -s "http://<SIEM_IP>:9200/suricata-*/_count" | jq '.count'
-# Count should increase
+curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}/_count" | jq .count
+
+# Recent Logstash failures of this kind
+sudo grep -c index_not_found /var/log/logstash/logstash-plain.log
 ```
 
-## Why Use `action.auto_create_index` Pattern?
-
-The setting accepts a comma-separated list of index patterns:
-- `pfblockerng-*` - pfBlockerNG events (via Telegraf opensearch output)
-- `suricata-*` - Our Suricata events (via Logstash)
-- `.monitoring-*` - OpenSearch monitoring indices
-- `.watches` - Alerting watches
-- `.triggered_watches` - Alert triggers
-- `.watcher-history-*` - Alert history
-- `.ml-*` - Machine learning indices
-
-This allows these indices to auto-create while keeping auto-create disabled for everything else (security best practice).
-
-## Alternative: Enable Auto-Create Globally
-
-⚠️ **Not recommended for production** - less secure
-
-```bash
-curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "persistent": {
-      "action.auto_create_index": "true"
-    }
-  }'
-```
+`./scripts/status.sh` reports the setting as a pass/fail line for both patterns.
 
 ## Emergency Recovery
 
-If you discover the problem after midnight and have lost events:
+If you notice after midnight that the flow stopped:
 
 ```bash
-# 1. Create today's index immediately
 TODAY=$(date -u +%Y.%m.%d)
-curl -XPUT "http://<SIEM_IP>:9200/suricata-${TODAY}" \
-  -H 'Content-Type: application/json' \
-  -d '{"settings":{"number_of_shards":1,"number_of_replicas":0}}'
-
-# 2. Enable auto-create
-curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" \
-  -H 'Content-Type: application/json' \
-  -d '{"persistent":{"action.auto_create_index":"pfblockerng-*,suricata-*,.monitoring-*"}}'
-
-# 3. Verify data is flowing
-sleep 10
-curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}/_count" | jq '.count'
+# 1. Create today's index right now (the template supplies the mappings)
+curl -XPUT "http://<SIEM_IP>:9200/suricata-${TODAY}"
+# 2. Set auto-create so it does not happen again tomorrow
+curl -XPUT "http://<SIEM_IP>:9200/_cluster/settings" -H 'Content-Type: application/json' \
+  -d '{"persistent":{"action.auto_create_index":"pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"}}'
+# 3. Confirm
+sleep 10; curl -s "http://<SIEM_IP>:9200/suricata-${TODAY}/_count" | jq .count
 ```
 
-**Note**: Events written during the downtime are LOST. The forwarder uses tail -f behavior (starts at EOF), so it only forwards events written AFTER it starts. Historical events in the Suricata log files are not backfilled.
+Events dropped during the outage are gone. The forwarder tails from the end of
+`eve.json`, so it will not resend them; they are still in Suricata's log files
+on pfSense if you need them for an investigation.
+
+## Related Template Problems
+
+These share the "new index created at midnight" mechanism and are often
+confused with the auto-create issue.
+
+**Template not applied to new indices.** Templates only affect indices created
+after them. Re-apply, then wait for tomorrow's index or delete today's:
+```bash
+curl -XPUT "http://<SIEM_IP>:9200/_index_template/suricata-template" \
+  -H 'Content-Type: application/json' -d @config/opensearch-index-template.json
+```
+
+**Geo map empty on new indices.** `geoip_src.location` must be `geo_point`. Check
+one index (`suricata-YYYY.MM.DD`) or all at once:
+```bash
+curl -s "http://<SIEM_IP>:9200/suricata-*/_mapping" \
+  | jq '.[].mappings.properties.geoip_src.properties.location.type' | sort | uniq -c
+```
+Every line should be `"geo_point"`. A `"float"` line means that index was
+created before the template existed; delete or reindex it.
 
 ## Prevention Checklist
 
-✅ Run `install-opensearch-config.sh` during initial setup  
-✅ Verify auto-create is enabled after installation  
-✅ Add monitoring for event flow (alert if count stops increasing)  
-✅ Test the configuration by manually checking at midnight UTC  
-✅ Document the OpenSearch URL in your runbook  
-
-## Troubleshooting
-
-### Problem: Setting doesn't persist after OpenSearch restart
-**Cause**: Using `transient` instead of `persistent` settings  
-**Fix**: Always use `persistent` settings block (as shown above)
-
-### Problem: Template not applying to new indices
-**Cause**: Index created before template or template priority too low  
-**Fix**: Delete and recreate index, or apply template with higher priority:
-```bash
-curl -XPUT "http://<SIEM_IP>:9200/_index_template/suricata-template" \
-  -H 'Content-Type: application/json' \
-  -d @config/opensearch-index-template.json
-```
-
-### Problem: Geo map not working on new indices
-**Cause**: Template not applied, missing geo_point mapping  
-**Fix**: Verify template with:
-```bash
-curl -s "http://<SIEM_IP>:9200/suricata-2025.11.26/_mapping" | \
-  jq '.["suricata-2025.11.26"].mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location.type'
-```
-
-Should return: `"geo_point"`
+- Run `./setup.sh` (or `install-opensearch-config.sh`) before the first event flows.
+- Run `./scripts/status.sh` after any OpenSearch reinstall or restore; it checks the setting.
+- Keep `persistent` settings in a backup: `curl -s http://<SIEM_IP>:9200/_cluster/settings > cluster-settings.json`.
 
 ## References
 
-- [OpenSearch Documentation: Index Auto-Create](https://opensearch.org/docs/latest/api-reference/index-apis/create-index/)
-- [Logstash OpenSearch Output Plugin](https://github.com/opensearch-project/logstash-output-opensearch)
-- [Index Templates](https://opensearch.org/docs/latest/im-plugin/index-templates/)
-
-## Support
-
-If you encounter this issue in production:
-
-1. **Immediate**: Create today's index manually (see Emergency Recovery)
-2. **Short-term**: Enable auto-create setting
-3. **Long-term**: Add monitoring/alerting for event flow
-4. **Best practice**: Run installer script on all deployments
-
-This configuration is **CRITICAL** for production deployments. Do not skip it!
+- OpenSearch cluster settings: https://opensearch.org/docs/latest/api-reference/cluster-api/cluster-settings/
+- Index templates: https://opensearch.org/docs/latest/im-plugin/index-templates/
+- logstash-output-opensearch: https://github.com/opensearch-project/logstash-output-opensearch

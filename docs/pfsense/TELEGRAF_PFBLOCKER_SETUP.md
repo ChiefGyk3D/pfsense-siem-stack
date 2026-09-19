@@ -2,15 +2,15 @@
 
 ## Overview
 
-pfBlockerNG data (IP blocks and DNSBL events) is collected by Telegraf on pfSense and sent **directly to OpenSearch** using the `[[outputs.opensearch]]` plugin. This bypasses InfluxDB entirely for pfBlockerNG data, avoiding high-cardinality issues that plague time-series databases.
+pfBlockerNG data (IP blocks and DNSBL events) is collected by Telegraf on pfSense and sent **directly to OpenSearch** using the `[[outputs.opensearch]]` plugin. This bypasses InfluxDB entirely for pfBlockerNG data, avoiding the high-cardinality problems that source IPs, destination IPs and domains cause in a time-series database.
 
 ### Architecture
 
 ```
-pfSense pfBlockerNG logs
+pfSense pfBlockerNG logs (/var/log/pfblockerng/*.log)
   → Telegraf tail input (grok parsing)
     → Telegraf opensearch output
-      → OpenSearch (pfblockerng-* indices)
+      → OpenSearch (pfblockerng-* daily indices)
         → Grafana (OpenSearch-pfBlockerNG datasource)
 ```
 
@@ -18,18 +18,18 @@ pfSense pfBlockerNG logs
 
 ## Prerequisites
 
-1. **pfBlockerNG-devel** installed on pfSense (System → Package Manager)
-2. **Telegraf** package installed on pfSense (System → Package Manager)
-3. **OpenSearch** running on SIEM server with `pfblockerng-*` auto-create enabled
-4. **Index template** applied (run `./scripts/install-opensearch-config.sh`)
+1. **pfBlockerNG-devel** installed on pfSense (System → Package Manager) with IP and/or DNSBL blocking enabled and logging turned on
+2. **Telegraf** package installed on pfSense and working — see [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md). `[[outputs.opensearch]]` requires Telegraf **1.28 or later** (`telegraf version`)
+3. **OpenSearch** running on the SIEM server, reachable from pfSense on port 9200
+4. **Index template and auto-create setting** applied by running `./scripts/install-opensearch-config.sh` on the SIEM server (details below)
 
 ## Telegraf Configuration on pfSense
 
-Telegraf on pfSense is configured via the WebUI at **Services → Telegraf**. The raw config is stored base64-encoded in `/conf/config.xml` under `<telegraf_raw_config>`.
+Telegraf on pfSense is configured entirely through **Services → Telegraf**. The generated `/usr/local/etc/telegraf.conf` is rewritten from `config.xml` on every save, so everything below goes into the **Additional Configuration** box on that page, never into the file directly. See [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md#2-configure-via-services--telegraf) for the full explanation.
+
+Telegraf runs as root on pfSense, so it can read the pfBlockerNG logs even when the package recreates them with mode `600`. No permission tweaks or cron jobs are needed.
 
 ### Required: OpenSearch Output Plugin
-
-Add this to Telegraf's **Additional Configuration** section on pfSense:
 
 ```toml
 [[outputs.opensearch]]
@@ -43,18 +43,17 @@ Add this to Telegraf's **Additional Configuration** section on pfSense:
   namepass = ["tail_ip_block_log", "tail_dnsbl_log"]
 ```
 
-Replace `<SIEM_IP>` with your SIEM server IP (e.g., `<SIEM_IP>`).
+Replace `<SIEM_IP>` with the address of your SIEM server.
 
 **Key fields:**
-- `namepass`: Only sends pfBlockerNG measurements to OpenSearch (not system metrics)
-- `manage_template = false`: We manage the index template ourselves
-- `index_name`: Creates daily indices like `pfblockerng-2025.02.07`
 
-> **Warning**: Do NOT use `[[outputs.elasticsearch]]` — it has version incompatibilities with OpenSearch 2.x. Telegraf ships with a dedicated `[[outputs.opensearch]]` plugin that works correctly.
+- `namepass`: only the two pfBlockerNG measurements go to OpenSearch; system metrics stay in InfluxDB
+- `manage_template = false`: the index template is managed on the SIEM side by `install-opensearch-config.sh` (its name there is `pfblockerng`, matching `template_name`)
+- `index_name`: daily indices such as `pfblockerng-2025.02.07`
+
+> **Warning**: Do NOT use `[[outputs.elasticsearch]]` — its version handshake fails against OpenSearch 2.x and it refuses to write. Telegraf ≥ 1.28 ships a dedicated `[[outputs.opensearch]]` plugin that works correctly.
 
 ### Required: Tail Inputs for pfBlockerNG Logs
-
-Add these tail inputs to parse pfBlockerNG log files:
 
 ```toml
 # pfBlocker IP Block Log
@@ -82,62 +81,33 @@ Add these tail inputs to parse pfBlockerNG log files:
   grok_timezone = "Local"
 ```
 
-> **Important**: The `:tag` annotations (e.g., `src_ip:tag`) tell Telegraf to treat these fields as tags. For the OpenSearch output, this causes them to be nested under `tag.*` (e.g., `tag.src_ip`). All other fields go under the measurement name (e.g., `tail_ip_block_log.dest_ip`). The Grafana dashboard queries are built around this structure.
+> **Important**: The `:tag` annotations (e.g. `src_ip:tag`) tell Telegraf to treat those values as tags. The OpenSearch output nests tags under `tag.*` (e.g. `tag.src_ip`) and everything else under the measurement name (e.g. `tail_ip_block_log.dest_ip`). The Grafana dashboard queries are built around this structure, so keep the annotations as shown.
 
-### Restart Telegraf
+### Apply and restart
 
-After configuration changes on pfSense:
-```bash
-# Via pfSense WebUI: Services → Telegraf → Save
-# Or via SSH:
-pfSsh.php playback svc restart telegraf
-```
+Click **Save** on the Telegraf page. That regenerates the config and restarts the service. If you need to restart by hand later, use **Status → Services** or `/usr/local/etc/rc.d/telegraf.sh restart` — see [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md#5-restarting-telegraf-correctly).
 
 ## OpenSearch Setup (SIEM Server)
 
-### 1. Apply Index Template
+### Apply the index template and enable auto-create
 
-The index template ensures all pfBlockerNG fields are mapped as `keyword` type for aggregation:
+Run the installer once on the SIEM server:
 
 ```bash
-# Automated (recommended)
 OPENSEARCH_HOST=<SIEM_IP> ./scripts/install-opensearch-config.sh
+```
 
-# Or manually:
-curl -XPUT "http://localhost:9200/_index_template/pfblockerng" \
+It creates two index templates — `_index_template/suricata-template` for `suricata-*` and `_index_template/pfblockerng` for `pfblockerng-*` — and sets `action.auto_create_index` so that both daily index families can be created automatically at midnight UTC. Without the auto-create setting Telegraf's writes fail silently with `index_not_found_exception` as soon as the date changes; see [OPENSEARCH_AUTO_CREATE.md](../troubleshooting/OPENSEARCH_AUTO_CREATE.md) for the background, verification commands and emergency recovery.
+
+To apply just the pfBlockerNG template by hand:
+
+```bash
+curl -XPUT "http://<SIEM_IP>:9200/_index_template/pfblockerng" \
   -H 'Content-Type: application/json' \
   -d @config/opensearch-pfblockerng-template.json
 ```
 
-### 2. Verify auto_create_index
-
-Confirm `pfblockerng-*` is in the allowed list:
-
-```bash
-curl -s "http://localhost:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
-```
-
-Expected output should include `pfblockerng-*`:
-```json
-{
-  "persistent": {
-    "action": {
-      "auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,..."
-    }
-  }
-}
-```
-
-If not, update it:
-```bash
-curl -XPUT "http://localhost:9200/_cluster/settings" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "persistent": {
-      "action.auto_create_index": "pfblockerng-*,suricata-*,.monitoring-*,.watches,.triggered_watches,.watcher-history-*,.ml-*"
-    }
-  }'
-```
+The template maps every `tag.*`, `tail_ip_block_log.*` and `tail_dnsbl_log.*` field as `keyword` so Grafana can aggregate on them.
 
 ## Grafana Datasource
 
@@ -150,16 +120,11 @@ A dedicated OpenSearch datasource is used for pfBlockerNG data:
 | **URL** | http://localhost:9200 |
 | **Index** | pfblockerng-* |
 | **Time field** | @timestamp |
-| **Version** | 2.19.4 |
+| **Version** | 2.x (match your OpenSearch version) |
 
-The `setup.sh` script creates this datasource automatically. To create manually:
-1. Grafana → Configuration → Data Sources → Add data source
-2. Search for "OpenSearch"
-3. Fill in the settings above
+`setup.sh` creates this datasource automatically. To create it manually: Grafana → Connections → Data sources → Add data source → OpenSearch, then fill in the table above.
 
 ## OpenSearch Field Structure
-
-Telegraf's opensearch output nests data as follows:
 
 ### IP Block Events (`measurement_name: tail_ip_block_log`)
 
@@ -170,19 +135,19 @@ Telegraf's opensearch output nests data as follows:
 | `tag.protocol` | keyword | Protocol (TCP/UDP/ICMP) |
 | `tag.geoip_code` | keyword | Country code |
 | `tag.feed_name` | keyword | Blocklist feed name |
+| `tag.direction` | keyword | in/out |
 | `tag.host` | keyword | pfSense hostname |
-| `tail_ip_block_log.direction` | keyword | in/out |
 | `tail_ip_block_log.dest_ip` | keyword | Destination IP |
 | `tail_ip_block_log.src_port` | keyword | Source port |
 | `tail_ip_block_log.action` | keyword | Block action |
 | `tail_ip_block_log.interface` | keyword | Interface name |
-| `tail_ip_block_log.ASN` | text/keyword | AS number |
+| `tail_ip_block_log.ASN` | keyword | AS number |
 
 ### DNSBL Events (`measurement_name: tail_dnsbl_log`)
 
 | Field Path | Type | Description |
 |------------|------|-------------|
-| `tag.src_ip` | keyword | Client IP making DNS request |
+| `tag.src_ip` | keyword | Client IP making the DNS request |
 | `tag.tld` | keyword | Top-level domain blocked |
 | `tag.feed_name` | keyword | DNSBL feed name |
 | `tag.blocklist` | keyword | Blocklist name |
@@ -190,119 +155,89 @@ Telegraf's opensearch output nests data as follows:
 | `tail_dnsbl_log.domain` | keyword | Full domain blocked |
 | `tail_dnsbl_log.blockmethod` | keyword | Block method |
 | `tail_dnsbl_log.blocktype` | keyword | Block type |
-| `tail_dnsbl_log.req_agent` | text/keyword | User agent |
+| `tail_dnsbl_log.req_agent` | keyword | User agent (when present) |
 
 ## Dashboard Panels
 
-The pfSense System Dashboard (`pfsense_pfblockerng_system.json`) includes 16 pfBlockerNG panels, all using the OpenSearch-pfBlockerNG datasource:
-
-### pfBlocker Stats Row
-1. **IP - Top 10 Blocked - IN** — Source IPs blocked inbound
-2. **IP - Top 10 Blocked - OUT** — Source IPs blocked outbound
-3. **IP - Blocked Packet Stats** — Time series of IN vs OUT blocks
-4. **IP - Blocked by GeoIP** — Blocks by country code
-5. **DNSBL - Blocked Domain Queries** — Time series of DNS blocks
-6. **DNSBL - Source IP Top 10** — Clients making most blocked DNS queries
-7. **DNSBL - Top 10 Blocked Domains** — Most-blocked domains (TLD)
-
-### pfBlocker Details Row
-8. **IP - Top 10 IN (By Host/Port)** — Blocked IPs with port breakdown
-9. **Port - Top 10 IN** — Most targeted inbound ports
-10. **Top 10 DNSBL Feeds** — Most active DNSBL feeds
-11. **Port - Top 10 OUT** — Most targeted outbound ports
-12. **IP - Top 10 OUT (By Host/Port)** — Outbound blocks with port breakdown
-13. **IP - Top 10 IN (By Host/Protocol)** — Inbound blocks with protocol breakdown
-14. **Protocol - Top 10 IN** — Protocol distribution for inbound blocks
-15. **Protocol - Top 10 OUT** — Protocol distribution for outbound blocks
-16. **IP - Top 10 OUT (By Host/Protocol)** — Outbound blocks with protocol breakdown
+The pfSense System Dashboard (`dashboards/pfsense_pfblockerng_system.json`) contains 16 pfBlockerNG panels (top blocked IPs in/out, blocks by GeoIP, port and protocol breakdowns, DNSBL top domains/clients/feeds, time series of block rates), all using the OpenSearch-pfBlockerNG datasource. The panel list and import instructions are in [dashboards/README.md](../../dashboards/README.md).
 
 ## Verification
 
-### Check Data is Flowing
-
 ```bash
 # Count total events
-curl -s "http://localhost:9200/pfblockerng-*/_count" | jq '.count'
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_count" | jq '.count'
 
-# Check latest event
-curl -s "http://localhost:9200/pfblockerng-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source'
+# Latest event
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_search?size=1&sort=@timestamp:desc" | jq '.hits.hits[0]._source'
 
-# Check field mappings are keyword
-curl -s "http://localhost:9200/pfblockerng-*/_mapping" | jq '.. | .tag? // empty | .properties | keys'
+# Tag fields mapped as keyword?
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_mapping" | jq '.. | .tag? // empty | .properties | keys'
 ```
 
-### Run Status Check
-
-```bash
-./scripts/status.sh
-```
-
-The status check now includes pfBlockerNG OpenSearch data validation.
+`./scripts/status.sh` also checks that pfBlockerNG data is arriving in OpenSearch.
 
 ## Troubleshooting
 
 ### No pfBlockerNG Data in OpenSearch
 
-1. **Check Telegraf is running on pfSense:**
+1. **Telegraf running (as root) on pfSense?**
    ```bash
-   ssh admin@<pfsense-ip> 'ps aux | grep telegraf'
+   ssh admin@<PFSENSE_IP> "ps -axo user,command | grep '[t]elegraf'"
    ```
-
-2. **Check pfBlockerNG logs exist:**
+2. **pfBlockerNG logs exist and are growing?**
    ```bash
-   ssh admin@<pfsense-ip> 'ls -la /var/log/pfblockerng/*.log'
+   ssh admin@<PFSENSE_IP> "ls -la /var/log/pfblockerng/ip_block.log /var/log/pfblockerng/dnsbl.log"
    ```
-
-3. **Check Telegraf config includes opensearch output:**
+   If they are empty, enable logging on the IP and DNSBL groups in pfBlockerNG and make sure blocks are actually happening.
+3. **Generated config contains the OpenSearch output?**
    ```bash
-   ssh admin@<pfsense-ip> 'grep -A5 "outputs.opensearch" /usr/local/etc/telegraf.conf'
+   ssh admin@<PFSENSE_IP> "grep -A5 'outputs.opensearch' /usr/local/etc/telegraf.conf"
    ```
-
-4. **Check OpenSearch auto_create_index includes pfblockerng-*:**
+   If not, the Additional Configuration box was not saved. Paste it again and click Save.
+4. **Telegraf errors?**
    ```bash
-   curl -s "http://localhost:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+   ssh admin@<PFSENSE_IP> "tail -50 /var/log/telegraf/telegraf.log | grep -i -E 'opensearch|tail'"
    ```
+5. **Auto-create includes `pfblockerng-*`?**
+   ```bash
+   curl -s "http://<SIEM_IP>:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
+   ```
+   If not, re-run `install-opensearch-config.sh` or follow [OPENSEARCH_AUTO_CREATE.md](../troubleshooting/OPENSEARCH_AUTO_CREATE.md).
 
 ### Fields Mapped as Text Instead of Keyword
 
-If Grafana shows "No data" even though events exist, the fields may be mapped as `text` type:
+If events exist but Grafana panels show "No data", the index was probably created before the template was applied and the fields were dynamically mapped as `text`:
 
 ```bash
-# Check mapping
-curl -s "http://localhost:9200/pfblockerng-*/_mapping" | jq '.. | .src_ip? // empty'
+curl -s "http://<SIEM_IP>:9200/pfblockerng-*/_mapping" | jq '.. | .src_ip? // empty'
 ```
 
-If type is `text`, re-apply the template and recreate the index:
-```bash
-# Apply template
-curl -XPUT "http://localhost:9200/_index_template/pfblockerng" \
-  -H 'Content-Type: application/json' \
-  -d @config/opensearch-pfblockerng-template.json
+If the type is `text`, apply the template (command above) and recreate today's index:
 
-# Delete old index (data will be lost!)
+```bash
 TODAY=$(date -u +%Y.%m.%d)
-curl -XDELETE "http://localhost:9200/pfblockerng-${TODAY}"
-
-# New index will be created automatically with correct mappings
+curl -XDELETE "http://<SIEM_IP>:9200/pfblockerng-${TODAY}"   # today's pfBlockerNG data is lost
 ```
+
+The next event Telegraf writes recreates the index with the template's keyword mappings.
 
 ### Why OpenSearch Instead of InfluxDB?
 
-pfBlockerNG data has **high cardinality** in fields like `src_ip`, `dest_ip`, `domain`, and `ASN`. InfluxDB stores tags in an inverted index, so high-cardinality tags cause:
-- Excessive memory usage (series cardinality explosion)
-- Slow queries
-- Potential OOM crashes
-
-If these fields are stored as InfluxDB *fields* instead of tags, they can't be used in `GROUP BY` queries, making Top-N panels impossible.
-
-OpenSearch handles high-cardinality data natively with its inverted index architecture. Every field can be both searched and aggregated without cardinality penalties.
+pfBlockerNG data has **high cardinality** in `src_ip`, `dest_ip`, `domain` and `ASN`. InfluxDB indexes every tag value, so high-cardinality tags cause series-cardinality explosion, memory pressure and slow queries; storing them as fields instead makes them unusable in `GROUP BY`, which kills every Top-N panel. OpenSearch's inverted index handles high-cardinality values natively, so every field can be both searched and aggregated.
 
 ## Migration from InfluxDB
 
 If you previously had pfBlockerNG data in InfluxDB:
 
-1. The dashboard panels have been updated to use OpenSearch queries
-2. InfluxDB pfBlockerNG measurements (`tail_ip_block_log`, `tail_dnsbl_log`) can be dropped
+1. The dashboard panels now use OpenSearch queries
+2. The InfluxDB measurements `tail_ip_block_log` and `tail_dnsbl_log` can be dropped
 3. System metrics (CPU, RAM, interfaces) remain in InfluxDB — no changes needed
-4. The Telegraf `[[outputs.influxdb]]` section still works for system metrics
-5. Only the `namepass` filter on `[[outputs.opensearch]]` controls what goes to OpenSearch
+4. The generated `[[outputs.influxdb]]` block keeps working for system metrics
+5. The `namepass` filter on `[[outputs.opensearch]]` alone controls what goes to OpenSearch
+
+## Related
+
+- [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md) — Telegraf package, Additional Configuration box, restart, troubleshooting
+- [PFBLOCKERNG_OPTIMIZATION.md](PFBLOCKERNG_OPTIMIZATION.md) — pfBlockerNG strategy and how it complements Suricata
+- [OPENSEARCH_AUTO_CREATE.md](../troubleshooting/OPENSEARCH_AUTO_CREATE.md) — the midnight-UTC problem
+- [config/README.md](../../config/README.md) — index templates and Logstash pipeline

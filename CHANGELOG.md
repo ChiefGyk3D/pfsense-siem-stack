@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation overhaul (2026-09)
+
+The docs tree was audited end to end against the code and reorganised into two tracks:
+a **pfSense knowledge base** (`docs/pfsense/`, usable without the SIEM stack) and the
+**SIEM stack** docs (install / operations / troubleshooting / reference). Highlights:
+
+- **New: [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)** — general checklist plus 2.8.1 → 2.9.0 specifics (FreeBSD 16-CURRENT, PHP 8.5, sshd algorithm removals, TLS certificate enforcement, the Telegraf package `ssl_ca`/`fielddrop` breakage and workaround, `pkg bootstrap -f`), a table of every file this stack places on pfSense and whether it survives, and the post-upgrade `preflight.sh → setup.sh → status.sh` procedure
+- **New: [Telegraf on pfSense](docs/pfsense/TELEGRAF_ON_PFSENSE.md)** — from-scratch guide that replaces `TELEGRAF_RESTART_PROCEDURE.md`, `PF_INFORMATION_PANEL_ISSUE.md` and the Telegraf half of `SETUP_FILTERLOG_MONITORING_CRON.md`; resolves the contradictory "should Telegraf run as root" advice (yes, by design)
+- **New: [Field Reference](docs/reference/FIELD_REFERENCE.md)** — the authoritative flat schema for `suricata-*` and `pfblockerng-*`; ~120 stale `suricata.eve.*` references were corrected across the docs
+- **New: [dashboards/README.md](dashboards/README.md)** — inventory of all 11 dashboard files, their UIDs, datasources and import method (notes that `suricata_ids_ips_active.json` shares a UID with `Suricata_IDS_IPS.json`)
+- **README** cut from ~1000 to ~270 lines; duplicated directory tree, troubleshooting and documentation lists removed; status table now says Wazuh dashboards ship and Graylog is shelved (they were still marked "planned")
+- **Merged/removed duplicates**: `FORWARDER_MONITORING_QUICK_REF.md` → `SURICATA_FORWARDER_MONITORING.md` (rewritten around the rc.d service); `SETUP_FILTERLOG_MONITORING_CRON.md` → `PFSENSE_FILTERLOG_ROTATION_FIX.md`; `docs/reference/SCRIPTS_REFERENCE.md` → `scripts/README.md` (now covers all 20 scripts and marks legacy ones); `config/sid/APPLYING_CHANGES.md` → `config/sid/README.md`; `TELEGRAF_INTERFACE_FIXES.md` → a section of `INSTALL_DASHBOARD.md`; `config/pfblockerng_optimization.md` moved to `docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md`
+- **Corrected**: repo URL (`pfsense_siem_stack` → `pfsense-siem-stack`), `CONTRIBUTING.md` (PRs target `main`, CI documented, `/bin/sh` for pfSense scripts), OpenSearch install paths (`/opt/opensearch`), the false "OpenSearch bound to localhost" security claim, the management console's non-existent "Telegram alerts" feature, ILM → ISM, retention defaults, watchdog interval, SID counts (218 disabled / 2 suppressed), stream memcap and hardware examples that contradicted each other, personal IPs/hostnames/interface names replaced with placeholders, all "Last Updated: 2025" stamps
+- Architecture diagram regenerated (no longer shows nested `suricata.eve.*` or a Logstash → InfluxDB path)
+
+### Fixed
+- **setup.sh: rc.d service was never started at boot.** pfSense only runs `/usr/local/etc/rc.d/*.sh` at boot (rc.start_packages); the unit was installed as `suricata_forwarder` without the suffix, so boot persistence silently relied on the cron watchdog. Now installs `suricata_forwarder.sh`, removes the old file, and enables itself by default instead of depending on `/etc/rc.conf` (which pfSense does not manage). Service commands are now `service suricata_forwarder.sh start|stop|restart|status`.
+- **setup.sh: rc.d hardcoded `python3.11`** as `command_interpreter` even though the interpreter was detected; now uses the detected path and refuses to start with a clear message if it disappears (e.g. after a pfSense upgrade). Detection prefers the version-neutral `/usr/local/bin/python3` and probes 3.13/3.12/3.11.
+- **setup.sh: `service … stop` did not stop the forwarder** — `daemon -r` respawned the child. Now tracks supervisor and child PID files and stops both.
+- **setup.sh: watchdog restarted with `nohup`** bypassing the service; now restarts through the rc.d script. The shipped `scripts/suricata-forwarder-watchdog.sh` is now identical to the generated one and no longer uses `killall python3.11`.
+- `scripts/check-telegram-alerts.sh` reads `PFSENSE_HOST`/`PFSENSE_USER` from `config.env` instead of `ssh root@192.168.1.1`.
+- `pfsense-siem` health check no longer requires exactly `python3.11`.
+
 ### Added
 - **Wazuh Security Overview dashboard** (`dashboards/wazuh/wazuh_security_overview.json`) — 20 panels: alert stats, MITRE ATT&CK, compliance (PCI DSS, NIST, HIPAA), auth success/failure tracking, hourly alert trend by agent, recent high-level alerts
 - **Wazuh Vulnerability Detection dashboard** (`dashboards/wazuh/wazuh_vulnerability_detection.json`) — 11 panels: CVE tracking, severity distribution, vulnerable packages, severity by agent cross-reference
@@ -21,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: Comprehensive guide for rule selection, IDS vs IPS configuration, performance tuning, and log management
 - **[Documentation Index](docs/DOCUMENTATION_INDEX.md)**: Organized guide to all documentation with quick search functionality
 - **[Forwarder Monitoring Guide](docs/operations/SURICATA_FORWARDER_MONITORING.md)**: Three monitoring strategies with hybrid approach (crash recovery + activity monitoring)
-- **[Forwarder Monitoring Quick Reference](docs/operations/FORWARDER_MONITORING_QUICK_REF.md)**: One-liner commands for common monitoring tasks
+- **Forwarder Monitoring Quick Reference (since merged into `docs/operations/SURICATA_FORWARDER_MONITORING.md`)**: One-liner commands for common monitoring tasks
 - **[MAC Vendor Lookup Setup](docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md)**: Custom Telegraf plugin for MAC vendor identification via ARP table
 - **Automated forwarder monitoring setup script** (`scripts/setup_forwarder_monitoring.sh`)
 - **Interactive monitoring installer** with 6 preset configurations

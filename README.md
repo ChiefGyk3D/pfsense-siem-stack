@@ -1,932 +1,181 @@
 # pfSense SIEM Stack
 
-> **Complete SIEM infrastructure for pfSense firewalls** — From basic IDS/IPS monitoring to enterprise-grade threat detection with OpenSearch, Graylog, and Wazuh integration options.
+> **A production pfSense monitoring stack, and the pfSense knowledge base that grew around it.**
+> Suricata IDS/IPS, pfBlockerNG and Telegraf on pfSense feeding OpenSearch, Logstash and
+> Grafana — with the tuning, hardening and upgrade notes learned from running it.
 
 [![License](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](LICENSE)
-[![pfSense](https://img.shields.io/badge/pfSense-2.7%2B-blue)](https://www.pfsense.org/)
+[![pfSense](https://img.shields.io/badge/pfSense%20CE-2.8.x%20%7C%202.9.0-blue)](https://www.pfsense.org/)
 [![Suricata](https://img.shields.io/badge/Suricata-7.0%2B-orange)](https://suricata.io/)
-[![Status](https://img.shields.io/badge/Status-Active%20Development-yellow)]()
+[![CI](https://github.com/ChiefGyk3D/pfsense-siem-stack/actions/workflows/lint.yml/badge.svg)](https://github.com/ChiefGyk3D/pfsense-siem-stack/actions/workflows/lint.yml)
 
-> 🎯 **Multi-SIEM Support**: Choose your SIEM backend — OpenSearch (current ✅), Graylog (planned 📝), Wazuh (planned 📝) — with unified pfSense integration.
+This repository is two things, and you can use either without the other:
 
-> ⚠️ **Work in Progress**: The logging and SIEM components are actively being developed and refined. OpenSearch implementation is production-ready. Graylog and Wazuh support planned based on community contributions. Core functionality is stable, but documentation and automation are continuously improving. Contributions and feedback welcome!
-
----
-
-## 📖 Overview
-
-What started as a simple Grafana dashboard tweak evolved into a **comprehensive pfSense SIEM infrastructure project**. This repository captures lessons learned from deploying and operating enterprise-grade pfSense security monitoring, with support for multiple SIEM backends to fit your needs.
-
-> **⚠️ SCOPE NOTICE**: This project focuses on **pfSense-based security and monitoring**. For UniFi equipment (switches, APs, controllers), use [UniFi Poller](https://github.com/unpoller/unpoller) instead - it's purpose-built for UniFi telemetry and integrates excellently with Grafana + InfluxDB.
-
-### 🎯 Current Implementation (OpenSearch - Production Ready ✅)
-
-- **Full SIEM Stack**: OpenSearch for event storage and pfBlockerNG analytics, Logstash for parsing/enrichment, InfluxDB for time-series system metrics
-- **Comprehensive IDS/IPS Monitoring**: Real-time Suricata alerts with GeoIP mapping, signature tracking, and attack visualization  
-- **East-West Traffic Detection**: Internal network monitoring to detect lateral movement and insider threats
-- **Resilient Data Pipeline**: Rotation-aware forwarders, watchdogs, restart hooks, and automated recovery
-- **Production-Ready**: Optimized for dual-WAN inline IPS deployments with per-VLAN policy customization
-
-### 🔮 Future SIEM Backends (Planned)
-
-- **Graylog** 📝 - Easier setup, better web UI, excellent alerting ([see roadmap](docs/siem/graylog/README.md))
-- **Wazuh** 📝 - EDR capabilities, compliance reporting, active response ([see roadmap](docs/siem/wazuh/README.md))
-- **[Compare All Options](docs/siem/COMPARISON.md)** - Feature matrix and decision guide
-
-### 📚 Knowledge Base Coverage
-
-- **Security Hardening**: IDS/IPS configuration, blocklist optimization, signature management
-- **Network Monitoring**: Multi-WAN setups, VLAN segmentation, interface tracking
-- **Automation**: Log forwarding, watchdog monitoring, automated recovery
-- **Performance Tuning**: Resource optimization, retention policies, query performance
-- **Troubleshooting**: Common issues, debugging techniques, validation procedures
-- **Deployment Guides**: Step-by-step installation, configuration templates, best practices
-
-
-**📍 Quick Links**: [SIEM Comparison](docs/siem/COMPARISON.md) | [Hardware Requirements](docs/install/HARDWARE_REQUIREMENTS.md) ⭐ | [Project Status](#-project-status) | [Roadmap](ROADMAP.md) | [Documentation Index](docs/DOCUMENTATION_INDEX.md) | [Contributing](CONTRIBUTING.md)
-
----
+| | What you get | Start here |
+|-|--------------|------------|
+| **pfSense knowledge base** | How to run Suricata, pfBlockerNG and Telegraf well on pfSense: rule selection and SID tuning, blocklist strategy, east-west VLAN monitoring, traffic shaping, Telegraf plugins, the filterlog rotation bug, and **what breaks when you upgrade pfSense** | [docs/pfsense/](docs/DOCUMENTATION_INDEX.md#-pfsense-knowledge-base-no-siem-required) |
+| **SIEM stack** | Automated deployment of a Suricata → OpenSearch → Grafana pipeline (`install.sh`, `setup.sh`, `pfsense-siem` console), a rotation-aware GeoIP-enriching forwarder with watchdog, index templates, retention, and eight Grafana dashboards including three for Wazuh | [Quick Start](QUICK_START.md) |
 
 ![WAN Dashboard](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
-*WAN-side Suricata IDS/IPS monitoring with attack sources, signatures, and geographic visualization*
+*Suricata IDS/IPS dashboard — WAN attack sources, signatures and geography*
 
 ![Per-Interface Dashboard](media/Suricata%20Per-Interface%20Dashboard.png)
-*Per-Interface Suricata monitoring - LAN/VLAN monitoring with dynamic interface sections*
+*Per-interface dashboard — one repeating section per VLAN for east-west visibility*
 
 ---
 
-## �️ Architecture
+## Status (September 2026)
+
+| Component | State |
+|-----------|-------|
+| Suricata multi-interface forwarding (`scripts/forward-suricata-eve.py`) | ✅ Production — tested with 15 instances (2 WAN inline IPS + 13 VLAN IDS) on pfSense 2.8.1 |
+| OpenSearch / Logstash pipeline, index templates, ISM retention | ✅ Production — **flat** root-level EVE fields ([Field Reference](docs/reference/FIELD_REFERENCE.md)) |
+| Grafana dashboards: Suricata WAN, Suricata per-interface, pfSense system + pfBlockerNG, Windows exporter, Prometheus, Docker, 3× Wazuh | ✅ Shipped ([inventory](dashboards/README.md)) |
+| `install.sh` bare-metal SIEM server (Ubuntu 24.04) | ✅ Works; **OpenSearch is unauthenticated by default** — see Security below |
+| pfSense CE 2.9.0 | ⚠️ Supported with caveats — the Telegraf package is broken on 2.9.0 at release and the forwarder must be redeployed; read the [Upgrade Guide](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) first |
+| Wazuh backend | ✅ Dashboards + deploy script ship here; the Wazuh server itself is provided by [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) |
+| Graylog backend | ⏸️ Explored and shelved ([why](docs/siem/graylog/README.md)) |
+| Alerting as code, TLS/queued transport, OpenSearch auth | 📝 Next — see [ROADMAP.md](ROADMAP.md) |
+
+The strategic direction (see the roadmap) is for
+[siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) to be the
+canonical server-side backend, and for this repo to own everything pfSense-side.
+
+---
+
+## Architecture
 
 ![Architecture Diagram](docs/reference/architecture.png)
 
-### Data Flow
+1. **pfSense** runs Suricata per interface (inline IPS on WAN, IDS on VLANs) behind pfBlockerNG.
+2. **Forwarder** on pfSense tails every `/var/log/suricata/*/eve.json`, survives log rotation, adds `geoip_src`/`geoip_dest`, and ships JSON over UDP 5140.
+3. **Logstash** parses to flat root-level fields and indexes into `suricata-YYYY.MM.DD`.
+4. **Telegraf** on pfSense sends system metrics to InfluxDB and pfBlockerNG block/DNSBL logs straight to OpenSearch (`pfblockerng-*`).
+5. **OpenSearch** stores events; **Grafana** visualises both datasources; optional Prometheus/Wazuh sources plug into the same Grafana.
+6. **Reliability chain** on pfSense: rc.d service (boot) → cron watchdog every minute (crash) → `./setup.sh` again (after a pfSense upgrade).
 
-1. **pfSense** runs Suricata on multiple interfaces (WAN inline IPS, VLAN IDS)
-2. **Forwarder** (`forward-suricata-eve.py`) tails eve.json logs, enriches with GeoIP, handles rotation
-3. **Logstash** receives events via UDP, parses JSON to flat root-level fields (`event_type`, `src_ip`, ...), forwards to storage
-4. **OpenSearch** indexes Suricata events for search and aggregation (geomap, dashboards)
-5. **Telegraf** on pfSense collects system metrics → InfluxDB AND pfBlockerNG logs → OpenSearch
-6. **InfluxDB** stores time-series system metrics (CPU, RAM, interfaces, gateways)
-7. **Grafana** visualizes everything with mixed datasource dashboards (InfluxDB + OpenSearch)
-8. **Watchdogs** monitor the pipeline and restart components on failure
-
-### Key Components
-
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **Suricata** | IDS/IPS engine | pfSense (per-interface) |
-| **PfBlockerNG** | Upstream blocklists | pfSense |
-| **Forwarder** | Suricata log shipping + GeoIP | pfSense → SIEM |
-| **Telegraf** | System metrics + pfBlockerNG logs | pfSense → InfluxDB/OpenSearch |
-| **Logstash** | Suricata parsing & enrichment | SIEM server |
-| **OpenSearch** | Suricata events + pfBlockerNG data | SIEM server |
-| **InfluxDB** | System metrics (CPU/RAM/interfaces) | SIEM server |
-| **Prometheus** | Metrics scraping (node_exporter, windows_exporter) | SIEM server |
-| **Grafana** | Visualization (mixed datasources) | SIEM server |
-| **Watchdogs** | Pipeline monitoring | pfSense + SIEM |
+| Component | Runs on | Purpose |
+|-----------|---------|---------|
+| Suricata, pfBlockerNG, Telegraf | pfSense | Detection, blocklists, metrics |
+| `forward-suricata-eve.py` + rc.d + watchdog | pfSense | EVE shipping, GeoIP, self-healing |
+| Logstash 8.x, OpenSearch 2.x, Grafana 12.x | SIEM server | Parse, store, visualise |
+| InfluxDB, Prometheus (optional) | SIEM server | Time-series metrics |
 
 ---
 
-## 📊 Project Status
+## Quick start
 
-### ✅ Production Ready
-- **Suricata Multi-Interface Monitoring** - Stable, tested on 15 instances (2 WAN + 13 VLAN)
-- **Log Forwarder** - Inode-aware rotation handling, GeoIP enrichment, watchdog monitoring
-- **OpenSearch/Logstash Pipeline** - Flat root-level field format, index templates, retention policies
-- **WAN Security Dashboard** - Attack visualization, signature tracking, geographic mapping
-- **PfBlockerNG Integration** - Blocklist optimization, DNSBL whitelisting
-- **Automated Installation** - One-command SIEM stack deployment
+Full walkthrough with prerequisites: [QUICK_START.md](QUICK_START.md). The short version:
 
-### 🚧 Active Development (Functional but Evolving)
-- **Documentation** - Continuously improving guides, adding troubleshooting scenarios
-- **SID Management** - 219 optimized rules, suppress.conf refinement (testing in production)
-- **LAN Monitoring Dashboard** - East-west traffic panels (planned)
-- **Automation Scripts** - Additional watchdogs, health checks, recovery procedures
-- **Performance Tuning** - Index optimization, query performance, resource usage
+```bash
+git clone https://github.com/ChiefGyk3D/pfsense-siem-stack.git && cd pfsense-siem-stack
+cp config.env.example config.env && nano config.env   # SIEM_HOST, PFSENSE_HOST, PFSENSE_USER
+ssh-copy-id admin@<PFSENSE_IP>
+./scripts/preflight.sh          # validates SSH, Python on pfSense, OpenSearch reachability
+sudo ./install.sh               # on the SIEM server: OpenSearch, Logstash, Grafana (skip if you have them)
+./setup.sh                      # templates, Logstash pipeline, forwarder + rc.d + watchdog, dashboards, verification
+./scripts/status.sh             # green ticks = data flowing
+```
 
-### 📝 Planned Features
-- **Snort Integration** - Currently Suricata-focused, Snort support coming
-- **Multi-Firewall Support** - Central monitoring for multiple pfSense instances
-- **Advanced Analytics** - Machine learning for anomaly detection
-- **Configuration UI** - Web interface for easier setup
-- **Mobile Dashboard** - Grafana mobile optimization
+Or drive everything from the interactive console: `./pfsense-siem`
+([docs](docs/operations/MANAGEMENT_CONSOLE.md)).
 
+**Requirements in one line:** pfSense CE 2.7.2+ (2.8.1 tested, 2.9.0 see caveats) with
+Suricata and SSH enabled; an Ubuntu 24.04 server with 16 GB RAM (32 GB recommended) and
+100 GB+ SSD; SSH keys to both. Sizing detail and the "no SD cards" warning:
+[Hardware Requirements](docs/install/HARDWARE_REQUIREMENTS.md).
 
-## ✨ Features
+### Recommended pfSense packages
 
-### 🔥 IDS/IPS Monitoring (✅ Stable)
-- **Real-time alerts** from Suricata with signature details and severity
-- **GeoIP visualization** with city-level accuracy on interactive world maps
-- **Multi-interface support** monitors all Suricata instances (WAN, VLANs, lagg)
-- **Event analytics** by type, protocol, severity, category, and application
-- **Attack tracking**: Top signatures, source countries, HTTP hosts, JA3 fingerprints
-- **SID optimization**: 219 tuned signatures for reduced false positives
+| Package | Why | Used by |
+|---------|-----|---------|
+| **Suricata** | The IDS/IPS engine. Required. | Forwarder, Suricata dashboards |
+| **pfBlockerNG-devel** | Blocks known-bad IPs/domains *before* Suricata sees them; GeoIP; the `-devel` branch gets features first | pfSense system dashboard (pfBlockerNG section) |
+| **Telegraf** | System metrics → InfluxDB, pfBlockerNG logs → OpenSearch, and the exec plugins in `plugins/` | pfSense system dashboard |
+| **ntopng** | Keeps a GeoLite2-City database updated on the box, which the forwarder reuses for the attack map | Forwarder GeoIP |
+| **Cron** | Config.xml-backed cron jobs (filterlog auto-restart, optional durable watchdog) | Operations |
+| **Service_Watchdog** | Restarts Suricata/Unbound/dpinger if they die | Reliability |
+| **nut** | UPS monitoring (optional) | Telegraf |
 
-### 🌐 Network Intelligence (✅ Stable)
-- **Dual-WAN inline IPS** with Snort + Emerging Threats on both uplinks
-- **East-West detection** for lateral movement across VLANs (🚧 dashboard pending)
-- **Per-VLAN policies**: Heavy monitoring on IoT, lighter on trusted VLANs
-- **PfBlockerNG integration** for upstream threat filtering
-
-### 🛠️ Reliability & Operations (✅ Stable)
-- **Boot persistence**: FreeBSD rc.d service starts forwarder automatically on pfSense boot
-- **Process management**: Uses `daemon(8)` with PID tracking — no orphaned processes
-- **Log rotation handling**: Inode-aware forwarder survives Suricata rotations
-- **Watchdogs**: Cron-based health checks restart forwarder on failure via rc.d service
-- **Restart hooks**: Ensure proper startup after pfSense/Suricata upgrades
-- **Debug logging**: Comprehensive troubleshooting with `/var/log/suricata_forwarder_debug.log`
-- **Automated setup**: One-command deployment scripts for entire stack
-
-### � Dashboards & Alerts
-- **WAN monitoring**: Attack sources, signatures, protocols, top talkers
-- **LAN monitoring**: Per-interface dashboard with dynamic VLAN sections (✅ production ready)- **Windows monitoring**: Windows Exporter dashboard — CPU, memory, disk, network, services (✅ Prometheus)- **Interface distribution**: Traffic breakdown by interface/VLAN
-- **Alerting**: Grafana alerts + webhook integrations (🚧 refining rules)
+Install order: pfBlockerNG-devel → Suricata → Telegraf → ntopng → Cron → Service_Watchdog.
 
 ---
 
-## 🚀 Quick Start
+## Documentation
 
-### Prerequisites
+**Hub: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** — organised by what you
+are trying to do.
 
-> **🚨 CRITICAL HARDWARE WARNING**: 
-> 
-> **DO NOT USE RASPBERRY PI WITH SD CARDS OR SIMILAR SETUPS FOR LOGGING!**
-> 
-> High-frequency log writes will **destroy SD cards within weeks**. At minimum, use a SATA SSD with USB 3.0 adapter. For production logging/SIEM, invest in proper hardware to avoid data loss and constant rebuilds.
+| Track | Directory | Highlights |
+|-------|-----------|------------|
+| pfSense knowledge base | [docs/pfsense/](docs/pfsense/) | [Suricata Optimization](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md) ⭐ · [pfBlockerNG strategy](docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md) and [feed reference](docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md) · [Telegraf on pfSense](docs/pfsense/TELEGRAF_ON_PFSENSE.md) · [LAN / east-west monitoring](docs/pfsense/LAN_MONITORING.md) · [Traffic shaping](docs/pfsense/TRAFFIC_SHAPING_GUIDE.md) · [**Upgrading pfSense**](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) |
+| Deploy the SIEM | [docs/install/](docs/install/) | [Hardware](docs/install/HARDWARE_REQUIREMENTS.md) · [New user checklist](docs/install/NEW_USER_CHECKLIST.md) · SIEM server · forwarder · GeoIP · dashboards |
+| Operate it | [docs/operations/](docs/operations/) | [Management console](docs/operations/MANAGEMENT_CONSOLE.md) · [Forwarder monitoring](docs/operations/SURICATA_FORWARDER_MONITORING.md) · [Retention](docs/operations/MULTI_INTERFACE_RETENTION.md) |
+| Fix it | [docs/troubleshooting/](docs/troubleshooting/) | [Troubleshooting guide](docs/troubleshooting/TROUBLESHOOTING.md) · [Dashboard "No Data"](docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md) 🔥 · [Data stops at midnight UTC](docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md) · [Filterlog rotation bug](docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md) |
+| Reference | [docs/reference/](docs/reference/) | [Configuration](docs/reference/CONFIGURATION.md) · [Field reference](docs/reference/FIELD_REFERENCE.md) · [Scripts](scripts/README.md) · [Dashboards](dashboards/README.md) |
+| Other backends | [docs/siem/](docs/siem/) | [Comparison](docs/siem/COMPARISON.md) · [Wazuh](docs/siem/wazuh/README.md) · [Graylog](docs/siem/graylog/README.md) |
 
-**SIEM Server** (Ubuntu/Debian 22.04+ or similar):
-- **CPU**: Dual-core minimum (quad-core recommended for Logstash processing)
-  - AMD/Intel with SMT/Hyper-Threading strongly recommended
-- **RAM**: **16GB minimum, 32GB recommended** for full logging stack
-  - OpenSearch: 8GB+ heap
-  - Logstash: 2-4GB heap
-  - InfluxDB: 2-4GB (recommended for time-series metrics)
-  - Grafana: 1-2GB
-  - System overhead: 2-4GB
-- **Storage**: 
-  - **100GB+ SSD minimum** (NVMe preferred for write performance)
-  - Consider 500GB-1TB for 30+ day retention with moderate traffic
-  - **NO SD CARDS** - Use proper SSDs or you'll regret it
-- **Network**: Gigabit ethernet minimum
-- **OS**: Ubuntu Server 24.04 LTS recommended (tested configuration)
-- **Access**: Root/sudo access, static IP
-
-**Production Reference**: Purism Librem Mini (Intel Core i7-10510U, 32GB RAM, 2TB NVMe) running Ubuntu Server 24.04 LTS handles home lab with significant headroom.
-
-**pfSense Firewall**:
-- pfSense 2.7+ (tested on 2.8.1)
-- **For PfBlockerNG only**: 4-8GB RAM sufficient (even with many blocklists)
-- **For Suricata IDS/IPS**:
-  - **CPU**: Quad-core minimum (more cores = more throughput)
-    - Intel Atom C3758 (8-core) handles 15 Suricata instances at 25-35% average load
-    - Intel Xeon D-1518 (8-core, AVX2) provides significant headroom with hardware AES-NI for VPN offload
-    - **Expect CPU spikes to 100% for 3-5 minutes during rule reloads**
-  - **RAM**: 8-16GB for multi-interface deployments
-  - **Stream Memory**: Increase to **1073741824 bytes (1GB)** per interface (default 256MB causes crashes on multicore systems)
-    - Configure in: Services → Suricata → Interface → Stream tab
-- Suricata package installed and configured
-- SSH enabled with key-based auth
-- Python 3.11+ available
-
-### Recommended pfSense Packages
-
-These packages enhance functionality and are used/referenced throughout this project:
-
-| Package | Purpose | Why Recommended | Installation |
-|---------|---------|-----------------|--------------|
-| **pfBlockerNG-devel** | IP/DNS blocklists, GeoIP blocking | Essential for upstream threat filtering. Blocks known bad actors before they reach Suricata. The devel version has latest features and GeoIP updates. Dashboard includes pfBlockerNG statistics panels. | System → Package Manager → Available Packages → Install `pfBlockerNG-devel` |
-| **Telegraf** | Metrics collection agent | Collects system metrics (CPU, memory, interfaces) and sends to InfluxDB. Also collects pfBlockerNG logs and sends directly to OpenSearch via `[[outputs.opensearch]]` plugin. Required for both system monitoring and pfBlockerNG dashboard panels. | System → Package Manager → Available Packages → Install `telegraf` |
-| **ntopng** | Network traffic analysis | Provides GeoIP database updates automatically (GeoLite2-City.mmdb). The forwarder uses this database for IP geolocation enrichment. Also useful for deep packet inspection and flow analysis. | System → Package Manager → Available Packages → Install `ntopng` |
-| **Service_Watchdog** | Service monitoring | Monitors critical services (Suricata, Unbound, etc.) and auto-restarts on failure. Complements our forwarder watchdog for complete pipeline reliability. | System → Package Manager → Available Packages → Install `Service_Watchdog` |
-| **nut** | UPS monitoring | Network UPS Tools for power monitoring. Telegraf can collect UPS metrics for dashboard display. Critical for graceful shutdowns during power events. | System → Package Manager → Available Packages → Install `nut` (if using UPS) |
-
-**Installation Priority:**
-1. **pfBlockerNG-devel** - Install first, reduces attack surface before IDS/IPS
-2. **Suricata** - Core IDS/IPS functionality (required for this project)
-3. **Telegraf** - Required for system metrics dashboard
-4. **ntopng** - Recommended for auto-updating GeoIP database
-5. **Service_Watchdog** - Recommended for service reliability
-6. **nut** - Optional, only if using UPS hardware
-
-**Notes:**
-- **pfBlockerNG-devel vs pfBlockerNG**: Use `-devel` for latest GeoIP updates and features
-- **ntopng alternative**: If not using ntopng, manually update GeoIP database (see [GeoIP Setup](docs/install/GEOIP_SETUP.md))
-- **Telegraf configuration**: After installation, use included plugins from `plugins/` directory
-- **Service_Watchdog**: Configure to monitor at minimum: Suricata, Unbound, dpinger
-
-### Installation (2 Options)
-
-#### Option 1: Interactive Management Console (Recommended)
-
-```bash
-# 1. Clone repository
-git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
-cd pfsense_siem_stack
-
-# 2. Run management console
-./pfsense-siem
-
-# Follow the interactive menu:
-#   - Option 1: Install SIEM Stack
-#   - Option 2: Deploy to pfSense
-#   - Option 3: Configure OpenSearch
-#   - Option 4: Import Dashboards
-```
-
-**Features:**
-- ✅ Complete interactive menu system
-- ✅ System health checks
-- ✅ Service management (start/stop/restart)
-- ✅ Log viewing (all components)
-- ✅ Configuration backup/restore
-- ✅ Built-in troubleshooting tools
-
-**[Full Management Console Documentation →](docs/operations/MANAGEMENT_CONSOLE.md)**
-
-#### Option 2: Manual Commands
-
-```bash
-# 1. Clone repository
-git clone https://github.com/ChiefGyk3D/pfsense_siem_stack.git
-cd pfsense_siem_stack
-
-# 2. Install SIEM stack (OpenSearch, Logstash, Grafana)
-sudo ./install.sh
-
-# 3. Configure environment and deploy to pfSense
-cp config.env.example config.env
-nano config.env  # Set SIEM_HOST and PFSENSE_HOST
-./setup.sh       # Automated deployment
-```
-
-**That's it!** The setup script:
-- ✅ Configures OpenSearch index templates (Suricata + pfBlockerNG)
-- ✅ Deploys forwarder to pfSense with GeoIP enrichment
-- ✅ Installs rc.d service for boot persistence (auto-start on reboot)
-- ✅ Installs watchdogs for automatic crash recovery
-- ✅ Creates Grafana OpenSearch-pfBlockerNG datasource
-- ✅ Verifies data flow from pfSense → Logstash → OpenSearch
-
-### Import Dashboards
-
-1. Open Grafana: `http://<siem-server>:3000` (admin/admin)
-2. Go to **Dashboards** → **Import**
-3. Upload dashboards:
-   - **`dashboards/pfsense_pfblockerng_system.json`** - pfSense system metrics (InfluxDB) and pfBlockerNG stats (OpenSearch)
-   - **`dashboards/Suricata_IDS_IPS.json`** - WAN-side security monitoring (OpenSearch)
-   - **`dashboards/Suricata_Per_Interface.json`** - Per-interface LAN/VLAN monitoring (OpenSearch)
-   - **`dashboards/windows_exporter.json`** - Windows host monitoring via Prometheus (CPU, memory, disk, network, services)
-4. Select your datasources:
-   - **InfluxDB** (`pfsense` database) for system metrics panels
-   - **OpenSearch-pfBlockerNG** (`pfblockerng-*` index) for pfBlockerNG panels  
-   - **OpenSearch** (`suricata-*` index) for Suricata panels
-   - **Prometheus** for Windows Exporter and node_exporter panels
-5. Click **Import**
-
-### Verify Installation
-
-Check everything is working:
-
-```bash
-./scripts/status.sh
-```
-
-This will verify:
-- ✅ OpenSearch is running and configured correctly
-- ✅ Logstash is listening for events
-- ✅ Forwarder is running on pfSense
-- ✅ Data is flowing and recent
-- ✅ Watchdog is installed
-- ✅ Suricata is generating events
-
-**Green checkmarks** = everything is working!  
-**Red X's** = see the error messages and suggested fixes
+Repository layout: [ORGANIZATION.md](ORGANIZATION.md). Superseded material is in git
+history: [docs/ARCHIVE.md](docs/ARCHIVE.md).
 
 ---
 
-## 📚 Documentation
+## Security considerations
 
-**Start at the hub: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** — this
-repo doubles as a documentation hub for a production pfSense → SIEM deployment, organized
-into task-oriented learning paths (Deploy it / Understand it / Operate it / Fix it /
-Extend it).
+Be honest with yourself about what `install.sh` gives you today:
 
-The docs tree is organized by purpose:
+- **OpenSearch listens on `0.0.0.0:9200` with the security plugin disabled.** Anyone who
+  can reach the port can read or delete your indices. Restrict 9200 to the Grafana host
+  and your workstation with `ufw`, or bind it to a management interface; enabling the
+  security plugin (auth + TLS) is the top item on the [roadmap](ROADMAP.md).
+- **Suricata events travel as plain UDP** to Logstash on 5140. Restrict the port to the
+  pfSense IP. A TLS/queued transport is planned.
+- **Grafana ships with `admin`/`admin`** — change it on first login.
+- **pfSense**: the scripts use key-based SSH as `admin`. Keep SSH restricted to your
+  management network; pfSense 2.9.0 tightens sshd algorithms, so use an ed25519 key.
+- **GeoIP and alert data** include client IPs; treat the SIEM server as sensitive.
 
-| Directory | What's in it |
-|-----------|--------------|
-| **[docs/install/](docs/install/)** | SIEM server install, forwarder deployment, dashboards, GeoIP, hardware sizing, new-user checklist |
-| **[docs/pfsense/](docs/pfsense/)** | Suricata configuration & optimization, pfBlockerNG, Telegraf plugins, LAN monitoring, traffic shaping |
-| **[docs/operations/](docs/operations/)** | Management console, forwarder monitoring/watchdogs, retention, maintenance crons |
-| **[docs/troubleshooting/](docs/troubleshooting/)** | Symptom → root cause → fix guides ("No Data", midnight UTC stop, log rotation, …) |
-| **[docs/reference/](docs/reference/)** | Configuration reference, scripts reference, architecture diagram |
-| **[docs/siem/](docs/siem/)** | SIEM backend comparison, Wazuh and Graylog integration notes |
+### pfSense syslog for Wazuh
 
-Quick jumps:
-
-- **[Quick Start Guide](QUICK_START.md)** - deployment walkthrough (preflight → install → setup → dashboards)
-- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)** - step-by-step validation
-- **[Suricata Optimization](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)** ⭐ **ESSENTIAL** - rule selection, tuning, IDS vs IPS
-- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)** - common issues and fixes
-
----
-
-## 🔧 Advanced Topics
-
-### Custom Deployment Scenarios
-
-**Inline IPS on WAN + IDS on VLANs:**
-```bash
-# WAN interfaces: ix0, ix1 (inline IPS with Snort ET)
-# VLANs: lagg1.100, lagg1.150, lagg1.200, etc. (IDS with ET)
-# IoT VLANs: Heavy monitoring
-# NAS/trusted VLANs: Light monitoring
-```
-
-See [Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md) for per-VLAN policy configuration.
-
-**East-West Detection:**
-- Monitor RFC1918 → RFC1918 flows for lateral movement
-- Separate dashboard for internal traffic analysis
-- Detect anomalies like SMB brute force, RDP scanning, etc.
-
-See [LAN Monitoring Setup](docs/pfsense/LAN_MONITORING.md) for configuration.
-
-### Watchdog & Automation
-
-The forwarder uses a multi-layer reliability architecture to survive reboots, crashes, and upgrades:
-
-**rc.d Service** (`/usr/local/etc/rc.d/suricata_forwarder`):
-- FreeBSD native service for boot persistence — forwarder starts automatically on pfSense boot
-- Uses `daemon(8)` for proper process management with PID tracking (`/var/run/suricata_forwarder.pid`)
-- Enabled via `sysrc suricata_forwarder_enable=YES`
-- Standard service commands: `service suricata_forwarder start|stop|restart|status`
-- Deployed automatically by `setup.sh`
-
-**Forwarder Watchdog** (`suricata-forwarder-watchdog.sh`):
-- Monitors forwarder process health via rc.d service status
-- Restarts on failure or stuck state using `service suricata_forwarder restart`
-- Runs via cron every 5 minutes as a safety net
-
-**Restart Hooks** (`suricata-restart-hook.sh`):
-- Ensures forwarder starts after Suricata upgrades
-- Handles log rotation gracefully
-- Integrated with pfSense Suricata package
-
-**Recovery Chain**: rc.d (boot) → watchdog cron (crash recovery) → restart hook (upgrade recovery)
-
-See [scripts/README.md](scripts/README.md) for all helper scripts.
+If you also forward pfSense syslog to a Wazuh-equipped
+[siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack), set Status → System
+Logs → Settings → Remote Logging to **RFC 5424** format with **RFC 3339** timestamps.
+pfSense's default BSD format omits the hostname, Wazuh's pre-decoder then misreads the
+program name as the host, and the built-in `pf` decoder never matches. Details in
+[docs/siem/wazuh/README.md](docs/siem/wazuh/README.md).
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions welcome! Areas of interest:
-- Additional dashboards (firewall logs, Telegraf metrics, pfBlockerNG stats)
-- Performance optimizations
-- Docker/container deployment
-- Ansible playbooks
-- Additional forwarder integrations (Zeek, Snort3, etc.)
+Bug reports, dashboards, tuning notes and upgrade experiences are all welcome —
+especially testing on pfSense 2.9.0, OpenSearch security enablement, and alert rules as
+code. See [CONTRIBUTING.md](CONTRIBUTING.md); CI runs shell/JSON/Python syntax checks,
+the forwarder unit tests and a documentation link check on every push.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## Related projects
 
----
+| Repository | Role |
+|------------|------|
+| [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) | Dockerised SIEM/SOC backend: OpenSearch hot/warm, Logstash, Grafana, Wazuh, syslog-ng, n8n SOAR |
+| [jumpcloud-wazuh-bridge](https://github.com/ChiefGyk3D/jumpcloud-wazuh-bridge) | JumpCloud identity events into Wazuh |
+| [PiNodeXMR_Grafana_Dashboard](https://github.com/ChiefGyk3D/PiNodeXMR_Grafana_Dashboard) | Monero node monitoring in Grafana |
+| [UniFi Poller](https://github.com/unpoller/unpoller) | **Not part of this project** — use it for UniFi switches/APs (with InfluxDB); this repo is pfSense-only |
 
-## 📝 License
+## Acknowledgments
 
-Mozilla Public License 2.0 - see [LICENSE](LICENSE) for details.
+pfSense (Netgate and community), Suricata (OISF), OpenSearch, Grafana Labs, MaxMind
+GeoLite2, Emerging Threats, Snort/Cisco Talos, abuse.ch, the UniFi Poller project for
+telemetry patterns, and everyone who tested and reported.
 
----
+## License
 
-## 🔗 Related Projects
+Mozilla Public License 2.0 — see [LICENSE](LICENSE).
 
-| Repository | Description |
-|-----------|-------------|
-| [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) | Server-side Dockerized SIEM/SOC stack with hot/warm tiering (OpenSearch, Wazuh, Grafana, Logstash, Prometheus) |
-| [PiNodeXMR_Grafana_Dashboard](https://github.com/ChiefGyk3D/PiNodeXMR_Grafana_Dashboard) | Monero node monitoring dashboard for Grafana |
+## Support
 
-### UniFi Network Monitoring
-
-**This project does NOT support UniFi equipment** (switches, access points, controllers).
-
-For UniFi monitoring with Grafana, use **[UniFi Poller](https://github.com/unpoller/unpoller)** — I have contributed some dashboard fixes to the project:
-- Purpose-built for UniFi telemetry collection
-- Excellent Grafana dashboard integration
-- Supports InfluxDB and Prometheus
-- Active community and development
-- **Personal recommendation**: Use with InfluxDB for networking metrics
-
-**Why InfluxDB for UniFi Poller?**
-- Better compression for time-series data (interface metrics, client counts)
-- Faster queries for rate calculations
-- Lower RAM usage than OpenSearch for metrics
-- Proven combination for network monitoring
-
-See: [UniFi Poller Installation](https://unpoller.com/docs/install/installation)
-
----
-
-## �🙏 Acknowledgments
-
-- **pfSense** - Rock-solid firewall platform
-- **Suricata** - High-performance IDS/IPS engine with excellent multithreading
-- **OpenSearch** - Powerful search and analytics
-- **Grafana** - Beautiful visualization and alerting
-- **MaxMind** - GeoLite2 GeoIP database (free tier)
-- **Emerging Threats** - Open IDS ruleset
-- **Snort/Cisco Talos** - Registered and subscriber rules
-- **Abuse.ch** - Feodo Tracker and SSL Blacklist
-- **UniFi Poller** - Inspiration for telemetry collection patterns
-- Community contributors and testers
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions)
-- **Documentation**: [docs/](docs/)
-
-### Verify Installation
-
-```
-pfsense_siem_stack/
-├── 📄 Quick Start
-│   ├── README.md                    ★ START HERE - Project overview & getting started
-│   ├── QUICK_START.md               Fast 15-minute deployment walkthrough
-│   ├── ORGANIZATION.md              File organization and directory structure
-│   ├── CHANGELOG.md                 Version history and recent changes
-│   └── CONTRIBUTING.md              Guidelines for contributions
-│
-├── 🚀 Installation & Setup
-│   ├── install.sh                   ★ SIEM stack installer (OpenSearch, Logstash, Grafana)
-│   ├── setup.sh                     ★ Automated configuration (one-command deployment)
-│   ├── install_plugins.sh           Telegraf plugin installer
-│   └── config.env.example           Configuration template
-│
-├── 📊 Dashboards & Visualization
-│   └── dashboards/
-│       ├── pfsense_pfblockerng_system.json        ★ pfSense system & pfBlockerNG dashboard
-│       ├── Suricata_IDS_IPS.json        ★ WAN-side Suricata security dashboard
-│       ├── Suricata_Per_Interface.json            ★ Per-interface LAN/VLAN monitoring
-│       └── wazuh/                                 Wazuh dashboards + deploy README
-│
-├── 🔧 Scripts & Automation
-│   └── scripts/
-│       ├── forward-suricata-eve.py            ★ Multi-interface log forwarder (Python)
-│       ├── status.sh                          ★ Comprehensive health check
-│       ├── preflight.sh                       ★ Pre-install/deploy sanity checks
-│       ├── check-doc-links.py                 Docs link checker (CI)
-│       ├── check_custom_sids.sh               Suricata SID verification tool
-│       ├── restart-services.sh                Service management & recovery
-│       ├── configure-retention-policy.sh      Data lifecycle management
-│       ├── suricata-forwarder-watchdog.sh     Monitoring & auto-restart
-│       ├── suricata-restart-hook.sh           Post-upgrade restart hook
-│       └── README.md                          Script documentation
-│
-│   # Deployed to pfSense by setup.sh:
-│   # /usr/local/etc/rc.d/suricata_forwarder  FreeBSD rc.d service (boot persistence)
-│   # /usr/local/bin/forward-suricata-eve.py   Forwarder script
-│   # /usr/local/bin/suricata-forwarder-watchdog.sh  Cron watchdog
-│
-├── ⚙️ Configuration Files
-│   └── config/
-│       ├── logstash-suricata.conf             ★ Logstash pipeline (parsing & enrichment)
-│       ├── opensearch-index-template.json     Suricata index template with geo_point mapping
-│       ├── opensearch-pfblockerng-template.json  pfBlockerNG index template with keyword mapping
-│       ├── dnsbl_whitelist.txt                PfBlockerNG whitelist
-│       ├── pfblockerng_optimization.md        Blocklist configuration guide
-│       └── sid/                               Suricata signature management
-│           ├── disable/disablesid.conf        219 disabled SIDs (performance optimized)
-│           ├── suppress/suppress.conf         2 conditional suppressions (IP-specific)
-│           ├── README.md                      SID management documentation
-│           └── APPLYING_CHANGES.md            Deployment guide
-│
-├── 📚 Documentation
-│   └── docs/
-│       ├── DOCUMENTATION_INDEX.md             ★ Documentation hub (start here)
-│       ├── ARCHIVE.md                         Superseded material → git history
-│       │
-│       ├── install/                           🏗️ Installation guides
-│       │   ├── INSTALL_SIEM_STACK.md          OpenSearch/Logstash/Grafana setup
-│       │   ├── INSTALL_PFSENSE_FORWARDER.md   Forwarder deployment to pfSense
-│       │   ├── INSTALL_DASHBOARD.md           Grafana dashboard import
-│       │   ├── GEOIP_SETUP.md                 MaxMind GeoIP database
-│       │   ├── NEW_USER_CHECKLIST.md          Step-by-step validation
-│       │   └── HARDWARE_REQUIREMENTS.md       Sizing guidance
-│       │
-│       ├── pfsense/                           🔒 pfSense-side tuning
-│       │   ├── SURICATA_OPTIMIZATION_GUIDE.md ★ Rule selection & tuning
-│       │   ├── SURICATA_CONFIGURATION.md      Config philosophy & SID tuning
-│       │   ├── PFBLOCKERNG_OPTIMIZATION.md    Blocklist configuration
-│       │   ├── LAN_MONITORING.md              Internal threat detection
-│       │   └── ...                            Telegraf, traffic shaping, MAC vendor
-│       │
-│       ├── operations/                        ⚙️ Day-2 operations
-│       │   ├── MANAGEMENT_CONSOLE.md          pfsense-siem menu guide
-│       │   ├── SURICATA_FORWARDER_MONITORING.md  Watchdog strategies
-│       │   └── MULTI_INTERFACE_RETENTION.md   Index lifecycle policies
-│       │
-│       ├── troubleshooting/                   🐛 Symptom → fix guides
-│       │   ├── TROUBLESHOOTING.md             ★ Common issues & solutions
-│       │   ├── DASHBOARD_NO_DATA_FIX.md       Data flow validation
-│       │   ├── OPENSEARCH_AUTO_CREATE.md      Midnight UTC fix
-│       │   └── ...                            Log rotation, Telegraf, PF panel
-│       │
-│       ├── reference/                         📖 Reference material
-│       │   ├── CONFIGURATION.md               All config file settings
-│       │   ├── SCRIPTS_REFERENCE.md           Every helper script explained
-│       │   └── architecture.png               Visual architecture diagram
-│       │
-│       └── siem/                              SIEM backend comparison & integrations
-│
-├── 🔌 Plugins (Optional Telegraf Metrics)
-│   └── plugins/
-│       ├── telegraf_pfifgw.php                Gateway status monitoring
-│       ├── telegraf_temperature.sh            Temperature sensors
-│       ├── telegraf_unbound.sh                DNS resolver stats
-│       └── README.md                          Plugin documentation
-│
-├── 🖼️ Media & Assets
-│   └── media/
-│       ├── Suricata IDS_IPS WAN Dashboard.png     WAN dashboard screenshot
-│       ├── Suricata Per-Interface Dashboard.png   Per-interface dashboard screenshot
-│       └── streamelements.png                     StreamElements donation icon
-│
-└── 🧪 Testing & Validation
-    └── tests/
-        ├── test-multi-interface.sh            Multi-WAN testing
-        ├── test-panel-compatibility.sh        Dashboard validation
-        └── python/test_forwarder.py           Forwarder unit tests (pytest)
-```
-
-**🌟 Essential Files to Get Started:**
-1. **[README.md](README.md)** - Project overview, architecture, features
-2. **[QUICK_START.md](QUICK_START.md)** - 15-minute deployment guide
-3. **[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** - Find any documentation
-4. **`install.sh`** - One command to install SIEM stack
-5. **`setup.sh`** - One command to configure everything
-6. **`scripts/status.sh`** - Verify installation and data flow
-
-**🚧 Work in Progress:**
-- SIEM logging infrastructure (functional, documentation evolving)
-- SID management optimization (219 rules tuned, testing in production)
-- Dashboard improvements (LAN monitoring panels planned)
-- Automation enhancements (watchdogs, recovery scripts)
-
-## 📊 Dashboard Panels
-
-### Dashboard 1: pfSense System & pfBlockerNG
-
-**Purpose**: System monitoring, network performance, and pfBlockerNG statistics
-
-#### Hardware & System
-- CPU usage, memory, disk I/O
-- Temperature monitoring
-- System uptime and load
-
-#### Network Statistics
-- Gateway RTT and packet loss
-- Interface status and throughput
-- Per-WAN and per-LAN traffic graphs
-
-#### PfBlockerNG (via OpenSearch)
-- IP blocks (inbound/outbound)
-- DNSBL blocked queries
-- Top blocked sources and destinations
-- Blocked traffic by country (GeoIP)
-- Feed performance statistics
-- Protocol and port distribution
-
-> **Note**: pfBlockerNG panels use the OpenSearch-pfBlockerNG datasource (`pfblockerng-*` index), while system metrics panels use InfluxDB. This mixed-datasource approach avoids InfluxDB cardinality issues with high-cardinality fields like IP addresses.
-
-### Dashboard 2: Suricata WAN Monitoring
-
-**Purpose**: External threat detection and WAN-side attack analysis
-
-#### Statistics
-- **Events & Alerts**: Combined counter with sparklines and color-coded thresholds
-- **Event Type Distribution**: Pie chart showing alert, http, dns, tls, etc.
-- **Protocol Distribution**: TCP, UDP, ICMP breakdown
-
-#### Alerts
-- **Top Alert Signatures**: Most triggered IDS rules
-- **IDS Alert Logs**: Detailed table with time, signature, IPs, ports, countries
-- **Alert Severity**: Critical, high, medium, low classification
-
-#### Geographic Visualization
-- **Attack Sources Map**: Interactive world map with geohash clusters
-- **Top Source Countries**: Donut chart of attack origins
-- **Country Statistics**: Detailed breakdown with event counts
-
-#### HTTP Traffic Analysis
-- **Top HTTP Hosts**: Most accessed domains
-- **HTTP Methods**: GET, POST, etc. distribution
-
-### Dashboard 3: Suricata Per-Interface (LAN Monitoring)
-
-**Purpose**: Per-VLAN/LAN monitoring with dynamically repeating sections
-
-#### Features
-- **Dynamic Interface Sections**: Automatically creates monitoring section for each selected interface
-- **Multi-select Variable**: Monitor one, some, or all interfaces simultaneously
-- **Per-Interface Panels** (repeated for each interface):
-  - Events & Alerts counter with thresholds
-  - Top Alert Signatures
-  - Alerts timeline graph
-  - Top Source IPs
-  - Top Destination IPs
-  - Complete alert logs table
-
-#### Use Cases
-- **East-West Detection**: Monitor lateral movement between VLANs
-- **IoT Monitoring**: Heavy monitoring on untrusted IoT VLANs
-- **Internal Threats**: Detect compromised hosts and insider threats
-- **RFC1918 Traffic**: Focus on internal network communication patterns
-
-## 🔧 Configuration
-
-### Customize Logstash Input
-
-Edit `/etc/logstash/conf.d/suricata.conf`:
-
-```ruby
-input {
-  udp {
-    port => 5140
-    codec => json
-  }
-}
-```
-
-### Adjust Data Retention
-
-```bash
-# Configure index lifecycle policy
-scripts/configure-retention-policy.sh
-```
-
-Default retention: 30 days
-
-### GeoIP Updates
-
-The forwarder uses MaxMind GeoLite2-City database. To update:
-
-```bash
-# On pfSense, if using ntopng, it auto-updates
-# Manual update:
-ssh root@pfsense
-fetch -o /usr/local/share/ntopng/GeoLite2-City.mmdb \
-  https://github.com/PrxyHunter/GeoLite2/raw/master/GeoLite2-City.mmdb
-```
-
-### Logstash Maintenance
-
-> **⚠️ After Logstash upgrades**, the `logstash-output-opensearch` plugin may be removed. If Logstash enters a crash loop after an upgrade, reinstall the plugin:
->
-> ```bash
-> sudo /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
-> sudo systemctl restart logstash
-> ```
->
-> Also check `/usr/share/logstash/data` ownership — it must be owned by `logstash:logstash`, not root. Fix with:
-> ```bash
-> sudo chown -R logstash:logstash /usr/share/logstash/data
-> ```
->
-> If Logstash reports `Gemfile.lock` errors, sync it:
-> ```bash
-> cd /usr/share/logstash
-> sudo -u logstash bin/logstash-plugin install --no-verify
-> ```
-
-### UDP Receive Buffer
-
-For high-volume deployments, increase the kernel UDP receive buffer on the SIEM server to prevent dropped events:
-
-```bash
-# Check current max
-sysctl net.core.rmem_max
-
-# Set to 32MB (recommended)
-echo 'net.core.rmem_max=33554432' | sudo tee -a /etc/sysctl.d/99-logstash.conf
-sudo sysctl -p /etc/sysctl.d/99-logstash.conf
-```
-
-## 🔍 Troubleshooting
-
-### Quick Diagnosis
-
-**Run the status check first:**
-
-```bash
-./scripts/status.sh
-```
-
-This will identify most common problems automatically.
-
-### Common Issues
-
-**1. Dashboard shows "No Data"** ⚠️ MOST COMMON
-- **Symptom**: Grafana panels show "No Data" even though Suricata is running
-- **Causes**: 
-  - Datasource variable not resolved (`${DS_OPENSEARCH}` instead of actual datasource UID)
-  - Nested field structure vs flat field queries (dashboard expecting `event_type` but data has `suricata.eve.event_type`)
-  - Logstash config changed from flat to nested structure
-  - Dashboard looking at wrong time range (new flat data only exists in recent timeframe)
-- **Fixes**:
-  1. Check datasource configuration: Dashboard must use actual UID, not `${DS_OPENSEARCH}` variable
-  2. Verify field structure: `curl -s "http://localhost:9200/suricata-*/_search?size=1" | jq '.hits.hits[0]._source | keys'`
-  3. If fields are nested under `suricata.eve.*`, update Logstash config to flatten OR update dashboard queries
-  4. Run `./scripts/status.sh` to diagnose data flow issues
-  5. Adjust time range to match when data started flowing (check index creation timestamps)
-
-**2. Alerts not showing but other events are**
-- **Symptom**: DNS, TLS, HTTP events work, but alert panels empty
-- **Cause**: Forwarder only tails from EOF (end of file), missing historical alerts
-- **Fix**: Wait for NEW alerts to be generated after forwarder starts
-- **Why**: The forwarder uses `f.seek(0, 2)` to start at end of file, so pre-existing alerts aren't forwarded
-- **Solution**: Generate test alerts or wait for real attacks to trigger rules
-
-**3. Data structure mismatch**
-- **Symptom**: Old data works but new data doesn't (or vice versa)
-- **Diagnosis**: 
-  ```bash
-  # Check if you have both nested and flat structures
-  curl -s "http://localhost:9200/_search?size=0" -H 'Content-Type: application/json' \
-    -d '{"aggs":{"nested":{"filter":{"exists":{"field":"suricata.eve.event_type"}}},"flat":{"filter":{"exists":{"field":"event_type"}}}}}'
-  ```
-- **Fix**: 
-  1. Choose flat or nested structure (flat is simpler)
-  2. Update Logstash config to match
-  3. Update dashboard field references to match
-  4. Optional: Reindex old data to match new structure
-
-**4. Forwarder not running**
-- Check service status: `ssh admin@<pfsense-ip> 'service suricata_forwarder status'`
-- Restart: `ssh admin@<pfsense-ip> 'service suricata_forwarder restart'`
-- Verify enabled at boot: `ssh admin@<pfsense-ip> 'sysrc suricata_forwarder_enable'`
-- Run `./scripts/status.sh` to check full pipeline status
-- Check forwarder logs: `ssh admin@<pfsense-ip> 'tail -f /var/log/system.log | grep suricata'`
-
-**5. Data stops at midnight UTC**
-- **Cause**: OpenSearch auto-create disabled
-- **Fix**: Run `./setup.sh` (it configures this automatically)
-- **Details**: See `docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md`
-
-**6. Multiple forwarders running**
-- Stop all and restart cleanly: `ssh admin@<pfsense-ip> 'pkill -f forward-suricata; service suricata_forwarder start'`
-- The rc.d service uses a PID file to prevent duplicate instances
-- Run `./setup.sh` to redeploy with clean state
-
-**7. Wrong SIEM IP configured**
-- Edit `config.env` with correct SIEM IP
-- Run `./setup.sh` to redeploy with new config
-
-### Detailed Troubleshooting
-
-- **[Dashboard "No Data" Fix](docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md)**: 🔥 Complete guide for the most common issue - panels showing "No Data"
-- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)**: Comprehensive troubleshooting for all components
-
-### Geomap Not Displaying
-
-The geomap requires proper `geo_point` mapping. Check:
-
-```bash
-# Verify mapping
-curl http://localhost:9200/suricata-*/_mapping | jq '.[] | .mappings.properties.suricata.properties.eve.properties.geoip_src.properties.location'
-
-# Should show: {"type": "geo_point"}
-```
-
-If not, re-create the index template:
-
-```bash
-curl -X PUT "http://localhost:9200/_index_template/suricata-template" \
-  -H 'Content-Type: application/json' \
-  -d @config/opensearch-index-template.json
-```
-
-### Forwarder Not Monitoring All Interfaces
-
-The forwarder should automatically detect all Suricata instances. If missing interfaces:
-
-```bash
-# Check available eve.json files
-ssh admin@pfsense 'ls -la /var/log/suricata/*/eve.json'
-
-# Restart forwarder (picks up new interfaces automatically)
-ssh admin@pfsense 'service suricata_forwarder restart'
-```
-
-See [TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md) for more solutions.
-
-### pfBlocker Panels Show No Data
-
-pfBlockerNG data now flows through **OpenSearch** (not InfluxDB). Common causes:
-
-1. **Telegraf opensearch output not configured**: The pfSense Telegraf package needs `[[outputs.opensearch]]` configured to send pfBlockerNG data to OpenSearch. See [Telegraf pfBlocker Setup](docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md).
-
-2. **OpenSearch index template not applied**: Fields may be mapped as `text` instead of `keyword`, preventing aggregation. Re-apply the template:
-   ```bash
-   ./scripts/install-opensearch-config.sh
-   ```
-   **Important**: Applying the template only affects **new** indices. If existing indices were created without the template, their `tag.*` fields are already mapped as `text` and cannot be changed in-place. You must **reindex** the affected indices:
-   ```bash
-   # For each affected index, reindex through a temp index:
-   curl -XPUT "http://localhost:9200/pfblockerng-YYYY.MM.DD-temp"
-   curl -XPOST "http://localhost:9200/_reindex" -H 'Content-Type: application/json' \
-     -d '{"source":{"index":"pfblockerng-YYYY.MM.DD"},"dest":{"index":"pfblockerng-YYYY.MM.DD-temp"}}'
-   curl -XDELETE "http://localhost:9200/pfblockerng-YYYY.MM.DD"
-   curl -XPOST "http://localhost:9200/_reindex" -H 'Content-Type: application/json' \
-     -d '{"source":{"index":"pfblockerng-YYYY.MM.DD-temp"},"dest":{"index":"pfblockerng-YYYY.MM.DD"}}'
-   curl -XDELETE "http://localhost:9200/pfblockerng-YYYY.MM.DD-temp"
-   ```
-
-3. **auto_create_index missing pfblockerng-***: Check cluster settings:
-   ```bash
-   curl -s "http://localhost:9200/_cluster/settings?filter_path=persistent.action.auto_create_index"
-   ```
-
-4. **Grafana datasource not created**: The dashboard expects an `OpenSearch-pfBlockerNG` datasource pointing to `pfblockerng-*`. Run `./setup.sh` to create it automatically.
-
-5. **pfBlockerNG filterlog rotation issue**:
-```bash
-# Via SSH to pfSense
-ssh root@pfsense
-php -r 'require_once("/etc/inc/filter.inc"); filter_configure(); system_syslogd_start();'
-php -r 'require_once("/usr/local/pkg/pfblockerng/pfblockerng.inc"); pfblockerng_sync_on_changes();'
-```
-
-**Prevention & Monitoring:**
-See [pfSense Filterlog Rotation Fix](docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md) for:
-- GUI configuration options
-- Automated monitoring setup
-- Preventive measures
-- Integration with status.sh
-
-## 📖 Documentation
-
-### Setup Guides
-- **[New User Checklist](docs/install/NEW_USER_CHECKLIST.md)**: 🎯 Complete step-by-step checklist for first-time setup
-- **[Quick Start Guide](QUICK_START.md)**: Fast setup for experienced users
-- **[SIEM Stack Installation](docs/install/INSTALL_SIEM_STACK.md)**: Detailed OpenSearch/Logstash/Grafana setup
-- **[Forwarder Installation](docs/install/INSTALL_PFSENSE_FORWARDER.md)**: pfSense forwarder deployment
-- **[Dashboard Import](docs/install/INSTALL_DASHBOARD.md)**: Dashboard configuration and customization
-
-### Configuration
-- **[Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: 🌟 Complete guide for new users - rule selection, performance tuning, IDS vs IPS
-- **[GeoIP Setup](docs/install/GEOIP_SETUP.md)**: MaxMind database installation
-- **[Configuration Guide](docs/reference/CONFIGURATION.md)**: Advanced settings and tuning
-- **[Telegraf Interface Fixes](docs/troubleshooting/TELEGRAF_INTERFACE_FIXES.md)**: Universal interface detection
-- **[Forwarder Monitoring](docs/operations/SURICATA_FORWARDER_MONITORING.md)**: Automatic restart and monitoring strategies
-- **[Telegraf pfBlocker Setup](docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md)**: pfBlocker panel configuration
-
-### Troubleshooting
-- **[Dashboard "No Data" Fix](docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md)**: 🔥 **START HERE** - Fix the most common issue (panels showing "No Data")
-- **[Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING.md)**: Common issues and fixes for all components
-- **[pfSense Filterlog Fix](docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md)**: Fix for pfBlocker data loss
-- **[OpenSearch Auto-Create](docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md)**: Midnight UTC data stoppage fix
-
-## 🔐 Security Considerations
-
-- **Firewall Rules**: Restrict Logstash UDP 5140 to pfSense IP only
-- **OpenSearch**: Bind to localhost or use authentication
-- **Grafana**: Change default admin password immediately
-- **GeoIP Data**: Contains location information - secure appropriately
-
-### pfSense Syslog Format for Wazuh Integration
-
-If you are forwarding pfSense syslog to a [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) deployment that includes **Wazuh**, you **must** configure pfSense to use **RFC 5424 syslog format** with RFC 3339 timestamps:
-
-1. In pfSense, go to **Status → System Logs → Settings**
-2. Under **Remote Logging Options**, enable remote logging to your SIEM server IP on port 514/UDP
-3. Set **Log Message Format** to **RFC 5424 (syslog-protocol)**
-4. Set **Timestamp Format** to **RFC 3339 with microsecond precision**
-
-**Why this matters**: pfSense's default BSD syslog (RFC 3164) omits the hostname field. Without a hostname, Wazuh's pre-decoder misidentifies the program name as the hostname, and the built-in pfSense `pf` decoder never matches — resulting in zero firewall alerts despite data flowing. RFC 5424 always includes the hostname (e.g., `pfsense.localdomain`), and syslog-ng on the SIEM server handles the RFC 5424 → BSD format conversion for Wazuh automatically.
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Test changes thoroughly
-4. Submit pull request with clear description
-
-## 🙏 Credits
-
-- Original pfSense Telegraf dashboards by various contributors
-- Suricata IDS/IPS by OISF
-- OpenSearch by Amazon
-- Grafana by Grafana Labs
-
-## 💬 Support
-
-- **Issues**: [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
-- **Documentation**: [Documentation Index](docs/DOCUMENTATION_INDEX.md)
+- **Issues**: https://github.com/ChiefGyk3D/pfsense-siem-stack/issues
+- **Discussions**: https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions
 
 ---
 

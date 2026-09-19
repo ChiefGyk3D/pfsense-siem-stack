@@ -2,372 +2,269 @@
 
 ## Overview
 
-This guide enables MAC address vendor/manufacturer lookup in your pfSense Grafana dashboards, similar to the Unifi dashboard functionality. This allows you to see which device manufacturers are on your network (Apple, Samsung, Intel, etc.).
+This guide adds MAC address vendor/manufacturer lookup to your pfSense Grafana dashboards, similar to what UniFi controllers show. A small Telegraf exec plugin reads the firewall's ARP table, resolves each MAC's OUI (first three octets) against an OUI database, and writes the result to InfluxDB so you can see which manufacturers' devices are on each network segment.
+
+It works on any pfSense box running the Telegraf package; nothing here depends on the rest of the SIEM stack.
 
 ## Features
 
-- ✅ **MAC Vendor Identification**: Lookup manufacturer from MAC address OUI (first 6 hex digits)
-- ✅ **ARP Table Monitoring**: Track all devices currently on the network
-- ✅ **Interface Mapping**: See which interface each device is connected through
-- ✅ **Lease Expiration**: Track DHCP lease expiration times
-- ✅ **30,000+ Vendors**: Uses nmap's comprehensive OUI database
+- **MAC vendor identification** from the OUI prefix
+- **ARP table monitoring**: every device currently known to the firewall
+- **Interface mapping**: which interface/VLAN each device sits behind
+- **Lease expiry**: seconds until the ARP entry expires
+- **Tens of thousands of vendors** via nmap's `nmap-mac-prefixes` or the IEEE `oui.txt`
 
 ## Prerequisites
 
-- pfSense 2.6+ with Telegraf installed
-- SSH access to pfSense
-- nmap package (for MAC vendor database)
+- pfSense CE 2.7+ / pfSense Plus 23.x+ with the **Telegraf** package installed and working (see [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md))
+- SSH access to pfSense (for installing and testing the plugin)
+- An OUI database: the **nmap** package (recommended) or a downloaded `oui.txt`
 
 ---
 
 ## Installation Steps
 
-### Step 1: Install nmap Package on pfSense
+### Step 1: Install the nmap package
 
-The nmap package includes a comprehensive MAC vendor database (`nmap-mac-prefixes`).
+The nmap package ships `/usr/local/share/nmap/nmap-mac-prefixes`, a plain-text OUI list of roughly 1 MB.
 
-**Option A: Via pfSense Web GUI (Recommended)**
+1. Log in to the pfSense web GUI
+2. **System → Package Manager → Available Packages**
+3. Search for **nmap**, click **Install** on `pfSense-pkg-nmap`, confirm
 
-1. Login to pfSense web interface
-2. Go to **System → Package Manager → Available Packages**
-3. Search for **"nmap"**
-4. Click **Install** on **pfSense-pkg-nmap**
-5. Confirm installation
+Install it through the GUI, not with `pkg install` from the shell: GUI-installed packages are recorded in `config.xml` and are reinstalled automatically after a pfSense upgrade or restore; a shell `pkg install` is not.
 
-**Option B: Via SSH**
+Verify:
 
 ```bash
-# SSH to pfSense
-ssh root@pfsense
-
-# Install nmap package
-pkg install -y pfSense-pkg-nmap
-
-# Verify installation
-ls -l /usr/local/share/nmap/nmap-mac-prefixes
-# Should show the database file (~30,000 vendors)
+ssh admin@<PFSENSE_IP> "ls -lh /usr/local/share/nmap/nmap-mac-prefixes"
 ```
 
-### Step 2: Upload the Plugin to pfSense
+### Step 2: Install the plugin
+
+From a clone of this repository on your workstation:
 
 ```bash
-# From your workstation
-scp plugins/telegraf_arp_mac_vendor.php root@192.168.1.1:/root/
-
-# SSH to pfSense
-ssh root@192.168.1.1
-
-# Move to proper location
-mv /root/telegraf_arp_mac_vendor.php /root/telegraf_arp_mac_vendor.php
-
-# Make executable
-chmod +x /root/telegraf_arp_mac_vendor.php
-
-# Test the plugin
-/root/telegraf_arp_mac_vendor.php
+./install_plugins.sh
+# choose 5) telegraf_arp_mac_vendor.php
 ```
 
-**Expected output:**
-```
-arp_table,host=pfsense.localdomain,mac=00:11:22:33:44:55,vendor=Espressif\ Inc.,interface=lagg1,ip=192.168.1.10 expires=630,permanent=0
-arp_table,host=pfsense.localdomain,mac=00:11:22:33:44:66,vendor=Apple\,\ Inc.,interface=lagg1,ip=192.168.1.13 expires=1190,permanent=0
-...
-```
+This copies the script to **`/usr/local/bin/telegraf_arp_mac_vendor.php`** on the firewall and makes it executable. (Files in `/usr/local` are not part of `config.xml`; if you want the plugin to survive a restore onto a fresh install, store it with the Filer package instead, as described in [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md#42-files-in-usrlocal-are-not-backed-up).)
 
-### Step 3: Configure Telegraf
-
-Add the exec plugin to Telegraf configuration:
+Test it:
 
 ```bash
-# SSH to pfSense
-ssh root@pfsense
+ssh admin@<PFSENSE_IP> "/usr/local/bin/telegraf_arp_mac_vendor.php"
+```
 
-# Edit Telegraf config
-vi /usr/local/etc/telegraf.conf
+Expected output (one line per ARP entry):
 
-# Add at the end (before any [[outputs]] section):
+```
+arp_table,host=pfsense.example.com,mac=00:11:22:33:44:55,vendor=Espressif\ Inc.,interface=igc1.20,ip=10.10.20.15 expires=630,permanent=0
+arp_table,host=pfsense.example.com,mac=00:11:22:33:44:66,vendor=Apple\,\ Inc.,interface=igc1.10,ip=10.10.10.23 expires=1190,permanent=0
+```
+
+If it prints `Warning: MAC vendor database not found` on stderr, Step 1 did not complete.
+
+### Step 3: Add the exec input to Telegraf
+
+Go to **Services → Telegraf**, scroll to **Additional Configuration**, and paste:
+
+```toml
 [[inputs.exec]]
-  commands = ["/root/telegraf_arp_mac_vendor.php"]
+  commands = ["/usr/local/bin/telegraf_arp_mac_vendor.php"]
   timeout = "10s"
   data_format = "influx"
   interval = "60s"
-  name_suffix = ""
 ```
 
-**Configuration explained:**
-- `commands`: Path to our custom plugin
-- `timeout`: Max execution time (10 seconds)
-- `data_format`: "influx" (InfluxDB line protocol)
-- `interval`: Run every 60 seconds (adjust as needed)
-- `name_suffix`: Empty to avoid double naming
+Click **Save**. pfSense regenerates `/usr/local/etc/telegraf.conf` from `config.xml` and restarts Telegraf. Do **not** edit `/usr/local/etc/telegraf.conf` by hand; it is overwritten on every save and on every upgrade. The Additional Configuration box is the only place where this block persists.
 
-### Step 4: Restart Telegraf
+Settings explained:
+
+- `commands`: path to the plugin
+- `timeout`: maximum run time (raise to `30s` for ARP tables with hundreds of entries)
+- `data_format`: InfluxDB line protocol
+- `interval`: run once a minute; the ARP table does not change fast enough to justify the global 10 s interval
+
+### Step 4: Confirm Telegraf picked it up
+
+Saving the Telegraf page already restarted the service. If you need to restart manually, use **Status → Services** or `/usr/local/etc/rc.d/telegraf.sh restart`; see [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md#5-restarting-telegraf-correctly) for why `service telegraf restart` is the wrong command on pfSense.
 
 ```bash
-# Use the correct restart method (see TELEGRAF_RESTART_PROCEDURE.md)
-pkill -f telegraf
-sleep 2
-nohup /usr/local/etc/rc.d/telegraf.sh start > /dev/null 2>&1 &
-
-# Verify it's running
-ps aux | grep telegraf | grep -v grep
+ssh admin@<PFSENSE_IP> "grep -A4 telegraf_arp_mac_vendor /usr/local/etc/telegraf.conf"
+ssh admin@<PFSENSE_IP> "ps -axo user,command | grep '[t]elegraf'"
 ```
 
-### Step 5: Verify Data in InfluxDB
+### Step 5: Verify data in InfluxDB
 
-Wait 60 seconds for first collection, then check:
+Wait a minute for the first collection, then from the SIEM server (or anywhere with the `influx` CLI):
 
 ```bash
-# From your SIEM server (or any machine with influx CLI)
 influx -host <SIEM_IP> -database pfsense -execute "SHOW MEASUREMENTS" | grep arp
+# arp_table
 
-# Should show: arp_table
-
-# Query recent data
 influx -host <SIEM_IP> -database pfsense -execute "SELECT * FROM arp_table WHERE time > now() - 5m LIMIT 10"
 ```
 
-**Expected fields:**
+Schema written by the plugin:
+
 - **Tags**: `host`, `mac`, `vendor`, `interface`, `ip`
-- **Fields**: `expires` (seconds), `permanent` (0 or 1)
+- **Fields**: `expires` (seconds until the ARP entry expires), `permanent` (0 or 1)
 
 ---
 
 ## Grafana Dashboard Panels
 
-### Panel 1: Active Devices by Vendor
+All queries use the InfluxDB datasource and the `pfsense` database.
 
-**Query:**
+### Panel 1: Active devices by vendor
+
 ```sql
-SELECT COUNT(DISTINCT("mac")) 
-FROM "arp_table" 
-WHERE $timeFilter 
+SELECT COUNT(DISTINCT("mac"))
+FROM "arp_table"
+WHERE $timeFilter
 GROUP BY "vendor"
 ```
 
-**Visualization:** Pie Chart or Bar Graph
-**Shows:** Top device manufacturers on your network
+**Visualization:** Pie chart or bar gauge. Shows the top manufacturers on your network.
 
-### Panel 2: Device List with Vendors
+### Panel 2: Device list with vendors
 
-**Query:**
 ```sql
 SELECT LAST("expires"), "vendor", "interface", "ip"
-FROM "arp_table" 
-WHERE $timeFilter 
+FROM "arp_table"
+WHERE $timeFilter
 GROUP BY "mac"
 ```
 
-**Visualization:** Table
-**Columns:**
-- MAC Address
-- IP Address  
-- Vendor/Manufacturer
-- Interface
-- Expires In (seconds)
+**Visualization:** Table with columns MAC, IP, Vendor, Interface, Expires (s).
 
-### Panel 3: Vendor Activity Over Time
+### Panel 3: Vendor activity over time
 
-**Query:**
 ```sql
 SELECT COUNT(DISTINCT("mac"))
-FROM "arp_table" 
+FROM "arp_table"
 WHERE $timeFilter AND "vendor" =~ /$vendor/
 GROUP BY time($__interval), "vendor" fill(null)
 ```
 
-**Visualization:** Time Series Graph
-**Shows:** Device count trends by vendor over time
+**Visualization:** Time series. Add a `vendor` dashboard variable (`SHOW TAG VALUES FROM "arp_table" WITH KEY = "vendor"`) to drive the regex.
 
-### Panel 4: Unknown Devices (Security)
+### Panel 4: Unknown devices
 
-**Query:**
 ```sql
 SELECT "mac", "ip", "interface", LAST("expires")
-FROM "arp_table" 
+FROM "arp_table"
 WHERE $timeFilter AND "vendor" = 'Unknown'
 GROUP BY "mac", "ip"
 ```
 
-**Visualization:** Table with Alert Threshold
-**Purpose:** Flag unregistered/custom MAC addresses (potential security concern)
+**Visualization:** Table. Flags MACs with no OUI match, which are usually randomized/locally administered addresses (see [Troubleshooting](#vendor-shows-as-unknown)) but occasionally something worth a look.
 
 ---
 
-## Alternative: Download OUI Database Directly
+## Alternative: use an OUI file instead of the nmap package
 
-If you don't want to install nmap (saves ~50MB), you can download just the OUI database:
+If you would rather not install nmap, the plugin also reads these files, in this order, and stops at the first one it finds:
+
+1. `/usr/local/share/nmap/nmap-mac-prefixes` (nmap format: `000C29 VMware`)
+2. `/usr/local/share/oui.txt` (IEEE format: `00-0C-29   (hex)    VMware, Inc.`)
+3. `/var/db/oui.txt` (IEEE format)
+
+Both formats are parsed as-is; no changes to the plugin are needed.
 
 ```bash
-# SSH to pfSense
-ssh root@pfsense
+ssh admin@<PFSENSE_IP>
 
-# Create directory
+# nmap's list without the nmap package (~1 MB)
 mkdir -p /usr/local/share/nmap
-
-# Download nmap MAC prefixes (updated regularly by nmap project)
 fetch -o /usr/local/share/nmap/nmap-mac-prefixes https://raw.githubusercontent.com/nmap/nmap/master/nmap-mac-prefixes
 
-# Verify
-head -10 /usr/local/share/nmap/nmap-mac-prefixes
-# Should show: 000000 Officially Xerox, but 0:0:0:0:0:0 is more common
-```
-
-**Or use IEEE's official OUI database:**
-
-```bash
-# Download IEEE OUI database (larger, more detailed)
+# or the IEEE registry (several MB, more entries)
 fetch -o /usr/local/share/oui.txt https://standards-oui.ieee.org/oui/oui.txt
-
-# Modify plugin to use this format (already supported in code)
 ```
+
+A downloaded file is not in `config.xml` and is not refreshed automatically; you will need to re-fetch it after a fresh install and occasionally to pick up new vendors. The nmap package is the lower-maintenance option.
 
 ---
 
 ## Troubleshooting
 
-### No data appearing in InfluxDB
+### No data in InfluxDB
 
-**Check Telegraf is running the exec plugin:**
 ```bash
-ssh root@pfsense "tail -50 /var/log/telegraf/telegraf.log | grep -A5 exec"
-```
+# Is the exec block in the generated config?
+ssh admin@<PFSENSE_IP> "grep -c telegraf_arp_mac_vendor /usr/local/etc/telegraf.conf"
 
-**Manually test the plugin:**
-```bash
-ssh root@pfsense "/root/telegraf_arp_mac_vendor.php"
-# Should output data in InfluxDB line protocol format
-```
+# Does Telegraf log an error for it?
+ssh admin@<PFSENSE_IP> "grep -i arp_mac /var/log/telegraf/telegraf.log | tail -20"
 
-**Check for errors:**
-```bash
-ssh root@pfsense "/root/telegraf_arp_mac_vendor.php 2>&1 | grep -i error"
+# Does the plugin run cleanly by hand?
+ssh admin@<PFSENSE_IP> "/usr/local/bin/telegraf_arp_mac_vendor.php | head -3"
+
+# One-shot test of the whole Telegraf config without writing to outputs
+ssh admin@<PFSENSE_IP> "telegraf --test --config /usr/local/etc/telegraf.conf 2>&1 | grep arp_table | head"
 ```
 
 ### Vendor shows as "Unknown"
 
-**Verify MAC database is installed:**
+Check the database is present:
+
 ```bash
-ssh root@pfsense "ls -lh /usr/local/share/nmap/nmap-mac-prefixes"
-# Should be ~900KB file
-
-# Check database contents
-ssh root@pfsense "head -20 /usr/local/share/nmap/nmap-mac-prefixes"
+ssh admin@<PFSENSE_IP> "ls -lh /usr/local/share/nmap/nmap-mac-prefixes /usr/local/share/oui.txt 2>/dev/null"
 ```
 
-**Some devices will legitimately show "Unknown":**
-- Locally administered MAC addresses (bit 2 of first octet set)
-- Very new devices not yet in database
-- Custom/modified MAC addresses
-- Virtual machines with randomized MACs
+Some devices legitimately have no vendor:
 
-### High Memory Usage
+- **Randomized / locally administered MACs** (second-least-significant bit of the first octet set; e.g. first octet `x2`, `x6`, `xA`, `xE`). Modern phones and laptops do this per Wi-Fi network by default.
+- Very new OUI assignments not yet in the database
+- Virtual machines and containers with generated MACs
 
-If you have 1000+ ARP entries, consider:
+### Plugin timeout
 
-**Option 1: Increase collection interval**
-```conf
-[[inputs.exec]]
-  ...
-  interval = "300s"  # Collect every 5 minutes instead of 60s
-```
+For ARP tables with several hundred entries, raise `timeout` in the exec block to `30s`.
 
-**Option 2: Filter permanent entries**
-Modify the plugin to skip permanent entries (reduces noise):
-```php
-// In get_arp_table() function, add:
-if ($permanent) {
-    continue;  // Skip permanent entries
-}
-```
+### Too much data
 
-### Plugin execution timeout
-
-If you have a large ARP table (500+ entries):
-
-```conf
-[[inputs.exec]]
-  ...
-  timeout = "30s"  # Increase from 10s to 30s
-```
+At the default 60 s interval, each device produces one point per minute. If you have 1000+ ARP entries, raise `interval` to `300s`, or skip permanent entries by adding `if ($permanent) { continue; }` inside `get_arp_table()` in the plugin.
 
 ---
 
-## OS Detection (Future Enhancement)
+## OS Detection (not implemented)
 
-Currently, pfSense doesn't provide OS detection in firewall logs. For OS visibility, you have these options:
+pfSense does not expose operating system fingerprints in its logs. Options, roughly in order of practicality:
 
-### Option 1: Use Suricata (Already Installed)
+1. **Suricata HTTP user agents** (if you already run Suricata and forward `http` events): `event_type:http AND http.http_user_agent:*`. User agents reveal `Windows NT 10.0`, `Macintosh; Intel Mac OS X`, `Linux; Android`, `iPhone; CPU iPhone OS`, and so on. Only works for plaintext HTTP.
+2. **TTL heuristics** (128 Windows, 64 Linux/Android/macOS/iOS, 255 network gear): cheap but low accuracy and easily wrong.
+3. **DHCP fingerprinting** (Option 55 parameter request lists matched against a fingerprint database): accurate but a significant amount of new code.
 
-Suricata can detect OS via traffic analysis. Check OpenSearch for:
-```
-event_type: "http" AND http.http_user_agent: *
-```
-
-User-Agent strings reveal OS:
-- `Windows NT 10.0` = Windows 10/11
-- `Macintosh; Intel Mac OS X` = macOS
-- `Linux; Android` = Android
-- `iPhone; CPU iPhone OS` = iOS
-
-### Option 2: TTL-Based Detection (Low Accuracy)
-
-Could add TTL tracking to the ARP plugin:
-- Windows: TTL 128
-- Linux/Android: TTL 64
-- macOS/iOS: TTL 64
-- Network devices: TTL 255
-
-**Limitation:** Many OSes use the same TTL, and TTL can be modified.
-
-### Option 3: DHCP Fingerprinting (Complex)
-
-Would require:
-1. Capturing DHCP DISCOVER/REQUEST packets
-2. Parsing Option 55 (Parameter Request List)
-3. Matching against fingerprint database
-4. Much more complex implementation
-
-**Recommendation:** For now, use Suricata HTTP User-Agent data in OpenSearch for OS detection.
+Vendor lookup already gives you most of the practical value (an "Espressif" or "Tuya" device is an IoT gadget; "Apple" is an Apple device), so OS detection is left as a future enhancement.
 
 ---
 
 ## Performance Impact
 
-- **CPU**: Minimal (~0.1% CPU every 60 seconds)
-- **Memory**: ~2MB for MAC database in memory
-- **Disk**: ~1MB for nmap package database
-- **Network**: None (reads local ARP table)
-- **InfluxDB**: ~100-500 bytes per device per minute
-
-For 100 devices collected every 60 seconds:
-- **Daily data**: ~7MB
-- **Monthly data**: ~210MB
-- **With retention policy** (30 days): Manageable
+- **CPU**: negligible (a PHP script reading `arp -an` once a minute)
+- **Memory**: a few MB while the OUI table is loaded, released when the script exits
+- **Disk**: the `nmap-mac-prefixes` file is about 1 MB; the nmap package as a whole is a few tens of MB. The IEEE `oui.txt` is several MB.
+- **InfluxDB**: roughly 100-500 bytes per device per collection. For 100 devices at 60 s that is on the order of 5-10 MB/day, or a few hundred MB per month before retention-policy compaction.
 
 ---
 
 ## Related Documentation
 
-- [TELEGRAF_RESTART_PROCEDURE.md](TELEGRAF_RESTART_PROCEDURE.md) - How to restart Telegraf correctly
-- [TELEGRAF_PFBLOCKER_SETUP.md](TELEGRAF_PFBLOCKER_SETUP.md) - pfBlocker log collection
-- Unifi Dashboard - Reference for similar MAC vendor displays
-
----
-
-## Example Dashboard JSON (Optional)
-
-Coming soon: Pre-built Grafana dashboard panels for MAC vendor visualization.
+- [TELEGRAF_ON_PFSENSE.md](TELEGRAF_ON_PFSENSE.md) — installing Telegraf, the Additional Configuration box, restart procedure, troubleshooting
+- [plugins/README.md](../../plugins/README.md) — index of all Telegraf plugins in this repository
+- [TELEGRAF_PFBLOCKER_SETUP.md](TELEGRAF_PFBLOCKER_SETUP.md) — pfBlockerNG log collection
 
 ---
 
 ## Summary
 
 After following this guide:
-- ✅ MAC addresses automatically enriched with vendor names
-- ✅ See which manufacturers' devices are on your network
-- ✅ Track device connectivity per interface
-- ✅ Monitor ARP table changes over time
-- ✅ Similar functionality to Unifi dashboards
 
-No OS detection yet (requires more complex implementation), but vendor lookup provides valuable network visibility!
+- MAC addresses in the ARP table are enriched with vendor names
+- You can see which manufacturers' devices are on each interface/VLAN
+- Randomized-MAC devices show up as "Unknown", which is itself useful signal
+- Everything persists across upgrades as long as the exec block lives in the GUI Additional Configuration box and nmap was installed through the package manager

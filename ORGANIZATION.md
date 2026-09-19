@@ -1,205 +1,91 @@
-# Project Organization & Structure
+# Repository Layout
 
-> **Repository Layout Guide** — File organization and navigation for the pfSense SIEM Stack
+> Where things live and which entry point to use. For *what to read*, use the
+> [Documentation Index](docs/DOCUMENTATION_INDEX.md).
 
-This repository has evolved from a simple Grafana dashboard into a full pfSense SIEM toolkit covering security, monitoring, automation, and operations.
+## Entry points
 
-## Quick Navigation
+| Command | Runs on | What it does |
+|---------|---------|--------------|
+| `./pfsense-siem` | workstation | Interactive menu wrapping everything below ([docs](docs/operations/MANAGEMENT_CONSOLE.md)) |
+| `./scripts/preflight.sh` | workstation | Validates `config.env`, SSH to both hosts, Python on pfSense, OpenSearch reachability |
+| `sudo ./install.sh` | SIEM server (Ubuntu) | Installs OpenSearch 2.x, Logstash 8.x, Grafana 12.x and the OpenSearch datasource plugin |
+| `./setup.sh` | workstation | Applies index templates, deploys the Logstash pipeline, deploys the forwarder + rc.d service + watchdog to pfSense, creates Grafana datasources, imports the Suricata dashboards, verifies data flow. **Idempotent — re-run after a pfSense upgrade.** |
+| `./install_plugins.sh` | workstation | Copies the Telegraf exec plugins in `plugins/` to pfSense |
+| `./scripts/status.sh` / `diagnose-and-repair.sh` | workstation | Health check and guided repair |
 
-**New to the project?** → Start with [README.md](README.md)  
-**Want quick deployment?** → Follow [QUICK_START.md](QUICK_START.md)  
-**Need specific docs?** → Browse [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)  
-**Something not working?** → Check [docs/troubleshooting/TROUBLESHOOTING.md](docs/troubleshooting/TROUBLESHOOTING.md)  
-**Want to contribute?** → Read [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## Essential Files
-
-| File | Purpose | When to Use |
-|------|---------|-------------|
-| `pfsense-siem` ⭐ | Management console | **START HERE** - Interactive menu for everything |
-| `install.sh` | Installs SIEM stack | Run FIRST on Ubuntu/Debian server |
-| `setup.sh` | Automated deployment | Run SECOND to deploy to pfSense |
-| `dashboards/pfsense_pfblockerng_system.json` | pfSense system & pfBlockerNG dashboard | Import into Grafana (InfluxDB + OpenSearch-pfBlockerNG) |
-| `dashboards/Suricata_IDS_IPS.json` | WAN security dashboard | Import into Grafana (OpenSearch) |
-| `dashboards/Suricata_Per_Interface.json` | Per-interface LAN dashboard | Import into Grafana (OpenSearch) |
-| `config/opensearch-index-template.json` | Suricata index template | Auto-applied by install.sh |
-| `config/opensearch-pfblockerng-template.json` | pfBlockerNG index template | Auto-applied by install.sh |
-| `scripts/forward-suricata-eve.py` | Forwarder code | Auto-deployed by setup.sh |
-
-## Directory Structure
+## Tree
 
 ```
 pfsense-siem-stack/
-├── 🎮 Management Console
-│   └── pfsense-siem                        ★★★ INTERACTIVE MENU FOR EVERYTHING
+├── README.md                  ← Project overview and status
+├── QUICK_START.md             ← Deployment walkthrough
+├── ORGANIZATION.md            ← This file
+├── ROADMAP.md · CHANGELOG.md · CONTRIBUTING.md · LICENSE (MPL 2.0)
+├── config.env.example         ← Copy to config.env; consumed by setup.sh and every script
+├── pfsense-siem · install.sh · setup.sh · install_plugins.sh
 │
-├── 📄 Core Documentation
-│   ├── README.md                           ← START HERE
-│   ├── QUICK_START.md                      ← Fast 15-min setup
-│   ├── ROADMAP.md                          ← Project plan
-│   ├── ORGANIZATION.md                     ← This file
-│   └── LICENSE
-│
-├── 📊 dashboards/
-│   ├── pfsense_pfblockerng_system.json     ★ pfSense system & pfBlockerNG
-│   ├── Suricata_IDS_IPS.json               ★ WAN-side security monitoring
-│   ├── Suricata_Per_Interface.json         ★ Per-interface LAN monitoring
-│   ├── suricata_ids_ips_active.json        Current production Suricata export
-│   ├── prometheus_stats.json               Prometheus internals
-│   ├── docker_container_monitoring.json    Container metrics (cAdvisor)
-│   ├── windows_exporter.json               Windows host metrics
-│   ├── datasources_reference.json          Datasource UID reference
-│   └── wazuh/                              Wazuh dashboards + deploy README
-│
-├── 🔧 scripts/
-│   ├── forward-suricata-eve.py             ★ Multi-interface forwarder
-│   ├── status.sh                           Comprehensive status check
-│   ├── diagnose-and-repair.sh              Guided diagnostics/repair
-│   ├── restart-services.sh                 Service management
-│   ├── configure-retention-policy.sh       Index lifecycle (ISM)
-│   ├── install-opensearch-config.sh        Index templates
-│   ├── deploy-wazuh-dashboards.py          Wazuh dashboard deployment
-│   ├── setup_forwarder_monitoring.sh       Watchdog/cron installer
-│   ├── suricata-forwarder-watchdog.sh      Forwarder watchdog
-│   ├── apply-suricata-drop-rules.sh        SID drop-rule management
-│   ├── preflight.sh                        Pre-install/deploy sanity checks
-│   ├── check-doc-links.py                  Docs link checker (CI)
-│   └── README.md                           Script documentation
-│
-├── ⚙️ config/
-│   ├── logstash-suricata.conf              Logstash pipeline (flat EVE fields)
-│   ├── opensearch-index-template.json      Suricata index template (geo_point)
-│   ├── opensearch-pfblockerng-template.json pfBlockerNG index template (keyword)
-│   └── sid/                                Suricata SID tuning lists
-│
-├── 📚 docs/
-│   ├── DOCUMENTATION_INDEX.md              ★ Documentation hub (start here)
-│   ├── ARCHIVE.md                          Where superseded material went (git history)
-│   ├── install/                            SIEM server, forwarder, dashboards, GeoIP
-│   │   ├── INSTALL_SIEM_STACK.md
-│   │   ├── INSTALL_PFSENSE_FORWARDER.md
-│   │   ├── INSTALL_DASHBOARD.md
-│   │   ├── GEOIP_SETUP.md
-│   │   ├── NEW_USER_CHECKLIST.md
-│   │   └── HARDWARE_REQUIREMENTS.md
-│   ├── pfsense/                            Suricata/pfBlockerNG/Telegraf tuning
-│   │   ├── SURICATA_CONFIGURATION.md
-│   │   ├── SURICATA_OPTIMIZATION_GUIDE.md
-│   │   ├── PFBLOCKERNG_OPTIMIZATION.md
-│   │   ├── LAN_MONITORING.md
-│   │   ├── TRAFFIC_SHAPING_GUIDE.md
-│   │   ├── TELEGRAF_PFBLOCKER_SETUP.md
-│   │   ├── TELEGRAF_RESTART_PROCEDURE.md
-│   │   ├── MAC_VENDOR_LOOKUP_SETUP.md
+├── docs/
+│   ├── DOCUMENTATION_INDEX.md ← Hub, organised by task
+│   ├── ARCHIVE.md             ← Superseded material → git history
+│   ├── pfsense/               ← Generic pfSense knowledge (works without the SIEM)
+│   │   ├── SURICATA_OPTIMIZATION_GUIDE.md · SURICATA_CONFIGURATION.md
+│   │   ├── PFBLOCKERNG_OPTIMIZATION.md · PFBLOCKERNG_FEED_REFERENCE.md
+│   │   ├── TELEGRAF_ON_PFSENSE.md · TELEGRAF_PFBLOCKER_SETUP.md · MAC_VENDOR_LOOKUP_SETUP.md
+│   │   ├── LAN_MONITORING.md · TRAFFIC_SHAPING_GUIDE.md
+│   │   ├── PFSENSE_UPGRADE_GUIDE.md   ← 2.8.1 → 2.9.0 and what survives
 │   │   └── crowdsec-phase1.md
-│   ├── operations/                         Monitoring, watchdogs, retention
-│   │   ├── MANAGEMENT_CONSOLE.md
-│   │   ├── SURICATA_FORWARDER_MONITORING.md
-│   │   ├── FORWARDER_MONITORING_QUICK_REF.md
-│   │   ├── MULTI_INTERFACE_RETENTION.md
-│   │   └── SETUP_FILTERLOG_MONITORING_CRON.md
-│   ├── troubleshooting/                    Symptom → fix guides
-│   │   ├── TROUBLESHOOTING.md
-│   │   ├── DASHBOARD_NO_DATA_FIX.md
-│   │   ├── OPENSEARCH_AUTO_CREATE.md
-│   │   ├── LOG_ROTATION_FIX.md
-│   │   ├── PFSENSE_FILTERLOG_ROTATION_FIX.md
-│   │   ├── PF_INFORMATION_PANEL_ISSUE.md
-│   │   └── TELEGRAF_INTERFACE_FIXES.md
-│   ├── reference/                          Configuration/scripts reference, architecture
-│   │   ├── CONFIGURATION.md
-│   │   ├── SCRIPTS_REFERENCE.md
-│   │   ├── architecture.mmd
-│   │   └── architecture.png
-│   └── siem/                               SIEM backend comparison & integrations
-│       ├── COMPARISON.md
-│       ├── graylog/README.md
-│       └── wazuh/README.md
+│   ├── install/               ← HARDWARE_REQUIREMENTS · NEW_USER_CHECKLIST · INSTALL_SIEM_STACK
+│   │                            INSTALL_PFSENSE_FORWARDER · GEOIP_SETUP · INSTALL_DASHBOARD
+│   ├── operations/            ← MANAGEMENT_CONSOLE · SURICATA_FORWARDER_MONITORING · MULTI_INTERFACE_RETENTION
+│   ├── troubleshooting/       ← TROUBLESHOOTING · DASHBOARD_NO_DATA_FIX · OPENSEARCH_AUTO_CREATE
+│   │                            LOG_ROTATION_FIX · PFSENSE_FILTERLOG_ROTATION_FIX
+│   ├── reference/             ← CONFIGURATION · FIELD_REFERENCE · architecture.mmd/.png
+│   └── siem/                  ← COMPARISON · wazuh/README · graylog/README
 │
-├── 🔌 plugins/
-│   ├── telegraf_pfifgw.php                 Gateway monitoring
-│   ├── telegraf_arp_mac_vendor.php         MAC vendor lookup (ARP)
-│   ├── telegraf_temperature.sh             Temperature stats
-│   ├── telegraf_unbound.sh                 DNS resolver stats
-│   ├── telegraf_unbound_lite.sh            Lightweight DNS stats
-│   └── README.md                           Plugin documentation
+├── config/
+│   ├── README.md              ← The shipped config files explained
+│   ├── logstash-suricata.conf ← Logstash pipeline (flat EVE fields → suricata-YYYY.MM.DD)
+│   ├── opensearch-index-template.json        ← suricata-* mappings (geo_point, keyword, ip)
+│   ├── opensearch-pfblockerng-template.json  ← pfblockerng-* mappings (keyword)
+│   ├── dnsbl_whitelist.txt    ← pfBlockerNG DNSBL whitelist
+│   └── sid/                   ← Suricata SID lists: disable/ drop/ suppress/ + README
 │
-├── 🧪 tests/
-│   ├── test-multi-interface.sh             Multi-interface testing
-│   ├── test-panel-compatibility.sh         Dashboard panel testing
-│   └── python/test_forwarder.py            Forwarder unit tests (pytest)
+├── dashboards/                ← Grafana JSON; README.md is the inventory
+│   ├── Suricata_IDS_IPS.json · Suricata_Per_Interface.json · pfsense_pfblockerng_system.json
+│   ├── windows_exporter.json · prometheus_stats.json · docker_container_monitoring.json
+│   ├── suricata_ids_ips_active.json (raw export, same UID — do not import both)
+│   ├── datasources_reference.json
+│   └── wazuh/                 ← 3 Wazuh dashboards + README
 │
-└── 🚀 Installation Scripts
-    ├── install.sh                          ★ SIEM stack installer (server side)
-    ├── setup.sh                            ★ Deployment to pfSense
-    └── install_plugins.sh                  Telegraf plugin installer
+├── scripts/                   ← README.md documents every script and marks legacy ones
+│   ├── forward-suricata-eve.py            ★ the forwarder (deployed by setup.sh)
+│   ├── preflight.sh · status.sh · diagnose-and-repair.sh · restart-services.sh
+│   ├── install-opensearch-config.sh · configure-retention-policy.sh
+│   ├── deploy-wazuh-dashboards.py · check-doc-links.py (CI)
+│   ├── check_custom_sids.sh · check-telegram-alerts.sh · apply-suricata-drop-rules.sh · enable-selective-blocking.sh
+│   └── legacy: setup_forwarder_monitoring.sh · suricata-forwarder-watchdog.sh · suricata-eve-forwarder.sh
+│               suricata-restart-hook.sh · suricata-restart-with-forwarder.sh · unified-monitoring-watchdog.sh
+│
+├── plugins/                   ← Telegraf exec plugins for pfSense (+ README)
+├── tests/                     ← pytest forwarder tests (CI) + live integration scripts
+├── media/                     ← Screenshots
+└── .github/workflows/lint.yml ← CI: bash -n, shellcheck, JSON, py_compile, link check, pytest
 ```
 
-## Setup Workflow
+## What `setup.sh` puts on pfSense
 
-### Option 1: Management Console (Recommended)
+| Path on pfSense | Purpose | Survives pfSense upgrade? |
+|-----------------|---------|---------------------------|
+| `/usr/local/bin/forward-suricata-eve.py` | Forwarder (shebang set to the detected Python) | Usually; re-run `setup.sh` if the Python version changed |
+| `/usr/local/etc/rc.d/suricata_forwarder.sh` | rc.d service, started at boot by pfSense (`*.sh` only) | Usually |
+| `/usr/local/bin/suricata-forwarder-watchdog.sh` + root crontab line (every minute) | Restarts the service if the process dies | Usually (not in config.xml backups) |
 
-```mermaid
-graph TD
-    A[Clone Repo] --> B[Run ./pfsense-siem]
-    B --> C[Option 1: Install SIEM Stack]
-    C --> D[Option 2: Deploy to pfSense]
-    D --> E[Option 3: Configure OpenSearch]
-    E --> F[Option 4: Import Dashboards]
-    F --> G[Option 5: Check Status]
-    G --> H[Done! View data]
-```
+Details and the full persistence table:
+[Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md).
 
-**Single command:** `./pfsense-siem`
+## Archive policy
 
-### Option 2: Manual Commands
-
-```mermaid
-graph TD
-    A[Clone Repo] --> B[Run install.sh on SIEM server]
-    B --> C[Run setup.sh]
-    C --> D[Configure Grafana datasource]
-    D --> E[Import dashboards]
-    E --> F[Done! View data]
-```
-
-1. **SIEM Server**: `sudo ./install.sh`
-2. **Deployment**: `./setup.sh`
-3. **Grafana**: Add OpenSearch datasource
-4. **Dashboard**: Import JSON file
-
-## Documentation Map
-
-| Document | Audience | Content |
-|----------|----------|---------|
-| README.md | Everyone | Project overview, features, quick start |
-| QUICK_START.md | Beginners | Step-by-step 15-minute setup |
-| docs/install/INSTALL_SIEM_STACK.md | Admins | Detailed OpenSearch/Logstash/Grafana install |
-| docs/install/INSTALL_PFSENSE_FORWARDER.md | Admins | Manual forwarder deployment |
-| docs/reference/CONFIGURATION.md | Advanced | Tuning, performance, customization |
-| docs/troubleshooting/TROUBLESHOOTING.md | Support | Common issues and solutions |
-
-## Key Features
-
-### Multi-Interface Forwarder
-- Automatically detects ALL Suricata instances
-- Threaded monitoring of multiple eve.json files
-- No manual configuration for multiple WANs
-
-### GeoIP Enrichment
-- City-level location data
-- Proper geo_point mapping for Grafana geomap
-- Uses MaxMind GeoLite2-City database
-
-### Optimized Dashboard
-- No hardcoded datasource (user-selectable)
-- Clean pie charts (labels on hover only)
-- 54 fields excluded from alert table
-- Proper geohash aggregation for map
-
-## Archive Policy
-
-Superseded material is deleted from the working tree and preserved in git history.
-See [docs/ARCHIVE.md](docs/ARCHIVE.md) for the last commit that contains the old
-`docs/archive/`, `scripts/archive/`, `dashboards/archive/`, and `plugins/Old/` trees,
-along with recovery instructions.
+Superseded material is deleted from the working tree and preserved in git history. See
+[docs/ARCHIVE.md](docs/ARCHIVE.md) for the last commit containing the old
+`docs/archive/`, `scripts/archive/`, `dashboards/archive/` and `plugins/Old/` trees.

@@ -1,4 +1,4 @@
-# Contributing to pfSense Knowledge Base
+# Contributing to pfSense SIEM Stack
 
 > **Help build the pfSense community knowledge repository**
 
@@ -65,8 +65,7 @@ This is not just a monitoring stack—it's a **knowledge repository** covering:
   - VPN logs (OpenVPN, Wireguard, IPsec)
 
 - **Testing & Validation**
-  - Automated test suites
-  - CI/CD pipelines
+  - More forwarder unit tests (`tests/python/`) and a dry-run mode for `setup.sh`/`install.sh` runnable in CI
   - Performance benchmarks
   - Security hardening tests
 
@@ -84,9 +83,9 @@ This is not just a monitoring stack—it's a **knowledge repository** covering:
 
 ```bash
 # Fork this repository on GitHub, then:
-git clone https://github.com/<your-username>/pfsense_siem_stack.git
-cd pfsense_siem_stack
-git remote add upstream https://github.com/ChiefGyk3D/pfsense_siem_stack.git
+git clone https://github.com/<your-username>/pfsense-siem-stack.git
+cd pfsense-siem-stack
+git remote add upstream https://github.com/ChiefGyk3D/pfsense-siem-stack.git
 ```
 
 ### 2. Set Up Development Environment
@@ -127,8 +126,10 @@ git checkout -b fix/issue-description
 - Add docstrings to functions
 - Include inline comments for complex logic
 
-**Bash (watchdogs, helpers):**
-- Use `#!/usr/bin/env bash` shebang
+**Shell scripts:**
+- Anything that runs **on pfSense** must be POSIX `#!/bin/sh` — pfSense has no bash
+- Scripts that run on the workstation or SIEM server use `#!/bin/bash`
+- CI runs `bash -n` and `shellcheck --severity=error` on every `*.sh` and on `pfsense-siem`
 - Include error handling (`set -euo pipefail` where appropriate)
 - Add help text for user-facing scripts
 - Quote variables to prevent word splitting
@@ -137,7 +138,7 @@ git checkout -b fix/issue-description
 - Indent with 2 spaces
 - Use descriptive panel titles
 - Add panel descriptions explaining queries
-- Test on Grafana 12.x
+- Test on Grafana 12.x; export with *Export for sharing externally* so datasources become `${DS_*}` variables
 
 **Documentation (Markdown):**
 - Use headers for structure
@@ -176,10 +177,10 @@ Fixes #42
 ```
 
 ```
-fix(forwarder): Handle log rotation on FreeBSD 14+
+fix(setup): name the rc.d script suricata_forwarder.sh
 
-FreeBSD 14 changed inode behavior during log rotation. Updated forwarder
-to check file modification time in addition to inode number.
+pfSense only starts /usr/local/etc/rc.d/*.sh at boot, so the previous
+extension-less unit was never started and relied on the watchdog.
 
 Fixes #87
 ```
@@ -190,7 +191,7 @@ Fixes #87
    - Verify forwarder works on pfSense
    - Test dashboard loads in Grafana
    - Run `./scripts/status.sh` to validate
-   - Check for broken links in docs
+   - Run the same checks CI runs (see **Continuous Integration** below)
 
 2. **Update documentation**
    - Add/update README if adding features
@@ -200,8 +201,8 @@ Fixes #87
 
 3. **Submit PR**
    - Push to your fork
-   - Open PR against `overhaul` branch (not `main`)
-   - Fill out PR template
+   - Open the PR against `main`
+   - Describe what changed and how you tested it (there is no PR template)
    - Link related issues
 
 4. **Code review**
@@ -216,9 +217,9 @@ Fixes #87
 ### Manual Testing Checklist
 
 **For Forwarder Changes:**
-- [ ] Deploy to test pfSense: `scp scripts/forward-suricata-eve.py root@<pfsense>:/usr/local/bin/`
-- [ ] Restart forwarder: `ssh root@<pfsense> "pkill -f forward-suricata-eve.py && nohup /usr/local/bin/python3.11 /usr/local/bin/forward-suricata-eve.py &"`
-- [ ] Check debug log: `ssh root@<pfsense> "tail -f /var/log/suricata_forwarder_debug.log"`
+- [ ] Deploy to test pfSense: `scp scripts/forward-suricata-eve.py admin@<PFSENSE_IP>:/usr/local/bin/`
+- [ ] Restart forwarder: `ssh admin@<PFSENSE_IP> "service suricata_forwarder.sh restart"` (or re-run `./setup.sh`, which redeploys and restarts)
+- [ ] Check debug log: `ssh admin@<PFSENSE_IP> "tail -f /var/log/suricata_forwarder_debug.log"`
 - [ ] Verify data in OpenSearch: `curl -s http://localhost:9200/suricata-*/_count`
 - [ ] Test log rotation: Manually rotate logs and verify forwarder reopens files
 
@@ -252,12 +253,31 @@ When adding a feature, include:
 6. **Troubleshooting** - Common issues, fixes
 7. **Examples** - Real-world use cases
 
+### Continuous Integration
+
+`.github/workflows/lint.yml` runs on every push and pull request:
+
+| Check | Command it runs | Fix locally with |
+|-------|-----------------|------------------|
+| Shell syntax | `bash -n` on all `*.sh` + `pfsense-siem` | same |
+| ShellCheck | `shellcheck --severity=error` on the same set | `shellcheck file.sh` |
+| JSON | `python3 -m json.tool` on `dashboards/**/*.json`, `config/*.json` | same |
+| Python syntax | `python3 -m py_compile` on all `*.py` | same |
+| Documentation links | `python3 scripts/check-doc-links.py` | same — every relative link must resolve |
+| Forwarder unit tests | `python3 -m pytest tests/python/ -v` | `pip install pytest` then same |
+
+A PR that is red on any of these will not be merged.
+
 ### File Organization
 
 - **docs/**: Detailed guides (installation, config, troubleshooting)
 - **scripts/README.md**: Script usage and examples
 - **README.md**: Project overview and quick start
-- **QUICK_START.md**: 15-minute getting started guide
+- **QUICK_START.md**: deployment walkthrough (30–60 minutes from scratch)
+- **docs/DOCUMENTATION_INDEX.md**: the hub — add new docs there and in ORGANIZATION.md
+- **docs/pfsense/**: generic pfSense knowledge (must read well without the SIEM stack)
+- **dashboards/README.md**, **plugins/README.md**, **tests/README.md**: inventories — keep them in sync
+- **CHANGELOG.md**: add an entry under *Unreleased*
 
 ---
 
@@ -265,7 +285,7 @@ When adding a feature, include:
 
 ### Before Submitting
 
-1. Check [existing issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues)
+1. Check [existing issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues)
 2. Run `./scripts/status.sh` and include output
 3. Check logs:
    - OpenSearch: `/var/log/opensearch/opensearch.log`
@@ -288,10 +308,11 @@ Steps to reproduce:
 What you expected to happen.
 
 **Environment:**
-- pfSense version: [e.g., 2.8.1]
-- Suricata version: [e.g., 7.0.7]
+- pfSense version: [e.g., 2.8.1 or 2.9.0]
+- Suricata package version: [e.g., 7.0.11]
+- Python on pfSense: [output of `ls /usr/local/bin/python3*`]
 - SIEM server OS: [e.g., Ubuntu 24.04]
-- OpenSearch version: [e.g., 2.18.0]
+- OpenSearch version: [e.g., 2.19.4]
 - Grafana version: [e.g., 12.3.0]
 
 **Logs**
@@ -307,12 +328,12 @@ If applicable, add screenshots.
 
 ### Submitting Ideas
 
-Use [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense_siem_stack/discussions) for:
+Use [GitHub Discussions](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions) for:
 - Feature ideas
 - Architecture discussions
 - Use case questions
 
-Use [GitHub Issues](https://github.com/ChiefGyk3D/pfsense_siem_stack/issues) for:
+Use [GitHub Issues](https://github.com/ChiefGyk3D/pfsense-siem-stack/issues) for:
 - Concrete feature requests with implementation plan
 - Bugs and fixes
 

@@ -1,6 +1,8 @@
 # Suricata IDS/IPS Optimization Guide for pfSense
 
-Complete guide to configuring and optimizing Suricata on pfSense for homelab and small business environments.
+The complete walk-through for Suricata on pfSense: install → interfaces → rule selection → IDS vs IPS → performance → log management → validation → maintenance. It is written for home labs and small businesses and applies to **any pfSense box**; the few places that mention forwarding logs to a SIEM are marked as optional.
+
+Its companion, [SURICATA_CONFIGURATION.md](SURICATA_CONFIGURATION.md), covers the *why*: design decisions, interface strategy, SID-tuning philosophy, GeoIP, common failure modes and what survives a pfSense upgrade. Read this guide first, then that one.
 
 ## Table of Contents
 - [Initial Setup](#initial-setup)
@@ -11,6 +13,8 @@ Complete guide to configuring and optimizing Suricata on pfSense for homelab and
 - [IDS vs IPS Mode](#ids-vs-ips-mode)
 - [Testing and Validation](#testing-and-validation)
 - [Maintenance](#maintenance)
+- [Reference Deployment](#reference-deployment)
+- [Quick Reference](#quick-reference)
 
 ---
 
@@ -18,33 +22,26 @@ Complete guide to configuring and optimizing Suricata on pfSense for homelab and
 
 ### Installation
 
-1. **Install Suricata Package**
-   - Navigate to **System > Package Manager > Available Packages**
-   - Search for "Suricata"
-   - Click **Install**
+1. **Install the Suricata package**
+   - **System > Package Manager > Available Packages**
+   - Search for "Suricata", click **Install**
 
-2. **Enable Suricata on Interfaces**
-   - Go to **Services > Suricata > Interfaces**
-   - Click **Add** to add an interface
-   - Start with WAN interface first
+2. **Enable Suricata on interfaces**
+   - **Services > Suricata > Interfaces**
+   - Click **Add**
+   - Start with the WAN interface
 
-### Hardware Requirements
+### Hardware
 
-**Minimum (Home Lab):**
-- CPU: 2 cores @ 2.0 GHz
-- RAM: 4 GB
-- Network: 100 Mbps
+Sizing depends almost entirely on how many interfaces you inspect and whether any of them run inline IPS. See [HARDWARE_REQUIREMENTS.md](../install/HARDWARE_REQUIREMENTS.md) for the full tables. In short:
 
-**Recommended (Home Lab):**
-- CPU: 4+ cores @ 2.5+ GHz
-- RAM: 8 GB+
-- Network: 1 Gbps with Intel NICs
+| Deployment | CPU | RAM |
+|------------|-----|-----|
+| WAN only, IDS mode | 2-4 cores | 8 GB |
+| WAN inline IPS + a few VLANs | 4-8 cores | 8-16 GB |
+| Many interfaces (10+), mixed IPS/IDS | 8 cores | 16 GB |
 
-**Optimal (Small Business):**
-- CPU: 6+ cores @ 3.0+ GHz
-- RAM: 16 GB+
-- Network: 10 Gbps with Intel ix series NICs
-- Hardware: Netgate appliance or server-grade hardware
+Intel NICs (igb/igc/ix/em) have the best netmap support, which matters for inline mode. The single [reference deployment](#reference-deployment) used throughout this repository's docs is an 8-core Intel Atom C3758 with 16 GB RAM running 15 Suricata instances.
 
 ---
 
@@ -52,76 +49,66 @@ Complete guide to configuring and optimizing Suricata on pfSense for homelab and
 
 ### Which Interfaces to Monitor?
 
-**Home Lab / Family Network:**
+**Home lab / family network:**
 ```
-✅ WAN - Monitor all inbound threats
-⚠️ LAN - Optional, only if you want internal monitoring
-❌ VLAN interfaces - Usually not needed (too much overhead)
-```
-
-**Small Business:**
-```
-✅ WAN - Essential
-✅ DMZ - If you have one
-✅ Guest Network - If publicly accessible
-⚠️ LAN - For insider threat detection
+✅ WAN              - Monitor all inbound threats (essential)
+⚠️ LAN              - Optional: internal visibility
+⚠️ VLAN interfaces  - Optional: each one adds CPU cost; see LAN_MONITORING.md for when east-west visibility is worth it
 ```
 
-**Our Homelab Example:**
-- **ix0 (WAN)** - Primary internet connection monitoring
-- **ix1 (WAN_CELL)** - Backup cellular WAN
-- **lagg1.200 (High Security VLAN)** - Critical devices segment
+**Small business:**
+```
+✅ WAN              - Essential
+✅ DMZ              - If you have one
+✅ Guest network    - If publicly accessible
+⚠️ LAN / VLANs      - For insider threat and lateral movement detection
+```
+
+Every interface is a separate Suricata process with its own copy of the rule set. On the reference deployment 13 VLAN instances in IDS mode roughly double the steady-state CPU load compared with the two WAN instances alone, so add internal interfaces deliberately. [LAN_MONITORING.md](LAN_MONITORING.md) covers per-VLAN rule selection and the detection you gain.
+
+**Example layout** (interface names are placeholders — substitute your own):
+
+- **igc0 (WAN)** — primary internet connection, inline IPS
+- **igc3 (WAN2)** — backup WAN, inline IPS
+- **igc1.20 (IoT VLAN)** — untrusted devices, IDS
 
 ### Interface Settings
 
-**For each interface, configure:**
+For each interface, configure:
 
 1. **Enable Interface:** ✅ Checked
-2. **Interface:** Select your interface (e.g., ix0, em0)
-3. **Description:** Descriptive name (e.g., "WAN IDS", "Guest Network IDS")
+2. **Interface:** the pfSense interface (e.g. `igc0`)
+3. **Description:** a clear name (e.g. "WAN IPS", "IoT VLAN IDS")
 
 **IDS/IPS Mode:**
-- **IDS Mode (Alert Only):** Recommended for new users
-  - Detects threats but doesn't block
-  - Learn your network first
-  - Review alerts before enabling blocking
-  
-- **IPS Mode (Inline Blocking):** Advanced users only
-  - Can block legitimate traffic if misconfigured
-  - Requires careful tuning
-  - See [IDS vs IPS Mode](#ids-vs-ips-mode) section
+- **IDS (alert only)** — recommended for new installs and for all internal interfaces. Detects but never blocks. Learn your network first.
+- **IPS (inline blocking)** — for WAN after tuning. Can block legitimate traffic if misconfigured. See [IDS vs IPS Mode](#ids-vs-ips-mode).
 
-**Performance Settings:**
-- **Inline Mode:** Use "Inline" (best performance with Intel NICs)
-- **Legacy Mode:** Only if Inline causes issues
-- **Promiscuous Mode:** Rarely needed on pfSense
+**Capture settings:**
+- **IPS Mode: Inline** — uses netmap; the best-performing choice on NICs with native netmap support (Intel igb/igc/ix/em). Required for actual blocking.
+- **Legacy Mode** — pcap-based; fall back to it only if inline causes problems with your NIC or with VLAN/LAGG parents.
+- **Promiscuous Mode** — needed when Suricata should see traffic not addressed to the firewall's own MAC (some VLAN/bridge setups, or a mirror/span feed). Otherwise leave it off; it adds work for no benefit on a routed interface.
 
 ---
 
 ## Rule Selection Strategy
 
-### Understanding Rule Categories
+### Rule Sources
 
-**Rule Sources:**
-1. **Emerging Threats (ET) - FREE**
-   - Community-maintained
-   - Updated daily
-   - Good coverage for common threats
-   
-2. **Snort Rules - PAID (Subscription Required)**
-   - Commercial-grade signatures
-   - Faster updates for new threats
-   - Lower false positive rate
+1. **Emerging Threats Open (ET Open)** — free, community-maintained, updated daily. Always enable.
+2. **Snort Registered rules** — free with an account at [snort.org](https://www.snort.org/users/sign_up); paste the Oinkcode into Global Settings. Broader coverage than ET Open alone.
+3. **Snort Subscriber rules** — paid ($30/year for personal use); the same rules 30 days earlier. Recommended if you run inline IPS on WAN.
+4. **Feodo Tracker Botnet C2** and **Abuse.ch SSL Blacklist** — free, low false-positive IP/certificate feeds. Enable both.
 
-### Recommended Ruleset for Homelab
+Enable them under **Services > Suricata > Global Settings**, then **Services > Suricata > Updates > Update Rules**. The first download takes several minutes.
 
-Based on our testing with extensive rule deployment:
+### Recommended Ruleset for a Home Lab
 
-#### **Phase 1: Starting Out (First Month)**
+#### Phase 1: Starting Out (First Month)
 
-**Emerging Threats (Enable ~42 categories):**
+**Emerging Threats (~42 categories):**
 
-**Core Security (MUST ENABLE):**
+**Core security (must enable):**
 ```
 ✅ emerging-malware.rules           # Malware detection
 ✅ emerging-botcc.rules             # Botnet C2
@@ -135,7 +122,7 @@ Based on our testing with extensive rule deployment:
 ✅ emerging-phishing.rules          # Phishing attempts
 ```
 
-**Web Security:**
+**Web security:**
 ```
 ✅ emerging-web_server.rules        # Web server attacks
 ✅ emerging-web_client.rules        # Browser attacks
@@ -143,7 +130,7 @@ Based on our testing with extensive rule deployment:
 ✅ emerging-activex.rules           # ActiveX exploits
 ```
 
-**Network Protocols:**
+**Network protocols:**
 ```
 ✅ emerging-dns.rules               # DNS attacks/tunneling
 ✅ emerging-smtp.rules              # Email attacks
@@ -154,7 +141,7 @@ Based on our testing with extensive rule deployment:
 ✅ emerging-telnet.rules            # Telnet (IoT devices)
 ```
 
-**Additional Threats:**
+**Additional threats:**
 ```
 ✅ emerging-dos.rules               # DoS attacks
 ✅ emerging-scan.rules              # Port scanning
@@ -167,17 +154,17 @@ Based on our testing with extensive rule deployment:
 ✅ emerging-games.rules             # Game hacking tools
 ```
 
-**Reputation Lists:**
+**Reputation lists:**
 ```
 ✅ emerging-ciarmy.rules            # IP reputation
 ✅ emerging-botcc.portgrouped.rules # Botnet C2 (optimized)
 ```
 
-**DISABLE These (Too Noisy or Not Applicable):**
+**Disable these (too noisy or not applicable):**
 ```
 ❌ emerging-coinminer.rules         # If you mine crypto
-❌ emerging-drop.rules              # Redundant with pfBlocker
-❌ emerging-dshield.rules           # Redundant with pfBlocker
+❌ emerging-drop.rules              # Redundant with pfBlockerNG
+❌ emerging-dshield.rules           # Redundant with pfBlockerNG
 ❌ emerging-info.rules              # Too noisy
 ❌ emerging-ja3.rules               # Complex, needs tuning
 ❌ emerging-retired.rules           # Obsolete
@@ -187,9 +174,11 @@ Based on our testing with extensive rule deployment:
 ❌ emerging-file_sharing.rules      # Optional, try enabling
 ```
 
-#### **Phase 2: Snort Rules (If You Have Subscription)**
+If you run pfBlockerNG, let it own IP-reputation blocking and keep Suricata for signatures; see [PFBLOCKERNG_OPTIMIZATION.md](PFBLOCKERNG_OPTIMIZATION.md).
 
-**Essential (21 NEW rules to add):**
+#### Phase 2: Snort Rules (If You Have an Oinkcode)
+
+**Essential (21 categories to add):**
 ```
 ✅ content-replace.rules            # MITM detection
 ✅ file-executable.rules            # Malicious executables
@@ -214,7 +203,7 @@ Based on our testing with extensive rule deployment:
 ✅ other-ids.rules                  # IDS evasion
 ```
 
-**Plus Your Existing 25 Snort Rules:**
+**Plus the usual 25 Snort categories:**
 ```
 ✅ browser-chrome/firefox/ie/other/plugins/webkit
 ✅ malware-backdoor/cnc/other/tools
@@ -224,52 +213,51 @@ Based on our testing with extensive rule deployment:
 ✅ dos, exploit, phishing-spam, spyware-put, virus
 ```
 
-**Total Recommended: 46 Snort rules**
+**Total: ~46 Snort categories.**
+
+### Tuning Out Noise
+
+After the first week you will have a handful of signatures producing most of your alerts. Disable or suppress them rather than living with them; a noisy rule set hides real alerts and wastes CPU. The procedure, the difference between disabling and suppressing, and a starting list of 218 known-noisy SIDs are in [config/sid/README.md](../../config/sid/README.md).
 
 ---
 
 ## Performance Tuning
 
-### CPU Allocation
+### CPU
 
-**Suricata CPU Usage by Ruleset:**
-- ~150 ET rules: 15-30% CPU per interface
-- ~150 ET + 46 Snort rules: 25-40% CPU per interface
-- 3 interfaces: 75-120% CPU total (1-2 cores fully loaded)
+Roughly, per interface with the Phase 1 ET set: 15-30% of one core at idle-to-moderate traffic; add 10-15 points for the Snort categories. Rule reloads spike every instance to 100% for 3-5 minutes; that is normal.
 
-**Optimization Tips:**
-1. **Disable unused rulesets** - Every rule costs CPU
-2. **Use Inline mode** - Better performance than Legacy
-3. **Enable Netmap** - Hardware offloading for Intel NICs
-4. **Limit interfaces** - Only monitor critical interfaces
+**Optimization tips:**
+1. **Disable unused categories** — every loaded rule costs CPU on every packet
+2. **Use inline mode** — netmap is cheaper than the pcap path used by legacy mode
+3. **Limit interfaces** — only monitor what you will actually look at
+4. **Use SID management** — see [config/sid/README.md](../../config/sid/README.md)
 
-### Memory Management
+### Memory
 
-**RAM Usage:**
 - Base Suricata: 200-400 MB per instance
-- With full ruleset: 500-800 MB per instance
-- 3 instances: ~1.5-2.5 GB total
+- With the full rule set: 500-800 MB per instance
+- Stream and reassembly memory on top, per instance (below)
 
-**Settings (per interface):**
-- Navigate to **Services > Suricata > Interface Settings > [Interface] > Advanced**
-- **Stream Memory Limit:** 64 MB (default)
-- **Reassembly Memory Limit:** 128 MB (default)
-- Increase only if you see "memcap" errors in logs
+**Stream settings** (**Services > Suricata > Interfaces > [Interface] > Flow/Stream**):
 
-### Network Performance
+- **Stream Memcap:** pfSense GUI default **256 MB** (268435456 bytes; upstream Suricata defaults to 64 MB)
+- **Reassembly Memcap:** pfSense GUI default **128 MB** (134217728 bytes)
 
-**Inline Mode Configuration:**
-1. Go to **Services > Suricata > Interface Settings > [Interface]**
-2. **IPS Mode:** Select "Inline"
-3. **Enable Netmap:** ✅ (auto-enables with Intel NICs)
-4. Save
+Leave the defaults unless you see memcap trouble. The symptoms are `stream.memcap` / `tcp.reassembly_memcap` counters climbing in `stats.log` or the Interface Stats page, or an instance dying at startup with an out-of-memory message on a busy link. In that case raise the stream memcap in steps, up to **1 GB (`1073741824`)** per interface. The [reference deployment](#reference-deployment) runs 1 GB on every interface after memcap-related crashes on its 15-instance, 8-core box; with that many instances plan RAM accordingly (16 GB there). The value is a cap, not a reservation, but a busy interface will grow into it.
 
-**QUIC Protocol Handling:**
-If you see "QUIC crypto fragments too long" warnings:
-1. Go to **Advanced Settings** tab
-2. Find **QUIC Configuration**
-3. Set **QUIC Crypto Max Length:** 65536 (64 KB)
-4. Save and restart Suricata
+### Network
+
+**Inline mode:**
+1. **Services > Suricata > Interfaces > [Interface]**
+2. **IPS Mode:** Inline
+3. Save and restart the instance
+
+**QUIC:**
+If `suricata.log` shows "QUIC crypto fragments too long" warnings:
+1. Open the interface's **App Parsers** tab
+2. Set **QUIC crypto max length** to `65536`
+3. Save and restart
 
 ---
 
@@ -277,20 +265,18 @@ If you see "QUIC crypto fragments too long" warnings:
 
 ### Automatic Log Management
 
-**ALWAYS ENABLE** automatic log management:
+**Always enable** automatic log management:
 
-1. Go to **Services > Suricata > Global Settings**
-2. ✅ Check "Enable automatic unattended management of Suricata logs"
-3. Configure retention settings
+1. **Services > Suricata > Log Mgmt**
+2. ✅ **Enable automatic unattended management of Suricata logs**
+3. Set the per-log limits below
 
 ### Recommended Log Settings
-
-Based on our deployment with 3 interfaces + OpenSearch forwarding:
 
 ```
 Log Type          | Max Size | Retention | Reason
 ------------------|----------|-----------|------------------
-eve-json          | 10 MB    | 1 DAY     | Forwarded to OpenSearch
+eve-json          | 10 MB    | 1 DAY     | Forwarded to SIEM (raise retention if not forwarding)
 alert             | 1 MB     | 7 DAYS    | Alert summary
 block             | 1 MB     | 7 DAYS    | Blocked IPs
 http              | 2 MB     | 7 DAYS    | HTTP sessions
@@ -302,168 +288,114 @@ TLS Certs         | -        | 7 DAYS    | Small, useful
 PCAP Files        | -        | 1 DAY     | Huge, troubleshooting only
 ```
 
-**Why these settings?**
-- **eve-json (1 day):** Forwarded to OpenSearch for long-term storage
-- **Larger sizes:** 3 interfaces generate 3x the logs
-- **Shorter retention:** Saves disk space on /var partition
-- **PCAPs (1 day):** Only for active troubleshooting
+Multiply the size expectations by the number of interfaces: every instance writes its own set of logs under `/var/log/suricata/suricata_<iface><id>/`. Keep `/var` on real storage, never an SD card.
 
-### Log Forwarding
+### Log Forwarding (optional)
 
-For long-term analysis and visualization:
-- Forward logs to OpenSearch/Logstash (this project!)
-- Keeps local logs as 1-7 day buffer
-- Central SIEM for historical analysis
-- See [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md)
+For history beyond a few days, forward `eve.json` to a SIEM and keep the local copy as a short buffer. This repository's forwarder and OpenSearch/Grafana stack do exactly that; see [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md). Nothing else in this guide depends on it.
 
 ---
 
 ## IDS vs IPS Mode
 
-### IDS Mode (Alert Only) - RECOMMENDED FOR NEW USERS
+### IDS Mode (Alert Only) — recommended to start
 
 **Configuration:**
-- Enable Inline mode for performance
-- Keep all rules as **ALERT** (default)
-- Review alerts in Grafana/OpenSearch
+- Inline capture for performance, but leave every rule at its default `alert` action
+- Review alerts (GUI Alerts tab or your SIEM)
 - No automatic blocking
 
-**Pros:**
-- ✅ Safe - won't break legitimate traffic
-- ✅ Learn your network baseline
-- ✅ Review before blocking
-- ✅ Good for family networks
+**Pros:** safe, cannot break traffic; lets you baseline the network; easy troubleshooting
+**Cons:** no automatic blocking; you act on alerts by hand (or via pfBlockerNG)
 
-**Cons:**
-- ❌ No automatic blocking
-- ❌ Must manually block threats via pfBlocker
+**Best for:** home labs, family networks, the first 1-3 months of any deployment, and all internal interfaces.
 
-**Best for:**
-- Home labs
-- Family networks
-- Learning phase (first 1-3 months)
-- Networks with diverse applications
+### IPS Mode (Inline Blocking) — after tuning
 
----
+Suricata only blocks when the *rule action* is `drop`. Enabling inline mode by itself blocks nothing; you still have to decide which rules should drop.
 
-### IPS Mode (Inline Blocking) - ADVANCED USERS
+**Method 1: Snort IPS policy (easy)**
+- **Categories** tab → **Use IPS Policy** → choose *Connectivity*, *Balanced*, *Security* or *Max-Detect*
+- Snort rules the policy marks as drop will block; ET rules are unaffected
 
-**Configuration:**
-1. Enable Inline mode
-2. Convert specific rules from ALERT to DROP
-3. Use SID Management (dropsid.conf)
-4. Test thoroughly
+**Method 2: `dropsid.conf` (works for every rule source)**
+- **Services > Suricata > SID Mgmt** → create a `dropsid.conf` and assign it to the WAN interface(s) in the *Drop SID File* column
+- Match by **classtype** rather than by rule-file name — the regex is applied to the rule text, and classtypes are the most reliable signal of confidence:
 
-**How to Enable Blocking:**
-
-**Method 1: Snort Rules (Easy)**
-- Go to **Categories** tab
-- Enable **IPS Policy Mode**
-- Select policy: Connectivity, Balanced, Security, or Max Detect
-- Snort rules marked DROP in policy will auto-block
-
-**Method 2: Manual (Emerging Threats)**
-- Go to **SID MGMT** tab
-- Create **dropsid.conf** file
-- List SIDs to convert to DROP:
-
-```bash
-# Block known malware C2
-re:emerging-malware.*
-re:emerging-botcc.*
-
-# Block exploit kits
-re:emerging-exploit_kit.*
-
-# Block compromised hosts
-re:emerging-compromised.*
+```
+# High-confidence classtypes with near-zero false positives — start here
+pcre:classtype:exploit-kit
+pcre:classtype:trojan-activity
+pcre:classtype:command-and-control
+pcre:classtype:domain-c2
+pcre:classtype:successful-admin
+pcre:classtype:successful-user
 ```
 
-**Testing IPS Mode:**
-1. Enable on one interface first (Guest VLAN recommended)
-2. Monitor for 1 week
-3. Check for broken services
-4. Whitelist false positives
-5. Expand to other interfaces
+Ready-made lists (`dropsid-minimal-safe.conf` above, and a tiered `dropsid-comprehensive.conf`), plus how to apply them so they persist, are in [config/sid/README.md](../../config/sid/README.md).
 
-**Pros:**
-- ✅ Real-time blocking
-- ✅ True IPS protection
-- ✅ Automated defense
+**Rolling out IPS:**
+1. Enable on one interface first — WAN, or a guest VLAN if you want a low-risk trial
+2. Run with the minimal drop list for a week
+3. Watch the **Blocks** tab and your users for broken services
+4. Suppress false positives by host rather than disabling rules globally
+5. Widen the drop list one tier at a time
 
-**Cons:**
-- ❌ Can break legitimate traffic
-- ❌ Requires careful tuning
-- ❌ False positives cause outages
-- ❌ May block: VPNs, remote access, cloud services, gaming
+**Pros:** real-time blocking; automated defence
+**Cons:** false positives cause outages; needs ongoing tuning; may block VPNs, remote access tools, cloud sync, gaming
 
-**Best for:**
-- Experienced administrators
-- After 1-3 months in IDS mode
-- Networks with well-documented applications
-- When you have time for tuning
+**Best for:** WAN interfaces after 1-3 months in IDS mode, on networks whose applications you understand.
 
 ---
 
 ## Testing and Validation
 
-### Verify Suricata is Running
+### Verify Suricata is running
 
 ```bash
-ssh root@pfsense
-ps aux | grep suricata | grep -v grep
+ssh admin@<PFSENSE_IP> "ps aux | grep '[s]uricata'"
 ```
 
-Should show running processes for each enabled interface.
+One process per enabled interface.
 
-### Check Logs are Being Generated
+### Check logs are being written
 
 ```bash
-ls -lh /var/log/suricata/suricata_*/eve.json
+ssh admin@<PFSENSE_IP> "ls -lh /var/log/suricata/suricata_*/eve.json"
 ```
 
-Files should be growing in size.
+Files should be growing.
 
-### Test Alert Generation
+### Generate a test alert
 
-**Safe test methods:**
-1. Visit test site: https://testmyids.com
-2. Or trigger test rule:
-   ```bash
-   curl http://testmyids.com/
-   ```
-3. Check for alerts in Grafana or:
-   ```bash
-   tail -f /var/log/suricata/suricata_*/eve.json | grep alert
-   ```
-
-### Monitor Performance
-
-1. **CPU Usage:**
-   ```bash
-   top | grep suricata
-   ```
-
-2. **Memory Usage:**
-   ```bash
-   ps aux | grep suricata | awk '{print $6,$11}'
-   ```
-
-3. **Check for Drops:**
-   - Go to **Services > Suricata > Interface Settings**
-   - Check **Packets Dropped** column
-   - Should be 0% or very low (<1%)
-
-### Review Stats
+`testmyids.com` now redirects to HTTPS, so Suricata cannot see the payload any more. Use one of these from a client behind the firewall:
 
 ```bash
-tail -100 /var/log/suricata/suricata_*/stats.log
+# ET POLICY / GPL ATTACK_RESPONSE "id check returned root" test signature over plain HTTP
+curl -A "BlackSun" http://testmynids.org/uid/index.html
 ```
 
-Look for:
-- `capture.kernel_drops: 0` (should be zero or very low)
-- `decoder.avg_pkt_size` (typical values: 300-1500 bytes)
-- `flow.memuse` (should stay below Stream Memory Limit)
+or the test rule from the [Suricata quickstart](https://docs.suricata.io/en/latest/quickstart.html), which triggers on the same page. Then:
+
+```bash
+ssh admin@<PFSENSE_IP> "tail -f /var/log/suricata/suricata_*/eve.json | grep -F '\"event_type\":\"alert\"'"
+```
+
+If the WAN interface runs inline IPS with a drop list that covers `attempted-recon`/`bad-unknown`, the request may be **blocked** rather than merely alerted — a `block` event with the same signature is a pass.
+
+### Monitor performance
+
+1. **CPU:** `top -P` on the box, or **Diagnostics > System Activity**
+2. **Memory:** `ps aux | grep '[s]uricata' | awk '{print $6/1024 " MB", $11}'`
+3. **Drops:** **Services > Suricata > Interfaces** → *Interface Stats* per interface; `capture.kernel_drops` should stay at or near zero and the `memcap` counters should not climb
+
+### Review stats
+
+```bash
+ssh admin@<PFSENSE_IP> "tail -100 /var/log/suricata/suricata_*/stats.log"
+```
+
+Look at `capture.kernel_drops` (near zero), `flow.memuse` and `tcp.memuse` (well under the memcaps), `tcp.reassembly_memcap` and `stream.memcap` (not increasing).
 
 ---
 
@@ -471,135 +403,86 @@ Look for:
 
 ### Rule Updates
 
-**Automatic Updates (Recommended):**
-1. Go to **Services > Suricata > Global Settings**
-2. **Update Interval:** 12 hours (default)
-3. ✅ Check "Remove Blocked Hosts After Deinstall"
-4. ✅ Check "Enable Live Rule Swaps"
+**Automatic (recommended):**
+1. **Services > Suricata > Global Settings**
+2. **Update Interval:** daily (12 hours is fine too), **Update Start Time:** 03:00 or another quiet hour
+3. ✅ **Live Rule Swap on Update** — reload without restarting the instances
+4. ✅ **Keep Suricata Settings After Deinstall** — protects your configuration if you ever reinstall the package
 
-**Manual Updates:**
-1. Go to **Services > Suricata > Updates**
-2. Click **Update Rules**
-3. Wait for completion
-4. Rules automatically reload
+**Manual:** **Services > Suricata > Updates > Update Rules**.
 
-### Weekly Maintenance
+Expect every instance to sit at 100% CPU for 3-5 minutes during a rule reload. In inline mode that can mean brief packet loss on a heavily loaded box; schedule updates accordingly.
 
-**Every Week:**
-1. Review alerts in Grafana dashboard
-2. Check for new false positives
-3. Verify forwarder is running (if using OpenSearch)
-4. Check disk space: `/var/log/suricata`
+### Weekly
 
-### Monthly Maintenance
+1. Review alerts (GUI or dashboard)
+2. Add newly identified false positives to your disable/suppress lists
+3. If forwarding to a SIEM, confirm the forwarder is running
+4. Check `/var/log/suricata` disk usage
 
-**Every Month:**
-1. Review CPU/memory usage trends
-2. Update pfSense and Suricata package
-3. Review and tune rules (disable noisy ones)
-4. Check for new Suricata features
-5. Verify automatic log rotation is working
+### Monthly
 
-### Troubleshooting Common Issues
+1. Review CPU/memory trends
+2. Apply pfSense and Suricata package updates — then read [SURICATA_CONFIGURATION.md](SURICATA_CONFIGURATION.md#after-a-pfsense-or-suricata-package-upgrade) for what to re-check
+3. Prune noisy categories
+4. Confirm log rotation is still working
 
-**High CPU Usage:**
-- Reduce number of enabled rules
-- Disable interfaces with low threat value
-- Check for packet drops (may need more resources)
+### Troubleshooting
 
-**Logs Not Forwarding:**
-- Check forwarder is running: `ps aux | grep forward-suricata`
-- See [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md)
-- Verify OpenSearch is reachable
-
-**False Positives:**
-- Review alert in Grafana
-- Determine if traffic is legitimate
-- Disable specific SID or create suppression rule
-- Document in pass list
-
-**Packet Drops:**
-- Increase Stream/Reassembly memory limits
-- Reduce number of interfaces
-- Disable unnecessary rules
-- Upgrade hardware
+**High CPU:** fewer categories, fewer interfaces, check for drops (a box that cannot keep up needs more hardware or less work).
+**False positives:** confirm the traffic is legitimate, then disable (global noise) or suppress (specific hosts); see [config/sid/README.md](../../config/sid/README.md).
+**Packet drops:** raise stream/reassembly memcaps if the memcap counters are climbing; otherwise reduce rules or interfaces.
+**Logs not forwarding (SIEM stack):** [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md).
 
 ---
 
-## Performance Benchmarks
+## Reference Deployment
 
-### Our Homelab Example
+All numbers in this repository's docs come from one deployment, described fully in [HARDWARE_REQUIREMENTS.md](../install/HARDWARE_REQUIREMENTS.md):
 
-**Hardware:**
-- Netgate 6100 (Intel Atom C3558 @ 2.2 GHz, 8 cores)
-- 16 GB RAM
-- Intel ix (82599) 10 Gbps NICs
+- **CPU:** Intel Atom C3758, 8 cores @ 2.2 GHz; **RAM:** 16 GB; Intel NICs
+- **Instances:** 15 — 2 WAN inline IPS + 13 VLAN IDS
+- **Rules:** ~42 ET categories + ~46 Snort categories (subscriber)
+- **Stream memcap:** 1 GB per interface (raised after memcap-related crashes)
+- **CPU:** 25-35% average, 100% for 3-5 minutes during rule reloads
+- **RAM:** 12-14 GB in use
+- **Log volume:** roughly 50-100 MB/day of `eve.json` per busy interface, forwarded to OpenSearch
 
-**Configuration:**
-- 3 Suricata instances (ix0, ix1, lagg1.200)
-- ~42 ET categories (~150-170 rule files)
-- 46 Snort rules (with subscription)
-- Inline mode with Netmap
-- Log forwarding to OpenSearch
-
-**Performance:**
-- CPU: 25-40% per interface (75-120% total on 8-core system)
-- RAM: ~2.5 GB total (all instances)
-- Throughput: 1 Gbps sustained with <0.1% packet drops
-- Alerts: 300-600 per day (WAN interface)
-- False positives: <5 per week (after 1 month tuning)
-
-**Log Volume:**
-- eve.json: ~50-100 MB/day per interface
-- Total logs: ~150-300 MB/day (3 interfaces)
-- OpenSearch storage: ~1-2 GB/week (with 7-day retention)
+If your box has fewer cores, scale the interface count down before scaling the rule set down; each instance is a full copy of the engine.
 
 ---
 
 ## Quick Reference
 
-### Recommended Starting Configuration
-
-**New Users (Phase 1 - First Month):**
-- Mode: IDS (Alert Only)
+**New users (first month):**
+- Mode: IDS
 - Interfaces: WAN only
-- Rules: ~42 ET categories (core security)
-- Inline: Enabled
-- Log retention: 7 days local
-- CPU budget: 25-30%
+- Rules: ~42 ET categories
+- Capture: inline
+- Local log retention: 7 days
 
-**Experienced Users (Phase 2 - After Tuning):**
-- Mode: IDS or IPS (selective blocking)
-- Interfaces: WAN + critical segments
-- Rules: ~42 ET + 46 Snort (if subscribed)
-- Inline: Enabled with Netmap
-- Log retention: 1-3 days local + forwarding to SIEM
-- CPU budget: 40-50%
+**After tuning:**
+- Mode: IDS everywhere, plus a minimal drop list on WAN
+- Interfaces: WAN + the VLANs you actually want to watch ([LAN_MONITORING.md](LAN_MONITORING.md))
+- Rules: ET + Snort (if you have an Oinkcode)
+- Local log retention: 1-3 days, forwarding to a SIEM
 
-**Production (Small Business):**
-- Mode: IPS (full blocking)
-- Interfaces: All perimeter interfaces
-- Rules: Full ET + Snort subscription + custom
-- Inline: Enabled with Netmap
-- Log retention: 1 day local + long-term SIEM
-- CPU budget: 50-70%
+**Small business / production:**
+- Mode: inline IPS on all perimeter interfaces with a tiered drop list
+- Rules: full ET + Snort subscriber + custom rules
+- Local log retention: 1 day, long-term storage in a SIEM
 - Redundancy: HA pair
 
 ---
 
 ## Additional Resources
 
-- **[Forwarder Monitoring](../operations/SURICATA_FORWARDER_MONITORING.md)** - Keep logs flowing
-- **[Troubleshooting Guide](../troubleshooting/TROUBLESHOOTING.md)** - Common issues
-- **[GeoIP Setup](../install/GEOIP_SETUP.md)** - IP geolocation for alerts
-- **[Grafana Dashboard](../../README.md)** - Visualization
-- **Suricata Documentation:** https://suricata.readthedocs.io/
-- **pfSense Suricata Package:** https://docs.netgate.com/pfsense/en/latest/packages/suricata/
-
----
-
-## Changelog
-
-- **2025-11-26**: Initial comprehensive optimization guide
-- Based on real-world deployment with 3 interfaces, 42 ET categories, 46 Snort rules
-- Tested on Netgate 6100 with OpenSearch SIEM integration
+- **[SURICATA_CONFIGURATION.md](SURICATA_CONFIGURATION.md)** — design decisions, interface strategy, upgrade notes
+- **[config/sid/README.md](../../config/sid/README.md)** — disable / drop / suppress lists and how to build your own
+- **[LAN_MONITORING.md](LAN_MONITORING.md)** — east-west detection on VLANs
+- **[HARDWARE_REQUIREMENTS.md](../install/HARDWARE_REQUIREMENTS.md)** — sizing
+- **[GEOIP_SETUP.md](../install/GEOIP_SETUP.md)** — IP geolocation for alerts
+- **[SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md)** — keeping logs flowing to the SIEM
+- **[TROUBLESHOOTING.md](../troubleshooting/TROUBLESHOOTING.md)** — common issues
+- **Suricata documentation:** https://docs.suricata.io/
+- **pfSense Suricata package:** https://docs.netgate.com/pfsense/en/latest/packages/suricata/

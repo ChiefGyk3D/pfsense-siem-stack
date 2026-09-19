@@ -53,7 +53,7 @@ flowchart TB
     direction TB
     
     subgraph Processing["Data Processing"]
-      Logstash["Logstash<br/>Parse & Nest EVE Events<br/>Transform to suricata.eve.*"]
+      Logstash["Logstash<br/>Parse EVE JSON to flat root fields<br/>event_type, src_ip, alert.*, geoip_src.*"]
     end
     
     subgraph Storage["Data Storage"]
@@ -62,8 +62,7 @@ flowchart TB
       InfluxDB["InfluxDB<br/>Time-Series Database<br/>Metrics & Stats"]
     end
     
-    Logstash -->|Index events| OpenSearch
-    Logstash -->|Extract metrics| InfluxDB
+    Logstash -->|Index suricata-YYYY.MM.DD| OpenSearch
   end
 
   subgraph Frontend["Visualization Layer"]
@@ -79,7 +78,7 @@ flowchart TB
     Grafana --> Dashboards
   end
 
-  Forwarder -->|JSON over UDP/TCP| Logstash
+  Forwarder -->|JSON over UDP 5140| Logstash
   Telegraf -->|Metrics| InfluxDB
   
   OpenSearch --> Grafana

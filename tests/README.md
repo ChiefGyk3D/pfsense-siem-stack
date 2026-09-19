@@ -2,10 +2,13 @@
 
 Validation and testing utilities for the pfSense Suricata Dashboard project.
 
-There are two kinds of tests:
+There are two kinds of tests. All commands below are run **from the repository
+root**.
 
-- **Unit tests** (`tests/python/`) — run anywhere, no infrastructure needed (CI runs these)
-- **Integration test scripts** (`tests/test-*.sh`) — require a live deployment
+- **Unit tests** (`tests/python/`) — run anywhere, no infrastructure needed; CI runs these.
+- **Integration test scripts** (`tests/test-*.sh`) — need a `config.env` in the
+  repository root plus SSH access to a live deployment (pfSense and the SIEM
+  server), so they are **not** run in CI.
 
 ## Unit Tests (pytest)
 
@@ -18,7 +21,7 @@ Unit tests for the core logic of `scripts/forward-suricata-eve.py`:
   the GeoIP reader is stubbed, so no GeoIP database is needed)
 - UDP event forwarding format (mocked socket)
 
-**Usage** (from the repository root):
+**Usage:**
 ```bash
 python3 -m pip install pytest   # one-time
 python3 -m pytest tests/python/ -v
@@ -26,16 +29,20 @@ python3 -m pytest tests/python/ -v
 
 These run in CI on every push via `.github/workflows/lint.yml`.
 
-## Available Tests
+## Integration Tests
 
-### test-multi-interface.sh
+Both scripts source `config.env` from the repository root for `SIEM_HOST`,
+`PFSENSE_HOST`, `PFSENSE_USER`, ports and Grafana credentials.
+
+### tests/test-multi-interface.sh
 Tests multi-interface forwarder functionality.
 
 **Purpose**: Verifies that the forwarder correctly detects and monitors all Suricata instances.
 
 **Usage**:
 ```bash
-./test-multi-interface.sh
+./tests/test-multi-interface.sh              # uses PFSENSE_HOST from config.env
+./tests/test-multi-interface.sh <PFSENSE_IP> # or pass the host explicitly
 ```
 
 **Checks**:
@@ -45,14 +52,14 @@ Tests multi-interface forwarder functionality.
 - GeoIP database is accessible
 - Events are being forwarded
 
-### test-panel-compatibility.sh
+### tests/test-panel-compatibility.sh
 Tests Grafana panel compatibility with OpenSearch datasource.
 
 **Purpose**: Validates which Grafana panel types work correctly with OpenSearch data.
 
 **Usage**:
 ```bash
-./test-panel-compatibility.sh
+./tests/test-panel-compatibility.sh
 ```
 
 **Tests**:
@@ -62,20 +69,19 @@ Tests Grafana panel compatibility with OpenSearch datasource.
 - Geomap panels with geo_point data
 - Time series visualizations
 
-## Running Tests
+## Running the Integration Tests
 
 ### Prerequisites
-- pfSense with Suricata running
-- Forwarder deployed and active
-- SIEM stack operational
-- OpenSearch with indexed data
+- `config.env` present in the repository root
+- Key-based SSH access to pfSense as `PFSENSE_USER`
+- pfSense with Suricata running and the forwarder deployed (`./setup.sh`)
+- SIEM stack operational, with indexed data in OpenSearch
 
 ### All Tests
 ```bash
-cd tests
-for test in test-*.sh; do
+for test in tests/test-*.sh; do
     echo "Running $test..."
-    ./"$test"
+    "$test"
     echo ""
 done
 ```
@@ -89,23 +95,23 @@ Tests output:
 
 ## Adding New Tests
 
-1. Create test script: `test-your-feature.sh`
-2. Make executable: `chmod +x test-your-feature.sh`
-3. Follow naming convention: `test-*.sh`
-4. Document in this README
+1. Create the script: `tests/test-your-feature.sh`
+2. Make it executable: `chmod +x tests/test-your-feature.sh`
+3. Follow the naming convention `test-*.sh` and source `config.env` the way the existing scripts do
+4. Document it in this README
 
 ## Troubleshooting Tests
 
 ### test-multi-interface.sh fails
 **Issue**: Cannot connect to pfSense
-**Fix**: Check SSH access, verify pfSense IP
+**Fix**: Check SSH access and `PFSENSE_HOST` / `PFSENSE_USER` in `config.env`
 
 **Issue**: Forwarder not running
-**Fix**: Deploy forwarder with `./setup.sh` (from the repository root)
+**Fix**: Deploy the forwarder with `./setup.sh`, or `ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh start'`
 
 ### test-panel-compatibility.sh fails
 **Issue**: No OpenSearch data
-**Fix**: Verify forwarder is sending data, check Logstash logs
+**Fix**: Verify the forwarder is sending data and check the Logstash logs; see [docs/troubleshooting/TROUBLESHOOTING.md](../docs/troubleshooting/TROUBLESHOOTING.md)
 
 ## Notes
 

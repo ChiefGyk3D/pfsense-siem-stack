@@ -1,234 +1,103 @@
 # SIEM Backend Comparison
 
-> **Status**: 🚧 Work in Progress  
-> **Last Updated**: November 27, 2025
+> Which backend this project uses, which it supports, and which it tried and shelved —
+> so you don't spend effort on a dead path.
 
-Comparison of different SIEM backends for pfSense integration.
+## Where things stand (September 2026)
 
----
+| Backend | Status in this repo | Server provided by |
+|---------|--------------------|--------------------|
+| **OpenSearch + Logstash + Grafana** | ✅ Production. The forwarder, index templates, retention and Suricata/pfBlockerNG dashboards target it. | `install.sh` here (bare metal) or [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) (Docker, hot/warm, the recommended direction) |
+| **Wazuh** | ✅ Three Grafana dashboards + `scripts/deploy-wazuh-dashboards.py` ship here and are used in production. pfSense feeds Wazuh via RFC 5424 syslog. | [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) (Wazuh manager + indexer + syslog-ng) |
+| **Graylog** | ⏸️ Explored in 2025 and shelved. Old guides are in git history. | — |
 
-## Supported Backends
-
-### OpenSearch (Current - Production Ready ✅)
-
-**Status**: Fully implemented and documented
-
-**Characteristics**:
-- Open-source fork of Elasticsearch (Apache 2.0 license)
-- Excellent Grafana integration via data source
-- Strong search and aggregation capabilities
-- Index lifecycle management (ILM) for retention
-
-**Resource Requirements**:
-- RAM: 8-16GB heap (16GB total minimum)
-- CPU: 4+ cores recommended
-- Storage: Fast SSD (NVMe preferred)
-
-**Pros**:
-- ✅ Powerful search and analytics
-- ✅ Excellent Grafana visualization
-- ✅ Strong query language (DSL)
-- ✅ Scalable to multi-node clusters
-
-**Cons**:
-- ❌ Steeper learning curve
-- ❌ More resource-intensive
-- ❌ Complex cluster management
-
-**Best For**: Users who want powerful analytics, Grafana dashboards, and have adequate hardware
-
-**Documentation**: See main docs (INSTALL_SIEM_STACK.md, etc.)
+The strategic decision recorded in [ROADMAP.md](../../ROADMAP.md): **siem-docker-stack is
+the canonical backend**; this repo owns the pfSense side (forwarder, Telegraf plugins,
+Suricata tuning, dashboards) and keeps `install.sh` as a documented standalone
+alternative.
 
 ---
 
-### Graylog (Planned 📝)
+## OpenSearch (the primary path)
 
-**Status**: Coming Soon
+**Why it was chosen**: Apache-2.0 fork of Elasticsearch, excellent Grafana datasource,
+powerful aggregations for the dashboards this project is built around, ISM (Index State
+Management) for retention, scales to a cluster when needed.
 
-**Characteristics**:
-- Purpose-built log management platform
-- Excellent web UI out of the box
-- Stream-based processing
-- Strong alerting capabilities
+**What it costs**: 16 GB RAM minimum for the SIEM server (8 GB heap), fast SSD, a
+steeper learning curve than an all-in-one product, and — as installed by `install.sh`
+today — no authentication or TLS until you enable the security plugin (roadmap Phase A).
 
-**Resource Requirements** (estimated):
-- RAM: 8-12GB minimum
-- CPU: 4+ cores recommended
-- Storage: SSD recommended
-- Dependencies: MongoDB, OpenSearch/Elasticsearch
+**Best for**: anyone who wants Grafana as the front end and is comfortable with curl and
+the OpenSearch DSL. Everything in [docs/install/](../install/) assumes this backend.
 
-**Pros**:
-- ✅ Easier initial setup
-- ✅ Better out-of-box UI
-- ✅ Excellent alerting
-- ✅ Content packs for quick deployment
-- ✅ Stream-based processing
+## Wazuh (XDR alongside the network view)
 
-**Cons**:
-- ❌ Enterprise features require license
-- ❌ Additional dependency (MongoDB)
-- ❌ Less powerful than raw OpenSearch queries
-- ❌ Grafana integration less native
+**What it adds**: agents on servers and workstations (FIM, vulnerability detection,
+compliance mapping to PCI DSS/NIST/HIPAA, MITRE ATT&CK tagging), active response, and a
+rule engine that also understands pfSense syslog (`pf` decoder).
 
-**Best For**: Users who want ease of use, quick setup, and don't need deep Grafana integration
+**How it fits here**: the Wazuh indexer is itself OpenSearch, so the same Grafana can
+query `wazuh-alerts-4.x-*` next to `suricata-*`. The three dashboards in
+[`dashboards/wazuh/`](../../dashboards/wazuh/README.md) (security overview, vulnerability
+detection, file integrity monitoring) plus the deploy script are what this repo
+contributes. pfSense-side requirements are in [wazuh/README.md](wazuh/README.md).
 
-**ETA**: TBD - community contributions welcome!
+**What it costs**: another 16–32 GB of RAM for manager + indexer, agent rollout, and a
+second place where rules live. Worth it when you have compliance requirements or
+endpoints to watch; overkill for a firewall-only view.
 
----
+## Graylog (shelved)
 
-### Wazuh (Planned 📝)
-
-**Status**: Long-term roadmap
-
-**Characteristics**:
-- Open-source XDR/SIEM platform
-- Endpoint detection and response (EDR)
-- Compliance reporting (PCI-DSS, HIPAA, etc.)
-- Active response and remediation
-- File integrity monitoring (FIM)
-
-**Resource Requirements** (estimated):
-- RAM: 16-32GB (more for manager)
-- CPU: 8+ cores recommended
-- Storage: Fast SSD for indices
-- Architecture: Manager + agents + indexer
-
-**Pros**:
-- ✅ EDR capabilities (beyond network)
-- ✅ Compliance reporting built-in
-- ✅ Active response mechanisms
-- ✅ File integrity monitoring
-- ✅ Vulnerability detection
-- ✅ Multi-system correlation
-
-**Cons**:
-- ❌ More complex architecture
-- ❌ Higher resource requirements
-- ❌ Steeper learning curve
-- ❌ Agent deployment overhead
-
-**Best For**: Environments with compliance requirements, need for EDR, or multi-system correlation
-
-**ETA**: TBD - lower priority than Graylog
+Graylog was evaluated because of its easier UI and strong alerting. It was shelved
+because it duplicates what OpenSearch + Grafana already do here, adds a MongoDB
+dependency, and its enterprise features (archiving, some alerting) sit behind a
+licence. The old `GRAYLOG_INDEX.md` / `GRAYLOG_SURICATA_SETUP.md` guides live in git
+history ([ARCHIVE.md](../ARCHIVE.md)). What a revival would need is listed in
+[graylog/README.md](graylog/README.md). Nobody is working on it.
 
 ---
 
-## Feature Comparison Matrix
+## Feature matrix
 
-| Feature | OpenSearch | Graylog | Wazuh |
-|---------|------------|---------|-------|
-| **Status** | ✅ Production | 📝 Planned | 📝 Planned |
-| **License** | Apache 2.0 | Server Side Public License | GPL v2 |
-| **Ease of Setup** | Medium | Easy | Hard |
-| **Web UI Quality** | Basic (Kibana fork) | Excellent | Good |
-| **Grafana Integration** | Excellent | Good | Good |
-| **Alert Management** | Good | Excellent | Excellent |
-| **Compliance Reporting** | Manual | Good | Excellent |
-| **Active Response** | No | Limited | Yes |
-| **EDR Capabilities** | No | No | Yes |
-| **Query Language** | DSL (powerful) | GUI + search syntax | DSL |
-| **Scalability** | Excellent | Good | Excellent |
-| **Resource Usage** | High | Medium | High |
-| **Learning Curve** | Steep | Gentle | Steep |
-| **Community Support** | Large | Medium | Large |
+| Feature | OpenSearch + Grafana | Wazuh | Graylog |
+|---------|---------------------|-------|---------|
+| Status here | ✅ Production | ✅ Dashboards + deploy script | ⏸️ Shelved |
+| Licence | Apache 2.0 | GPL v2 (server); indexer Apache 2.0 | SSPL / enterprise |
+| Setup effort | Medium (`install.sh` automates it) | High (manager, indexer, agents) | Medium (MongoDB + OpenSearch) |
+| Grafana integration | Native datasource | Via the indexer (same datasource) | Plugin/API |
+| Alerting | Grafana alerting (rules as code planned) | Built-in, mature | Built-in, mature |
+| Compliance reporting | Manual | Built-in | Partial |
+| Endpoint/EDR | No | Yes | No |
+| Active response | No | Yes | Limited |
+| Query language | OpenSearch DSL / Lucene | OpenSearch DSL / Wazuh rules | Graylog search |
+| Resource use | High | High | Medium |
 
----
+## Decision guide
 
-## Decision Guide
+- **Just want to see what your firewall is doing, in Grafana** → OpenSearch. Follow the
+  [Quick Start](../../QUICK_START.md).
+- **Also have servers/workstations, or compliance requirements** → OpenSearch for the
+  network view *plus* Wazuh via siem-docker-stack. Use the Wazuh dashboards here.
+- **Prefer a single product with its own UI and no Grafana** → this project is not a
+  good fit; Wazuh's own dashboard or Graylog are closer, but you will be on your own for
+  the pfSense-specific tuning content (which still applies — see
+  [docs/pfsense/](../DOCUMENTATION_INDEX.md#-pfsense-knowledge-base-no-siem-required)).
 
-### Choose OpenSearch If You...
+## Running more than one
 
-✅ Want powerful analytics and custom dashboards  
-✅ Have adequate hardware (16GB+ RAM)  
-✅ Prefer Grafana for visualization  
-✅ Need scalability for growth  
-✅ Are comfortable with command-line tools
-
-### Choose Graylog If You...
-
-✅ Want quick, easy setup  
-✅ Prefer web UI over Grafana  
-✅ Need excellent alerting out-of-box  
-✅ Want content packs for rapid deployment  
-✅ Have moderate hardware (12GB+ RAM)
-
-### Choose Wazuh If You...
-
-✅ Have compliance requirements (PCI-DSS, HIPAA)  
-✅ Need EDR beyond network monitoring  
-✅ Want active response capabilities  
-✅ Monitor multiple systems (firewall + servers + workstations)  
-✅ Have significant hardware (32GB+ RAM)
-
----
-
-## Migration Paths
-
-### OpenSearch → Graylog
-
-**Coming Soon**: Guide to migrate from OpenSearch to Graylog while preserving historical data.
-
-**Considerations**:
-- Export OpenSearch indices
-- Import into Graylog via content packs
-- Map field names
-- Recreate dashboards in Graylog UI
-
-### OpenSearch → Wazuh
-
-**Coming Soon**: Guide to integrate Wazuh alongside or replace OpenSearch.
-
-**Considerations**:
-- Wazuh uses OpenSearch/Elasticsearch as backend
-- Can keep existing OpenSearch indices
-- Wazuh adds manager layer on top
-- Consider agent deployment strategy
-
-### Graylog → OpenSearch
-
-**Future**: Guide for users who start with Graylog but need more powerful analytics.
-
----
-
-## Multi-Backend Support
-
-**Can I run multiple SIEMs?**
-
-Yes, but not recommended for the same data:
-- Different SIEMs for different purposes (e.g., OpenSearch for pfSense, Wazuh for endpoints)
-- Same SIEM for all systems (e.g., Wazuh for everything)
-
-**Resource Impact**: Running multiple SIEMs requires significant hardware (32GB+ RAM).
-
----
-
-## Contributing
-
-Want to help add Graylog or Wazuh support?
-
-1. Check archived Graylog docs (`GRAYLOG_*.md`, in git history — see [../ARCHIVE.md](../ARCHIVE.md))
-2. Review this comparison for technical details
-3. See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
-4. Open a GitHub Discussion to coordinate efforts
-
-**Priority**: Graylog > Wazuh (based on community requests)
-
----
+Yes, and it is what the maintainer does: OpenSearch for Suricata/pfBlockerNG,
+Wazuh for endpoints and pfSense syslog, one Grafana in front of both. Budget 32 GB+ RAM
+for the server(s) and keep the data separated by index (`suricata-*`, `pfblockerng-*`,
+`wazuh-alerts-*`) rather than shipping the same events twice.
 
 ## Resources
 
-### OpenSearch
-- [OpenSearch Documentation](https://opensearch.org/docs/)
-- [Grafana OpenSearch Data Source](https://grafana.com/docs/grafana/latest/datasources/opensearch/)
+- [OpenSearch documentation](https://opensearch.org/docs/) ·
+  [Grafana OpenSearch datasource](https://grafana.com/docs/grafana/latest/datasources/opensearch/)
+- [Wazuh documentation](https://documentation.wazuh.com/) ·
+  [Monitoring pfSense with Wazuh](https://wazuh.com/blog/monitoring-pfsense-firewalls-with-wazuh/)
+- [Graylog documentation](https://docs.graylog.org/)
 
-### Graylog
-- [Graylog Documentation](https://docs.graylog.org/)
-- [Graylog Marketplace](https://marketplace.graylog.org/)
-
-### Wazuh
-- [Wazuh Documentation](https://documentation.wazuh.com/)
-- [Wazuh + pfSense Integration](https://wazuh.com/blog/monitoring-pfsense-firewalls-with-wazuh/)
-
----
-
-**Questions?** Open a [GitHub Discussion](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions)
+Questions or a case for reviving Graylog: open a
+[GitHub Discussion](https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions).
