@@ -108,8 +108,10 @@ Ordered steps for a from-scratch SIEM deployment. The short version is
 1. **[Hardware Requirements](install/HARDWARE_REQUIREMENTS.md)** — size both hosts first
 2. **[New User Checklist](install/NEW_USER_CHECKLIST.md)** — tick-box path from bare
    metal to working dashboards
-3. **[SIEM Stack Installation](install/INSTALL_SIEM_STACK.md)** — OpenSearch, Logstash
-   and Grafana on Ubuntu 24.04 (what `install.sh` automates, and the manual alternative)
+3. **Server side** — point `config.env` at an existing OpenSearch + Grafana
+   ([siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) is the
+   recommended backend). No server yet? **[SIEM Stack Installation](install/INSTALL_SIEM_STACK.md)**
+   covers the bare-metal single-box path (`install.sh` and the manual steps behind it)
 4. **[pfSense Forwarder Installation](install/INSTALL_PFSENSE_FORWARDER.md)** — the EVE
    forwarder, rc.d service and watchdog on pfSense (what `setup.sh` automates)
 5. **[GeoIP Setup](install/GEOIP_SETUP.md)** — reusing the GeoLite2 database already on

@@ -16,7 +16,7 @@ This repo is one of three related projects:
 | [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) | Dockerized SIEM/SOAR backend: OpenSearch hot/warm, Logstash, Grafana, Wazuh, syslog-ng, n8n SOAR |
 | [jumpcloud-wazuh-bridge](https://github.com/ChiefGyk3D/jumpcloud-wazuh-bridge) | JumpCloud IdP events into Wazuh |
 
-**Strategic direction (decision needed):** this repo's `install.sh` builds a bare-metal OpenSearch/Logstash/Grafana stack that duplicates what siem-docker-stack now does better (hot/warm tiers, ISM lifecycle, Wazuh). The recommended path is to make **siem-docker-stack the canonical backend** and focus this repo on what only it does: the pfSense-side forwarder, Telegraf plugins, Suricata tuning content, and dashboards. `install.sh` would remain as a documented standalone alternative, not the flagship. The cross-stack game plan lives in [siem-docker-stack/docs/game-plan.md](https://github.com/ChiefGyk3D/siem-docker-stack/blob/master/docs/game-plan.md).
+**Decision (2026-09):** **siem-docker-stack is the canonical backend.** This repo focuses on what only it does — the pfSense-side forwarder, Telegraf plugins, Suricata/pfBlockerNG tuning content, and dashboards — and `setup.sh` targets *any* reachable OpenSearch + Grafana. `install.sh` stays as the documented bare-metal/manual alternative for a single box (it still works, but new server-side capability lands in siem-docker-stack first). Releases are tagged `vX.Y.Z` from `main` with `scripts/release.sh`; `.github/workflows/release.yml` publishes the tarball. The cross-stack game plan lives in [siem-docker-stack/docs/game-plan.md](https://github.com/ChiefGyk3D/siem-docker-stack/blob/master/docs/game-plan.md).
 
 ---
 
@@ -108,9 +108,10 @@ will not pipe the internet into a shell.
 - [ ] Later: Ansible role wrapping the same steps for people who already manage pfSense
   and the SIEM host with Ansible (moves the Phase C item here).
 
-Prerequisite decisions: adopt semantic version tags (the CHANGELOG already uses them but
-nothing is tagged since 1.2.0), and decide whether `install.sh` stays supported enough
-to be one `bootstrap` mode or becomes "advanced, read the doc".
+Prerequisites — **both decided 2026-09**: releases are tagged (`scripts/release.sh`,
+`.github/workflows/release.yml`; 2.0.0 is the first tag after 1.2.0), and `install.sh` is
+the manual/bare-metal path — bootstrap defaults to "point at an existing OpenSearch and
+Grafana (siem-docker-stack)" and offers `install.sh` behind an explicit `--install-siem` flag.
 
 ## 📦 Phase C — Content & reach (later)
 

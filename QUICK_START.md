@@ -53,16 +53,20 @@ Preflight validates config.env, SSH access to pfSense and the SIEM server, Pytho
 pfSense, OpenSearch reachability, and GeoIP presence — fix any ✗ before continuing.
 (`setup.sh` also runs it automatically; skip with `--skip-preflight` if you must.)
 
-### 2. Install the SIEM stack (skip if already running)
+### 2. Have an OpenSearch + Grafana to point at
 
-On the SIEM server:
+`setup.sh` works against **any** reachable OpenSearch 2.x and Grafana 12.x — set their
+addresses in `config.env`. The recommended server side is
+[siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) (Docker, hot/warm
+tiers, Wazuh); an existing cluster works too.
+
+If you have nothing yet and want a single bare-metal box, the manual path is:
 
 ```bash
-sudo ./install.sh
+sudo ./install.sh     # Ubuntu 24.04: OpenSearch 2.x, Logstash 8.x, Grafana + OpenSearch plugin
 ```
 
-Installs OpenSearch 2.x, Logstash 8.x, and Grafana with the
-`grafana-opensearch-datasource` plugin. Details:
+Details and what it does *not* secure:
 [SIEM Stack Installation](docs/install/INSTALL_SIEM_STACK.md).
 
 ### 3. Deploy everything with setup.sh

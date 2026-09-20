@@ -22,6 +22,11 @@ a **pfSense knowledge base** (`docs/pfsense/`, usable without the SIEM stack) an
 - **Corrected**: repo URL (`pfsense_siem_stack` → `pfsense-siem-stack`), `CONTRIBUTING.md` (PRs target `main`, CI documented, `/bin/sh` for pfSense scripts), OpenSearch install paths (`/opt/opensearch`), the false "OpenSearch bound to localhost" security claim, the management console's non-existent "Telegram alerts" feature, ILM → ISM, retention defaults, watchdog interval, SID counts (218 disabled / 2 suppressed), stream memcap and hardware examples that contradicted each other, personal IPs/hostnames/interface names replaced with placeholders, all "Last Updated: 2025" stamps
 - Architecture diagram regenerated (no longer shows nested `suricata.eve.*` or a Logstash → InfluxDB path)
 
+### Changed
+- **Releases are now tagged.** `scripts/release.sh X.Y.Z` rolls the changelog, bumps `VERSION`, tags `vX.Y.Z`; pushing the tag publishes a GitHub Release with a source tarball and `SHA256SUMS` (`.github/workflows/release.yml`). This overhaul ships as **2.0.0** because the forwarder service was renamed.
+- **`install.sh` is now the manual/bare-metal path, not the flagship.** The recommended server side is [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) or any existing OpenSearch + Grafana; `setup.sh` only needs their addresses. README, Quick Start and the docs index present it that way.
+- **BREAKING: forwarder service renamed** `suricata_forwarder` → `suricata_forwarder.sh` (`service suricata_forwarder.sh …`). `setup.sh` migrates a deployed box automatically; update any of your own scripts or cron jobs that referenced the old name.
+
 ### Fixed
 - **setup.sh: rc.d service was never started at boot.** pfSense only runs `/usr/local/etc/rc.d/*.sh` at boot (rc.start_packages); the unit was installed as `suricata_forwarder` without the suffix, so boot persistence silently relied on the cron watchdog. Now installs `suricata_forwarder.sh`, removes the old file, and enables itself by default instead of depending on `/etc/rc.conf` (which pfSense does not manage). Service commands are now `service suricata_forwarder.sh start|stop|restart|status`.
 - **setup.sh: rc.d hardcoded `python3.11`** as `command_interpreter` even though the interpreter was detected; now uses the detected path and refuses to start with a clear message if it disappears (e.g. after a pfSense upgrade). Detection prefers the version-neutral `/usr/local/bin/python3` and probes 3.13/3.12/3.11.
@@ -141,6 +146,19 @@ a **pfSense knowledge base** (`docs/pfsense/`, usable without the SIEM stack) an
 ---
 
 ## Upgrade Notes
+
+### From 1.2.0 to 2.0.0
+
+**Breaking change:** the pfSense rc.d service is now `/usr/local/etc/rc.d/suricata_forwarder.sh`
+(`service suricata_forwarder.sh start|stop|restart|status`). The old extension-less unit was
+never started by pfSense at boot.
+
+**Migration:** `git pull` (or unpack the 2.0.0 tarball), then `./setup.sh`. It redeploys the
+forwarder with the detected Python interpreter, installs the new rc.d script, removes the old
+one, reinstalls the watchdog and re-applies index templates. Nothing changes on the SIEM
+server side unless you also upgraded OpenSearch/Logstash/Grafana. Docs moved: see
+[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md); superseded pages are listed in the
+2.0.0 changelog entry above.
 
 ### From 1.1.0 to 1.2.0
 

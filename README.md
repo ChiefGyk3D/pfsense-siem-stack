@@ -14,7 +14,7 @@ This repository is two things, and you can use either without the other:
 | | What you get | Start here |
 |-|--------------|------------|
 | **pfSense knowledge base** | How to run Suricata, pfBlockerNG and Telegraf well on pfSense: rule selection and SID tuning, blocklist strategy, east-west VLAN monitoring, traffic shaping, Telegraf plugins, the filterlog rotation bug, and **what breaks when you upgrade pfSense** | [docs/pfsense/](docs/DOCUMENTATION_INDEX.md#-pfsense-knowledge-base-no-siem-required) |
-| **SIEM stack** | Automated deployment of a Suricata → OpenSearch → Grafana pipeline (`install.sh`, `setup.sh`, `pfsense-siem` console), a rotation-aware GeoIP-enriching forwarder with watchdog, index templates, retention, and eight Grafana dashboards including three for Wazuh | [Quick Start](QUICK_START.md) |
+| **SIEM stack** | `setup.sh` wires pfSense into **any** OpenSearch + Grafana you already run (recommended: [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack)): a rotation-aware GeoIP-enriching forwarder with watchdog, index templates, retention, and eight Grafana dashboards including three for Wazuh. `install.sh` builds a bare-metal server if you have none. | [Quick Start](QUICK_START.md) |
 
 ![WAN Dashboard](media/Suricata%20IDS_IPS%20WAN%20Dashboard.png)
 *Suricata IDS/IPS dashboard — WAN attack sources, signatures and geography*
@@ -31,7 +31,8 @@ This repository is two things, and you can use either without the other:
 | Suricata multi-interface forwarding (`scripts/forward-suricata-eve.py`) | ✅ Production — tested with 15 instances (2 WAN inline IPS + 13 VLAN IDS) on pfSense 2.8.1 |
 | OpenSearch / Logstash pipeline, index templates, ISM retention | ✅ Production — **flat** root-level EVE fields ([Field Reference](docs/reference/FIELD_REFERENCE.md)) |
 | Grafana dashboards: Suricata WAN, Suricata per-interface, pfSense system + pfBlockerNG, Windows exporter, Prometheus, Docker, 3× Wazuh | ✅ Shipped ([inventory](dashboards/README.md)) |
-| `install.sh` bare-metal SIEM server (Ubuntu 24.04) | ✅ Works; **OpenSearch is unauthenticated by default** — see Security below |
+| `install.sh` bare-metal SIEM server (Ubuntu 24.04) | ✅ Works, now the **manual/single-box path**; **OpenSearch is unauthenticated by default** — see Security below. New server-side capability lands in siem-docker-stack first. |
+| Releases | ✅ Tagged from `main` as `vX.Y.Z` (this overhaul is **2.0.0**); each tag publishes a tarball + `SHA256SUMS` on the [Releases page](https://github.com/ChiefGyk3D/pfsense-siem-stack/releases) |
 | pfSense CE 2.9.0 | ⚠️ Supported with caveats — the Telegraf package is broken on 2.9.0 at release and the forwarder must be redeployed; read the [Upgrade Guide](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) first |
 | Wazuh backend | ✅ Dashboards + deploy script ship here; the Wazuh server itself is provided by [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) |
 | Graylog backend | ⏸️ Explored and shelved ([why](docs/siem/graylog/README.md)) |
@@ -72,7 +73,7 @@ git clone https://github.com/ChiefGyk3D/pfsense-siem-stack.git && cd pfsense-sie
 cp config.env.example config.env && nano config.env   # SIEM_HOST, PFSENSE_HOST, PFSENSE_USER
 ssh-copy-id admin@<PFSENSE_IP>
 ./scripts/preflight.sh          # validates SSH, Python on pfSense, OpenSearch reachability
-sudo ./install.sh               # on the SIEM server: OpenSearch, Logstash, Grafana (skip if you have them)
+sudo ./install.sh               # ONLY if you have no OpenSearch/Grafana yet (bare-metal, single box)
 ./setup.sh                      # templates, Logstash pipeline, forwarder + rc.d + watchdog, dashboards, verification
 ./scripts/status.sh             # green ticks = data flowing
 ```
@@ -172,95 +173,83 @@ telemetry patterns, and everyone who tested and reported.
 
 Mozilla Public License 2.0 — see [LICENSE](LICENSE).
 
-## Support
+## Questions & Issues
 
 - **Issues**: https://github.com/ChiefGyk3D/pfsense-siem-stack/issues
 - **Discussions**: https://github.com/ChiefGyk3D/pfsense-siem-stack/discussions
 
 ---
 
-## 💝 Donations and Tips
+## Support This Project
 
-If you find this pfSense SIEM Stack useful, consider supporting development:
+If you find pfSense SIEM Stack useful, consider supporting continued development.
+Everything is also collected at **[support.chiefgyk3d.com](https://support.chiefgyk3d.com)**.
 
-**Donate**:
+### Recurring Support
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center"><a href="https://patreon.com/chiefgyk3d?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink" title="Patreon"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/patreon.svg" width="32" height="32" alt="Patreon"/></a></td>
-      <td align="center"><a href="https://streamelements.com/chiefgyk3d/tip" title="StreamElements"><img src="media/streamelements.png" width="32" height="32" alt="StreamElements"/></a></td>
-    </tr>
-    <tr>
-      <td align="center">Patreon</td>
-      <td align="center">StreamElements</td>
-    </tr>
-  </table>
+<table>
+  <tr>
+    <td align="center" width="150">
+      <a href="https://patreon.com/chiefgyk3d" title="Patreon">
+        <img src="media/icons/patreon.svg" width="36" height="36" alt="Patreon"><br>
+        <sub><b>Patreon</b></sub>
+      </a>
+    </td>
+    <td align="center" width="150">
+      <a href="https://streamelements.com/chiefgyk3d/tip" title="StreamElements">
+        <img src="media/streamelements.png" width="36" height="36" alt="StreamElements"><br>
+        <sub><b>StreamElements</b></sub>
+      </a>
+    </td>
+    <td align="center" width="150">
+      <a href="https://shop.chiefgyk3d.com/" title="Merch Store">
+        <img src="media/icons/merch.svg" width="36" height="36" alt="Merch"><br>
+        <sub><b>Merch Store</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
 </div>
 
 ### Cryptocurrency Tips
 
 <div align="center">
-  <table style="border:none;">
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/bitcoin.svg" width="28" height="28" alt="Bitcoin"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Bitcoin</b><br/>
-        <code style="font-size:12px;">bc1qztdzcy2wyavj2tsuandu4p0tcklzttvdnzalla</code>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/monero.svg" width="28" height="28" alt="Monero"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Monero</b><br/>
-        <code style="font-size:12px;">84Y34QubRwQYK2HNviezeH9r6aRcPvgWmKtDkN3EwiuVbp6sNLhm9ffRgs6BA9X1n9jY7wEN16ZEpiEngZbecXseUrW8SeQ</code>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding:8px; min-width:120px;">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ethereum.svg" width="28" height="28" alt="Ethereum"/>
-      </td>
-      <td align="left" style="padding:8px;">
-        <b>Ethereum</b><br/>
-        <code style="font-size:12px;">0x554f18cfB684889c3A60219BDBE7b050C39335ED</code>
-      </td>
-    </tr>
-  </table>
+<table>
+  <tr>
+    <td><img src="media/icons/bitcoin.svg" width="28" height="28" alt="Bitcoin">&nbsp;<b>Bitcoin</b><br><code>bc1qztdzcy2wyavj2tsuandu4p0tcklzttvdnzalla</code></td>
+  </tr>
+  <tr>
+    <td><img src="media/icons/monero.svg" width="28" height="28" alt="Monero">&nbsp;<b>Monero</b><br><code>84Y34QubRwQYK2HNviezeH9r6aRcPvgWmKtDkN3EwiuVbp6sNLhm9ffRgs6BA9X1n9jY7wEN16ZEpiEngZbecXseUrW8SeQ</code></td>
+  </tr>
+  <tr>
+    <td><img src="media/icons/ethereum.svg" width="28" height="28" alt="Ethereum">&nbsp;<b>Ethereum</b><br><code>0x554f18cfB684889c3A60219BDBE7b050C39335ED</code></td>
+  </tr>
+  <tr>
+    <td><img src="media/icons/solana.svg" width="28" height="28" alt="Solana">&nbsp;<b>Solana</b><br><code>5T8h3HbyvHgLxwXgchRYbHSqRjZyAr8J7uwjLN9Fh8Jh</code></td>
+  </tr>
+</table>
 </div>
 
 ---
 
+## 👤 Author & Socials
+
 <div align="center">
-
-Made with ❤️ by [ChiefGyk3D](https://github.com/ChiefGyk3D)
-
-## Author & Socials
-
 <table>
   <tr>
-    <td align="center"><a href="https://social.chiefgyk3d.com/@chiefgyk3d" title="Mastodon"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastodon.svg" width="32" height="32" alt="Mastodon"/></a></td>
-    <td align="center"><a href="https://bsky.app/profile/chiefgyk3d.com" title="Bluesky"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/bluesky.svg" width="32" height="32" alt="Bluesky"/></a></td>
-    <td align="center"><a href="http://twitch.tv/chiefgyk3d" title="Twitch"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/twitch.svg" width="32" height="32" alt="Twitch"/></a></td>
-    <td align="center"><a href="https://www.youtube.com/channel/UCvFY4KyqVBuYd7JAl3NRyiQ" title="YouTube"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/youtube.svg" width="32" height="32" alt="YouTube"/></a></td>
-    <td align="center"><a href="https://kick.com/chiefgyk3d" title="Kick"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/kick.svg" width="32" height="32" alt="Kick"/></a></td>
-    <td align="center"><a href="https://www.tiktok.com/@chiefgyk3d" title="TikTok"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tiktok.svg" width="32" height="32" alt="TikTok"/></a></td>
-    <td align="center"><a href="https://discord.chiefgyk3d.com" title="Discord"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg" width="32" height="32" alt="Discord"/></a></td>
-    <td align="center"><a href="https://matrix-invite.chiefgyk3d.com" title="Matrix"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/matrix.svg" width="32" height="32" alt="Matrix"/></a></td>
-  </tr>
-  <tr>
-    <td align="center">Mastodon</td>
-    <td align="center">Bluesky</td>
-    <td align="center">Twitch</td>
-    <td align="center">YouTube</td>
-    <td align="center">Kick</td>
-    <td align="center">TikTok</td>
-    <td align="center">Discord</td>
-    <td align="center">Matrix</td>
+    <td align="center" width="90"><a href="https://social.chiefgyk3d.com/@chiefgyk3d" title="Mastodon"><img src="media/icons/mastodon.svg" width="30" height="30" alt="Mastodon"><br><sub>Mastodon</sub></a></td>
+    <td align="center" width="90"><a href="https://bsky.app/profile/chiefgyk3d.com" title="Bluesky"><img src="media/icons/bluesky.svg" width="30" height="30" alt="Bluesky"><br><sub>Bluesky</sub></a></td>
+    <td align="center" width="90"><a href="https://twitch.tv/chiefgyk3d" title="Twitch"><img src="media/icons/twitch.svg" width="30" height="30" alt="Twitch"><br><sub>Twitch</sub></a></td>
+    <td align="center" width="90"><a href="https://www.youtube.com/channel/UCvFY4KyqVBuYd7JAl3NRyiQ" title="YouTube"><img src="media/icons/youtube.svg" width="30" height="30" alt="YouTube"><br><sub>YouTube</sub></a></td>
+    <td align="center" width="90"><a href="https://kick.com/chiefgyk3d" title="Kick"><img src="media/icons/kick.svg" width="30" height="30" alt="Kick"><br><sub>Kick</sub></a></td>
+    <td align="center" width="90"><a href="https://www.tiktok.com/@chiefgyk3d" title="TikTok"><img src="media/icons/tiktok.svg" width="30" height="30" alt="TikTok"><br><sub>TikTok</sub></a></td>
+    <td align="center" width="90"><a href="https://www.instagram.com/chiefgyk3d" title="Instagram"><img src="media/icons/instagram.svg" width="30" height="30" alt="Instagram"><br><sub>Instagram</sub></a></td>
+    <td align="center" width="90"><a href="https://www.threads.net/@chiefgyk3d" title="Threads"><img src="media/icons/threads.svg" width="30" height="30" alt="Threads"><br><sub>Threads</sub></a></td>
+    <td align="center" width="90"><a href="https://discord.chiefgyk3d.com" title="Discord"><img src="media/icons/discord.svg" width="30" height="30" alt="Discord"><br><sub>Discord</sub></a></td>
+    <td align="center" width="90"><a href="https://matrix-invite.chiefgyk3d.com" title="Matrix"><img src="media/icons/matrix.svg" width="30" height="30" alt="Matrix"><br><sub>Matrix</sub></a></td>
   </tr>
 </table>
-
 </div>
+
+<div align="center"><sub>Made with ❤️ by <a href="https://github.com/ChiefGyk3D">ChiefGyk3D</a></sub></div>

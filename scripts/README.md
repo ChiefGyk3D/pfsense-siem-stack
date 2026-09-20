@@ -222,6 +222,24 @@ disables TLS verification for a self-signed indexer certificate. See
 [dashboards/wazuh/README.md](../dashboards/wazuh/README.md) and
 [docs/siem/wazuh/README.md](../docs/siem/wazuh/README.md).
 
+### release.sh
+
+**Runs on:** maintainer workstation, on a clean `main` checkout · **Status:** current
+
+Cuts a release: rolls the `[Unreleased]` section of `CHANGELOG.md` into `[X.Y.Z] - <date>`,
+writes `VERSION`, bumps the version string in `pfsense-siem`, commits `release: vX.Y.Z` and
+creates the annotated tag `vX.Y.Z`. Nothing is pushed unless you pass `--push`.
+
+```bash
+scripts/release.sh 2.1.0            # commit + tag locally, then review with: git show v2.1.0
+scripts/release.sh 2.1.0 --push     # also push main and the tag
+```
+
+Pushing the tag triggers `.github/workflows/release.yml`, which re-runs the lint checks,
+builds `pfsense-siem-stack-X.Y.Z.tar.gz` + `SHA256SUMS`, and publishes a GitHub Release with
+the matching CHANGELOG section as notes. Versioning rules: see
+[CONTRIBUTING.md → Releases](../CONTRIBUTING.md#%EF%B8%8F-releases-maintainers).
+
 ### check-doc-links.py
 
 **Status:** current (run by CI)

@@ -281,6 +281,26 @@ A PR that is red on any of these will not be merged.
 
 ---
 
+## 🏷️ Releases (maintainers)
+
+Releases are tagged from `main` and follow [semver](https://semver.org/): bump **major** for
+anything that changes what is deployed on pfSense in an incompatible way (service names,
+file paths, config.env keys), **minor** for new dashboards/scripts/docs, **patch** for fixes.
+
+```bash
+git checkout main && git pull
+scripts/release.sh 2.1.0          # rolls CHANGELOG [Unreleased] → [2.1.0] - date, bumps VERSION + pfsense-siem, commits, tags v2.1.0
+git show v2.1.0                   # review
+git push origin main && git push origin v2.1.0
+```
+
+Pushing the tag runs `.github/workflows/release.yml`, which re-runs the lint checks, builds
+`pfsense-siem-stack-2.1.0.tar.gz` + `SHA256SUMS`, and publishes a GitHub Release whose notes
+are the matching CHANGELOG section. Keep `CHANGELOG.md` current under `[Unreleased]` as you
+merge PRs so the release notes write themselves.
+
+---
+
 ## 🐛 Reporting Bugs
 
 ### Before Submitting

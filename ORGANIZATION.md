@@ -9,7 +9,8 @@
 |---------|---------|--------------|
 | `./pfsense-siem` | workstation | Interactive menu wrapping everything below ([docs](docs/operations/MANAGEMENT_CONSOLE.md)) |
 | `./scripts/preflight.sh` | workstation | Validates `config.env`, SSH to both hosts, Python on pfSense, OpenSearch reachability |
-| `sudo ./install.sh` | SIEM server (Ubuntu) | Installs OpenSearch 2.x, Logstash 8.x, Grafana 12.x and the OpenSearch datasource plugin |
+| `sudo ./install.sh` | SIEM server (Ubuntu) | **Bare-metal/manual path**: installs OpenSearch 2.x, Logstash 8.x, Grafana 12.x and the OpenSearch datasource plugin on one box. Recommended alternative: [siem-docker-stack](https://github.com/ChiefGyk3D/siem-docker-stack) |
+| `scripts/release.sh X.Y.Z [--push]` | maintainer | Rolls CHANGELOG, bumps `VERSION`, tags `vX.Y.Z`; the Release workflow publishes the tarball |
 | `./setup.sh` | workstation | Applies index templates, deploys the Logstash pipeline, deploys the forwarder + rc.d service + watchdog to pfSense, creates Grafana datasources, imports the Suricata dashboards, verifies data flow. **Idempotent — re-run after a pfSense upgrade.** |
 | `./install_plugins.sh` | workstation | Copies the Telegraf exec plugins in `plugins/` to pfSense |
 | `./scripts/status.sh` / `diagnose-and-repair.sh` | workstation | Health check and guided repair |
@@ -70,7 +71,8 @@ pfsense-siem-stack/
 ├── plugins/                   ← Telegraf exec plugins for pfSense (+ README)
 ├── tests/                     ← pytest forwarder tests (CI) + live integration scripts
 ├── media/                     ← Screenshots
-└── .github/workflows/lint.yml ← CI: bash -n, shellcheck, JSON, py_compile, link check, pytest
+├── VERSION                    ← Current version (kept in sync by scripts/release.sh)
+└── .github/workflows/         ← lint.yml (CI on every push) · release.yml (tarball + GitHub Release on vX.Y.Z tags)
 ```
 
 ## What `setup.sh` puts on pfSense
