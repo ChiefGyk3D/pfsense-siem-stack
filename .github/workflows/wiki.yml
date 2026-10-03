@@ -1,0 +1,66 @@
+# Publish the GitHub wiki from the repository's Markdown files.
+#
+# scripts/build-wiki.py turns docs/, the README-style files and the hand-written pages
+# in wiki/ into a flat set of wiki pages (see wiki/README.md). This workflow runs it on
+# every push to main that touches documentation and pushes the result to the wiki's own
+# git repository. Edits made in the wiki UI are overwritten by the next run.
+#
+# Prerequisite: the wiki must have been created once through the GitHub UI (Wiki tab →
+# "Create the first page"); the .wiki.git repository does not exist before that.
+name: Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'media/**'
+      - 'docs/reference/architecture.png'
+      - 'scripts/build-wiki.py'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # push to <repo>.wiki.git with the workflow token
+
+concurrency:
+  group: wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the repository
+        run: |
+          git clone --depth 1 --branch "$GITHUB_REF_NAME" \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" src
+
+      - name: Check out the wiki
+        run: |
+          if ! git clone --depth 1 \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki; then
+            echo "::error::Could not clone ${GITHUB_REPOSITORY}.wiki.git. Create the wiki once in the" \
+                 "GitHub UI (Wiki tab -> Create the first page), then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Build the wiki pages
+        run: |
+          cd src
+          python3 scripts/build-wiki.py --out "$GITHUB_WORKSPACE/wiki"
+
+      - name: Commit and push
+        run: |
+          cd wiki
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Sync wiki from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
+          git push origin HEAD

@@ -36,6 +36,7 @@ a **pfSense knowledge base** (`docs/pfsense/`, usable without the SIEM stack) an
 - `pfsense-siem` health check no longer requires exactly `python3.11`.
 
 ### Added
+- **GitHub wiki, generated from the docs.** `scripts/build-wiki.py` turns every Markdown file in the repository into a wiki page (links rewritten, images copied, source file named on each page) and `.github/workflows/wiki.yml` publishes the result to the project wiki on every push to `main`. Hand-written landing pages in `wiki/`: Home, sidebar, footer, **[New to pfSense? Start Here](wiki/New-to-pfSense-Start-Here.md)** (the pieces, a reading order, the things that bite newcomers), a **[Glossary](wiki/Glossary.md)** and an **[FAQ](wiki/FAQ.md)**. CI runs the build so a doc without a page mapping or with a broken link fails the pull request.
 - **Wazuh Security Overview dashboard** (`dashboards/wazuh/wazuh_security_overview.json`) — 20 panels: alert stats, MITRE ATT&CK, compliance (PCI DSS, NIST, HIPAA), auth success/failure tracking, hourly alert trend by agent, recent high-level alerts
 - **Wazuh Vulnerability Detection dashboard** (`dashboards/wazuh/wazuh_vulnerability_detection.json`) — 11 panels: CVE tracking, severity distribution, vulnerable packages, severity by agent cross-reference
 - **Wazuh File Integrity Monitoring dashboard** (`dashboards/wazuh/wazuh_file_integrity_monitoring.json`) — 11 panels: file change tracking (added/modified/deleted), per-agent breakdown, multi-terms detail view

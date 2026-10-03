@@ -63,16 +63,19 @@ pfsense-siem-stack/
 │   ├── forward-suricata-eve.py            ★ the forwarder (deployed by setup.sh)
 │   ├── preflight.sh · status.sh · diagnose-and-repair.sh · restart-services.sh
 │   ├── install-opensearch-config.sh · configure-retention-policy.sh
-│   ├── deploy-wazuh-dashboards.py · check-doc-links.py (CI)
+│   ├── deploy-wazuh-dashboards.py · check-doc-links.py (CI) · build-wiki.py (CI + wiki publish)
 │   ├── check_custom_sids.sh · check-telegram-alerts.sh · apply-suricata-drop-rules.sh · enable-selective-blocking.sh
 │   └── legacy: setup_forwarder_monitoring.sh · suricata-forwarder-watchdog.sh · suricata-eve-forwarder.sh
 │               suricata-restart-hook.sh · suricata-restart-with-forwarder.sh · unified-monitoring-watchdog.sh
 │
 ├── plugins/                   ← Telegraf exec plugins for pfSense (+ README)
 ├── tests/                     ← pytest forwarder tests (CI) + live integration scripts
+├── wiki/                      ← Hand-written GitHub wiki pages (Home, sidebar, start-here, glossary, FAQ);
+│                                every other wiki page is generated from the docs by scripts/build-wiki.py
 ├── media/                     ← Screenshots
 ├── VERSION                    ← Current version (kept in sync by scripts/release.sh)
-└── .github/workflows/         ← lint.yml (CI on every push) · release.yml (tarball + GitHub Release on vX.Y.Z tags)
+└── .github/workflows/         ← ci.yml (lint, tests, link check, wiki build on every push) · security.yml ·
+                                 dependabot-auto-merge.yml · wiki.yml (publishes the GitHub wiki from main)
 ```
 
 ## What `setup.sh` puts on pfSense

@@ -28,7 +28,8 @@ Status: **current** = used by `setup.sh` or supported as a standalone tool;
 [enable-selective-blocking.sh](#enable-selective-blockingsh) ·
 [check-telegram-alerts.sh](#check-telegram-alertssh) ·
 [deploy-wazuh-dashboards.py](#deploy-wazuh-dashboardspy) ·
-[check-doc-links.py](#check-doc-linkspy)
+[check-doc-links.py](#check-doc-linkspy) ·
+[build-wiki.py](#build-wikipy)
 
 **SIEM server**
 [restart-services.sh](#restart-servicessh)
@@ -250,6 +251,22 @@ pure `#anchors`; for `file.md#section` only the file is checked.
 
 ```bash
 python3 scripts/check-doc-links.py
+```
+
+### build-wiki.py
+
+**Status:** current (run by CI as a check; `.github/workflows/wiki.yml` runs it to publish)
+
+Assembles the project's [GitHub wiki](https://github.com/ChiefGyk3D/pfsense-siem-stack/wiki)
+from the repository's Markdown files: every entry in its `PAGES` map becomes one wiki
+page, relative links between docs become wiki links, links to other repository files
+become `github.com/.../blob/main/` links, and images are copied alongside. The
+hand-written landing pages live in [`wiki/`](../wiki/README.md). Exits 1 if a link
+does not resolve or a tracked `.md` file has no `PAGES` entry.
+
+```bash
+python3 scripts/build-wiki.py                 # preview in build/wiki/ (git-ignored)
+python3 scripts/build-wiki.py --out /tmp/wiki # or into a clone of the .wiki.git repo
 ```
 
 ---

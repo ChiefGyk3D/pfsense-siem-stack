@@ -6,6 +6,12 @@
 > Logstash and Grafana — so others can run the same thing, understand why it is built
 > this way, and keep it healthy.
 
+Prefer browsing to a directory tree? Every page here is also published in the
+**[project wiki](https://github.com/ChiefGyk3D/pfsense-siem-stack/wiki)**, regenerated
+from these files on every push, with a beginner's
+[start-here page](../wiki/New-to-pfSense-Start-Here.md), a [glossary](../wiki/Glossary.md)
+and an [FAQ](../wiki/FAQ.md) for people new to pfSense.
+
 Pick the path that matches what you are trying to do:
 
 | I want to... | Start at |
