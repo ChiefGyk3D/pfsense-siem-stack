@@ -105,7 +105,10 @@ Install order: pfBlockerNG-devel → Suricata → Telegraf → ntopng → Cron �
 ## Documentation
 
 **Hub: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** — organised by what you
-are trying to do.
+are trying to do. The same material is published as the
+**[project wiki](https://github.com/ChiefGyk3D/pfsense-siem-stack/wiki)**, generated from
+these files on every push, with a [start-here page for people new to pfSense](wiki/New-to-pfSense-Start-Here.md),
+a [glossary](wiki/Glossary.md) and an [FAQ](wiki/FAQ.md).
 
 | Track | Directory | Highlights |
 |-------|-----------|------------|

@@ -255,7 +255,7 @@ When adding a feature, include:
 
 ### Continuous Integration
 
-`.github/workflows/lint.yml` runs on every push and pull request:
+`.github/workflows/ci.yml` runs on every push and pull request:
 
 | Check | Command it runs | Fix locally with |
 |-------|-----------------|------------------|
@@ -264,6 +264,7 @@ When adding a feature, include:
 | JSON | `python3 -m json.tool` on `dashboards/**/*.json`, `config/*.json` | same |
 | Python syntax | `python3 -m py_compile` on all `*.py` | same |
 | Documentation links | `python3 scripts/check-doc-links.py` | same — every relative link must resolve |
+| Wiki build | `python3 scripts/build-wiki.py` | same — every tracked `.md` needs a `PAGES` entry (see [wiki/README.md](wiki/README.md)) |
 | Forwarder unit tests | `python3 -m pytest tests/python/ -v` | `pip install pytest` then same |
 
 A PR that is red on any of these will not be merged.
@@ -277,6 +278,7 @@ A PR that is red on any of these will not be merged.
 - **docs/DOCUMENTATION_INDEX.md**: the hub — add new docs there and in ORGANIZATION.md
 - **docs/pfsense/**: generic pfSense knowledge (must read well without the SIEM stack)
 - **dashboards/README.md**, **plugins/README.md**, **tests/README.md**: inventories — keep them in sync
+- **wiki/**: the hand-written pages of the [GitHub wiki](https://github.com/ChiefGyk3D/pfsense-siem-stack/wiki); everything else there is generated from the files above by `scripts/build-wiki.py`, so never edit the wiki directly. A new doc needs a `PAGES` entry in that script (details in [wiki/README.md](wiki/README.md))
 - **CHANGELOG.md**: add an entry under *Unreleased*
 
 ---

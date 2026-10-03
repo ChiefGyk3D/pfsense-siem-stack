@@ -35,6 +35,7 @@ jobs:
         git ls-files -z 'dashboards/*.json' 'dashboards/**/*.json' 'config/*.json' | xargs -0 -n1 python3 -m json.tool > /dev/null
         git ls-files -z '*.py' | xargs -0 -n1 python3 -m py_compile
         python3 scripts/check-doc-links.py
+        python3 scripts/build-wiki.py
         python3 -m pytest tests/python/ -v
       runners: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
       egress-policy: block
