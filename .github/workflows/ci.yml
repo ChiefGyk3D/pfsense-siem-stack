@@ -1,0 +1,42 @@
+# CI for pfsense-siem-stack. The jobs live in ChiefGyk3D/git-your-ship-together; this file
+# says only what is specific to this repository.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    uses: ChiefGyk3D/git-your-ship-together/.github/workflows/bash-ci.yml@0e58a0e61ea8b3800d1cb0e6ed81bb860ace2094 # v1.6.3
+    permissions:
+      contents: read
+    with:
+      shfmt-args: -i 4 -ci
+      # Pre-existing findings, visible but not failing until the scripts are
+      # cleaned up: 20 shellcheck warnings in 9 files, 149 shfmt hunks in 21
+      # files (per-file counts in the pull request).
+      shellcheck-continue-on-error: true
+      shfmt-continue-on-error: true
+      # The old lint.yml checks that are not shell lint, kept as the test:
+      # JSON validity, Python syntax, the documentation link check and the
+      # forwarder unit tests. tests/test-*.sh need a live pfSense and are not run.
+      test-install-command: python3 -m pip install --user pytest
+      test-command: |
+        git ls-files -z 'dashboards/*.json' 'dashboards/**/*.json' 'config/*.json' | xargs -0 -n1 python3 -m json.tool > /dev/null
+        git ls-files -z '*.py' | xargs -0 -n1 python3 -m py_compile
+        python3 scripts/check-doc-links.py
+        python3 -m pytest tests/python/ -v
+      runners: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+      egress-policy: block
+      # workflow-lint (actionlint matcher and npm install, zizmor image pull); bash-ci's default list lacks them
+      extra-allowed-endpoints: ghcr.io:443 pkg-containers.githubusercontent.com:443 raw.githubusercontent.com:443 registry.npmjs.org:443
