@@ -1,0 +1,33 @@
+# CodeQL, gitleaks, a dependency audit and dependency review on pull
+# requests. The jobs live in ChiefGyk3D/git-your-ship-together.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'   # weekly, so new advisories surface between commits
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    uses: ChiefGyk3D/git-your-ship-together/.github/workflows/security.yml@0e58a0e61ea8b3800d1cb0e6ed81bb860ace2094 # v1.6.3
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+      id-token: write
+    secrets:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}   # optional Service Token fallback; unset means OIDC only
+    with:
+      codeql-languages: actions   # no Python here; CodeQL fails on a language with no source
+      pip-audit-requirements: ""
+      scorecard: true
+      egress-policy: block
+      doppler-project: ci
+      doppler-config: ci
+      doppler-identity-id: ${{ vars.DOPPLER_IDENTITY_ID }}
