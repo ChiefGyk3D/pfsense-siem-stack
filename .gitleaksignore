@@ -1,0 +1,49 @@
+# gitleaks findings reviewed by the maintainer on 2026-10-08 and accepted as false positives.
+# Every entry is a documentation or script example: the OpenSearch default admin login that the docs
+# say to change before production, a literal '...' or ${VAR} / your-password placeholder, or a sample
+# key in .env.example. None is a live credential. Exact fingerprints (commit:file:rule:line), so any
+# new finding, including one in these same files, still fails the scan.
+
+# docs/CONFIGURATION.md
+efd8576055920c134d9e9913e246701326396805:docs/CONFIGURATION.md:curl-auth-header:542
+efd8576055920c134d9e9913e246701326396805:docs/CONFIGURATION.md:curl-auth-header:553
+f989b606df105f8a26ad42b68018f811df9f6e92:docs/CONFIGURATION.md:curl-auth-header:542
+f989b606df105f8a26ad42b68018f811df9f6e92:docs/CONFIGURATION.md:curl-auth-header:553
+# docs/DASHBOARD_NO_DATA_FIX.md
+7100957fc1efe9bf935c746ead9d3e635d078aa4:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:24
+7100957fc1efe9bf935c746ead9d3e635d078aa4:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:281
+7100957fc1efe9bf935c746ead9d3e635d078aa4:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:34
+7100957fc1efe9bf935c746ead9d3e635d078aa4:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:47
+c2fc229ff0b7fea95305d056871988163799a4b7:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:24
+c2fc229ff0b7fea95305d056871988163799a4b7:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:281
+c2fc229ff0b7fea95305d056871988163799a4b7:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:34
+c2fc229ff0b7fea95305d056871988163799a4b7:docs/DASHBOARD_NO_DATA_FIX.md:curl-auth-user:47
+# docs/INSTALL_DASHBOARD.md
+efd8576055920c134d9e9913e246701326396805:docs/INSTALL_DASHBOARD.md:curl-auth-header:345
+f989b606df105f8a26ad42b68018f811df9f6e92:docs/INSTALL_DASHBOARD.md:curl-auth-header:345
+# docs/LOG_ROTATION_FIX.md
+5a06b74cafca34c98e690b82f443f501faafec5a:docs/LOG_ROTATION_FIX.md:curl-auth-user:101
+5dbacb873dcf98782319c688c001bf8510363a27:docs/LOG_ROTATION_FIX.md:curl-auth-user:101
+# docs/archive/DASHBOARD_V2_FEATURES.md
+efd8576055920c134d9e9913e246701326396805:docs/archive/DASHBOARD_V2_FEATURES.md:curl-auth-header:153
+efd8576055920c134d9e9913e246701326396805:docs/archive/DASHBOARD_V2_FEATURES.md:curl-auth-header:372
+f989b606df105f8a26ad42b68018f811df9f6e92:docs/archive/DASHBOARD_V2_FEATURES.md:curl-auth-header:153
+f989b606df105f8a26ad42b68018f811df9f6e92:docs/archive/DASHBOARD_V2_FEATURES.md:curl-auth-header:372
+# docs/troubleshooting/LOG_ROTATION_FIX.md
+8c4d3820f529ef04f652833e35a97149c38cd60c:docs/troubleshooting/LOG_ROTATION_FIX.md:curl-auth-user:101
+# scripts/archive/create-final-dashboard.sh
+efd8576055920c134d9e9913e246701326396805:scripts/archive/create-final-dashboard.sh:curl-auth-user:471
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/create-final-dashboard.sh:curl-auth-user:471
+# scripts/archive/create-suricata-dashboard.sh
+efd8576055920c134d9e9913e246701326396805:scripts/archive/create-suricata-dashboard.sh:curl-auth-user:212
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/create-suricata-dashboard.sh:curl-auth-user:212
+# scripts/archive/fix-dashboard-panels.sh
+efd8576055920c134d9e9913e246701326396805:scripts/archive/fix-dashboard-panels.sh:curl-auth-user:413
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/fix-dashboard-panels.sh:curl-auth-user:413
+# scripts/archive/setup-opensearch-dashboard.sh
+efd8576055920c134d9e9913e246701326396805:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:16
+efd8576055920c134d9e9913e246701326396805:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:298
+efd8576055920c134d9e9913e246701326396805:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:32
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:16
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:298
+f989b606df105f8a26ad42b68018f811df9f6e92:scripts/archive/setup-opensearch-dashboard.sh:curl-auth-user:32
