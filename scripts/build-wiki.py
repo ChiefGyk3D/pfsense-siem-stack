@@ -59,6 +59,7 @@ PAGES = {
     "ROADMAP.md": "Roadmap",
     "CHANGELOG.md": "Changelog",
     "CONTRIBUTING.md": "Contributing",
+    "SECURITY.md": "Security-Policy",
     # docs/
     "docs/DOCUMENTATION_INDEX.md": "Documentation-Index",
     "docs/ARCHIVE.md": "Archived-Material",
