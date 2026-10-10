@@ -272,9 +272,14 @@ networks) outnumber everything else and are harmless to function.
 
 1. Drop or demote the URL-based phishing feeds from DNSBL (PhishTank first), and keep domain-based ones
    (`phishing_army`, Hagezi TIF). This removes the largest source of whole-site blocks at the cost of some coverage.
-2. Allowlist the specific domains you rely on in the **GUI** (**DNSBL > DNSBL Whitelist**). Writing the same entries into
-   `config.xml` from a script saved them but never reached the generated whitelist the resolver reads, so use the GUI
-   and then re-run the DNSBL reload. Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
+2. Allowlist the specific domains you rely on (**DNSBL > DNSBL Whitelist**), then run **Force Reload** on the DNSBL; the
+   resolver reads a generated copy that is rebuilt at the end of that reload (it took about 15 minutes with 3.5 million
+   domains). The saved whitelist takes **plain hostnames, one per line**. Entries written in the generated-file form
+   (`,host,,`) are silently ignored: 16 entries added that way did nothing until they were replaced with plain names.
+   Use exact hostnames, not `.domain` wildcards, when the parent also hosts trackers (whitelisting `www.bing.com`
+   and `th.bing.com` left `bat.bing.com` blocked). Verified: after the reload every allowlisted name resolved normally,
+   including ones that are alias chains (`www.bing.com` resolves through several CNAMEs, so a check that only looks
+   for an address on the queried name wrongly reports "no answer"). Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
    months of that.
 3. Keep telemetry blocking away from a managed work machine if your employer's device-management tooling expects its
    telemetry endpoints. The DNSBL cannot exempt a *network*, but its Python mode has a **Group Policy bypass list**
