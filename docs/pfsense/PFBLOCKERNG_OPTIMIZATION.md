@@ -203,7 +203,7 @@ returns an error page or nothing, fills the table with the placeholder address `
 | Table has 1 to 3 entries from a feed that should have hundreds | `ISC_Shadowserver`, `ISC_Shodan` | The URL returned an HTML page (Shadowserver) or XML on a single line (Shodan), and the parser keeps what it can find per line. The `isc.sans.edu/api/threatlist/<name>?text` form returns one entry per line and parses. |
 | Header only, no IPs | `Darklist` (one run) | Upstream returned a header with an empty list; recheck later before removing |
 | Same feed fails every day | `Maltrail_Scanners_All` (15 failures in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) | Intermittent or persistent download failure; the log line is `Download FAIL` |
-| DNSBL source cache is months old | `dnsblorig/*.orig` dated 2026-01-24 for about 45 feeds while the log says "Update found" every night | A cron "Update found" does not guarantee a download; check the `.orig` dates (`stat -f '%Sm' -t %F /var/db/pfblockerng/dnsblorig/*.orig \| sort \| uniq -c`). Cause not yet found; a forced `update` only reloads the cache. |
+| DNSBL source cache is months old | `dnsblorig/*.orig` dated months ago for about 45 feeds while the log says "Update found" every night | The TOP1M whitelist (Services > pfBlockerNG > DNSBL > TOP1M) is a zip. pfBlockerNG validates downloads with `/usr/bin/file --mime-type`, which on this FreeBSD 15 base reports zip files as `application/octet-stream`; the download is rejected ("Failed or invalid Mime Type"), `pfbalexawhitelist.txt` is never built, and every run then sets "reuse the cache" for the whole DNSBL, so **nothing downloads**. Check: `ls /var/db/pfblockerng/pfbalexawhitelist.txt` and `grep 'Failed or invalid Mime Type' /var/log/pfblockerng/pfblockerng.log`. Fix: place the unzipped `top-1m.csv` in `/var/db/pfblockerng/` yourself (any zip of rank,domain lines, for example Cisco's or Tranco's), or turn the TOP1M whitelist off. |
 | A CDN-hosted list returns 403 | Hagezi Pro/TIF via `cdn.jsdelivr.net` ("Package size exceeded the configured limit") | Use the project's own mirrors (GitLab or Codeberg) instead |
 | Per-feed DNSBL file shows 0 lines | about 10 feeds | Usually normal: pfBlockerNG removes domains already listed by an earlier feed, so a feed that is a subset of another shows 0. Not proof of a dead feed. |
 
@@ -272,8 +272,9 @@ networks) outnumber everything else and are harmless to function.
 
 1. Drop or demote the URL-based phishing feeds from DNSBL (PhishTank first), and keep domain-based ones
    (`phishing_army`, Hagezi TIF). This removes the largest source of whole-site blocks at the cost of some coverage.
-2. Allowlist the specific domains you rely on (**DNSBL > DNSBL Whitelist** or *Suppression*), then re-run the DNSBL
-   reload. Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
+2. Allowlist the specific domains you rely on in the **GUI** (**DNSBL > DNSBL Whitelist**). Writing the same entries into
+   `config.xml` from a script saved them but never reached the generated whitelist the resolver reads, so use the GUI
+   and then re-run the DNSBL reload. Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
    months of that.
 3. Keep telemetry blocking away from a managed work machine if your employer's device-management tooling expects its
    telemetry endpoints. The DNSBL cannot exempt a *network*, but its Python mode has a **Group Policy bypass list**
