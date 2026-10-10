@@ -203,6 +203,8 @@ returns an error page or nothing, fills the table with the placeholder address `
 | Table has 1 to 3 entries from a feed that should have hundreds | `ISC_Shadowserver`, `ISC_Shodan` | The URL returned an HTML page (Shadowserver) or XML on a single line (Shodan), and the parser keeps what it can find per line. The `isc.sans.edu/api/threatlist/<name>?text` form returns one entry per line and parses. |
 | Header only, no IPs | `Darklist` (one run) | Upstream returned a header with an empty list; recheck later before removing |
 | Same feed fails every day | `Maltrail_Scanners_All` (15 failures in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) | Intermittent or persistent download failure; the log line is `Download FAIL` |
+| DNSBL source cache is months old | `dnsblorig/*.orig` dated 2026-01-24 for about 45 feeds while the log says "Update found" every night | A cron "Update found" does not guarantee a download; check the `.orig` dates (`stat -f '%Sm' -t %F /var/db/pfblockerng/dnsblorig/*.orig \| sort \| uniq -c`). Cause not yet found; a forced `update` only reloads the cache. |
+| A CDN-hosted list returns 403 | Hagezi Pro/TIF via `cdn.jsdelivr.net` ("Package size exceeded the configured limit") | Use the project's own mirrors (GitLab or Codeberg) instead |
 | Per-feed DNSBL file shows 0 lines | about 10 feeds | Usually normal: pfBlockerNG removes domains already listed by an earlier feed, so a feed that is a subset of another shows 0. Not proof of a dead feed. |
 
 Check your own box (read-only, on pfSense):

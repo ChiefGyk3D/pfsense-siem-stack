@@ -24,7 +24,7 @@ Each section links to the guide with the method and commands.
 | Rules loaded on the inline WAN instance | 70,600 | 59,233 (-16%) | [Suricata guide](SURICATA_OPTIMIZATION_GUIDE.md#inline-ips-cost-what-it-takes-what-cuts-it-what-does-not) |
 | WAN IPS drops that were IP-reputation duplicates of pfBlockerNG | 113 of 116 in one hour | 0 (rules removed) | same |
 | Suricata capture drops after the changes | not measured (stats were off) | 0 kernel drops on WAN, cell and LAN instances | same |
-| DNSBL (blocklist DNS) | not enforcing for about 5 months: feed files about 3,570 hours old, a listed ad domain resolved normally | enforcing, listed domains answer `0.0.0.0`, feeds refreshed daily | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#4-is-dnsbl-actually-enforcing) |
+| DNSBL (blocklist DNS) | not enforcing for about 5 months: feed files about 3,570 hours old, a listed ad domain resolved normally | enforcing again (listed domains answer `0.0.0.0`). **But** about 45 feeds' source caches still date from 2026-01-24: the daily "Update found" never turned into a download, so the lists in use are 8.5 months old. Not fixed yet; see feed health below. | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#4-is-dnsbl-actually-enforcing) |
 | pfBlockerNG feeds known dead or broken | unknown | 6 found dead or broken, 2 fixed, 1 removed; see below | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) |
 | EVE forwarder to the SIEM | dead since 2026-07-30 (72 days, nobody noticed) | running, 16 interfaces; watchdog restart verified within one minute | [Forwarder monitoring](../operations/SURICATA_FORWARDER_MONITORING.md) |
 | DNS repeat lookups | cold lookup about 179 ms (DoT + DNSSEC) | repeat lookups 0 ms with prefetch and a 32 MB cache; cold path unchanged | [Shaping notes](SHAPING_OPTIMIZATION_NOTES.md) |
@@ -54,7 +54,9 @@ About 25 IP feeds and 40 DNSBL feeds were checked for entry count, file age and 
 |---|---|
 | IP tables that are only the `127.1.7.7` placeholder or have 1 to 3 entries from a large feed | `Abuse_SSLBL` (feed retired upstream 2025-01-02), `ISC_Shadowserver` and `ISC_Shodan` (wrong URL form for the parser), `Darklist` (header only that day) |
 | Feeds that fail to download repeatedly | `Maltrail_Scanners_All` (15 in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) |
-| Orphan list files 150 days old | 3 (from feeds that were renamed or removed) |
+| Stale files that looked like orphans | 3, but none was an orphan: the Monero list is static upstream since 2024; the `KADhosts` upstream file was emptied to 329 bytes; the `malc0de` list from iblocklist is IP ranges in a domain list and stays at 0 entries |
+| DNSBL source caches last downloaded 2026-01-24 | about 45 of the DNSBL feeds (the IP lists refresh daily); a forced update only reloads the stale cache |
+| Feed URLs that no longer work | `H3X_1M`, DigitalSide `osint_malicious` and `VXVault` (time out), `1Hosts Pro` (tier removed; Lite and Xtra remain), Maltrail `mass_scanner.txt` (moved to `data/`), Maltrail `maltrail-malware-domains.txt` and `yHosts` `hosts.txt` (404; yHosts is now `hosts`), Hagezi Pro and TIF via jsDelivr (403, package too large; the official GitLab and Codeberg mirrors work) |
 | DNSBL feeds showing 0 entries | about 10, most likely cross-feed de-duplication, not proven broken |
 | Fixes applied | `Abuse_SSLBL` removed; the two ISC URLs switched to their `?text` form. With the new URL the downloads parse 988 (Shadowserver) and 55 (Shodan) addresses instead of 3 and 2; after de-duplication against the other scanner lists 24 and 2 are new. The next scheduled fetch (00:01) is what confirms the URL change end to end. |
 
