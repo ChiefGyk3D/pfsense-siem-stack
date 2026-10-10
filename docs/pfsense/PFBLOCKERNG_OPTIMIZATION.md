@@ -224,10 +224,15 @@ grep 'Download FAIL' /var/log/pfblockerng/pfblockerng.log | sed -E 's/ \[ [0-9\/
 
 A cheap monthly habit: run the first loop, open the `.orig` of anything it prints, and replace or drop the feed.
 
-**Making a URL change take effect.** Editing a feed's URL does not redownload it: `Force Reload IP only` (`pfblockerng.php updateip`)
-only rebuilds tables from the cached download, and a feed is refetched only when the remote timestamp is newer. After
-changing a URL, age the cached file (`touch -t 200001010000 /var/db/pfblockerng/original/<ListName>_v4.orig`) and run a
-full `pfblockerng.php update` (which also reloads DNSBL, so expect a short DNS blip).
+**Making a URL change take effect.** Editing a feed's URL does not redownload it. Each list is fetched only when the cron
+job reaches its own schedule (a list set to `EveryDay` at hour 0 is fetched once a day at 00:01), and both
+`pfblockerng.php update` and `updateip` only *reload* from the cached download. A full forced update takes about 10 to
+12 minutes, restarts the DNSBL resolver for a moment, and still left the old HTML page in the cache. To test a URL
+change now, fetch the file yourself into `/var/db/pfblockerng/original/<ListName>_v4.orig` with the same User-Agent
+pfBlockerNG uses (`pfSense/pfBlockerNG cURL download agent-...`), then run `updateip`; otherwise wait for the schedule.
+Confirm afterwards that the raw entry count in the `.orig` and the final count make sense: pfBlockerNG removes
+addresses already present in other lists, so a feed that overlaps heavily shows few entries (the ISC Shadowserver list
+parsed 988 addresses but only 24 were new, and ISC Shodan 55 but only 2, after de-duplication against the mass-scanner lists).
 
 **Overlap with Suricata, measured.** Before moving Suricata rule files "into" pfBlockerNG, count the real overlap:
 the abuse.ch `feodotracker.rules` is 5 rules, `emerging-threatview_CS_c2.rules` has 752 Cobalt Strike C2 addresses of
@@ -235,6 +240,44 @@ which only 1 is in any pfBlockerNG list (so it is unique coverage), and `sslblac
 certificate-fingerprint rules that an IP list cannot replace. The only large, safe overlap was the ET IP-reputation set
 (97% of the WAN IPS's blocked sources were already in pfBlockerNG tables); see the
 [Suricata guide](SURICATA_OPTIMIZATION_GUIDE.md#inline-ips-cost-what-it-takes-what-cuts-it-what-does-not).
+
+### 7. Which blocks hurt real use? (false-positive review)
+
+Method used on a busy home network: take `dnsbl.log` (client address and domain per block) and `ip_block.log`, de-duplicate,
+and read them by VLAN and by feed. The client's third octet gives the VLAN. Eight days of history (the log was lost
+and rebuilt, so the dates are not contiguous) was about 2,400 distinct domain-and-client pairs.
+
+**IP lists were clean.** In 8 days there were about 40,400 blocks, every one inbound (scanners and botnets hitting the
+WAN), and none caused by a LAN device reaching a listed address. A few log rows say `out`, but they are inbound SYNs whose
+destination is the WAN address, logged around Suricata restarts; do not read them as your devices being blocked.
+
+**DNSBL false positives were concentrated in two feeds, for a structural reason.** Feeds that list individual phishing
+or malware *URLs* (PhishTank, OpenPhish) and "ad-fritzbox" style lists get reduced to hostnames by pfBlockerNG, so one bad
+page on a big site blocks the whole site:
+
+| Blocked domain | Feed | Effect |
+|---|---|---|
+| `apis.google.com`, `firebasestorage.googleapis.com` | PhishTank | breaks Google sign-in widgets and apps that store data in Firebase |
+| `www.bing.com`, `th.bing.com` | PhishTank | search and image thumbnails fail |
+| `gravatar.com`, `0.gravatar.com`, `framer.com`, `issuu.com`, `embeds.beehiiv.com`, `us5.campaign-archive.com` | PhishTank | avatars, embeds and newsletter archive pages fail |
+| `paypalobjects.com`, `disqus.com`, `onesignal.com`, `ucarecdn.com` | Kowabit | PayPal's static assets (checkout pages), comment widgets, push notifications and a CDN fail |
+
+A domain on its own in this table was blocked at least once; `apis.google.com` and `www.bing.com` were still returning
+`0.0.0.0` when checked. Pure tracker and telemetry blocks (Microsoft `events.data` endpoints, Firebase logging, ad
+networks) outnumber everything else and are harmless to function.
+
+**Your choices, in order of effect:**
+
+1. Drop or demote the URL-based phishing feeds from DNSBL (PhishTank first), and keep domain-based ones
+   (`phishing_army`, Hagezi TIF). This removes the largest source of whole-site blocks at the cost of some coverage.
+2. Allowlist the specific domains you rely on (**DNSBL > DNSBL Whitelist** or *Suppression*), then re-run the DNSBL
+   reload. Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
+   months of that.
+3. Keep telemetry blocking away from a managed work machine if your employer's device-management tooling expects its
+   telemetry endpoints. The DNSBL cannot exempt a *network*, but its Python mode has a **Group Policy bypass list**
+   (DNSBL settings; off by default) that exempts individual *client IPs*, exact match, no CIDR. Give those machines
+   DHCP reservations first so the addresses do not change. Unbound's `access-control-view` is the alternative if you
+   need whole-network exemptions.
 
 ## Troubleshooting
 

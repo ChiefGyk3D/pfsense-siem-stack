@@ -25,7 +25,7 @@ Each section links to the guide with the method and commands.
 | WAN IPS drops that were IP-reputation duplicates of pfBlockerNG | 113 of 116 in one hour | 0 (rules removed) | same |
 | Suricata capture drops after the changes | not measured (stats were off) | 0 kernel drops on WAN, cell and LAN instances | same |
 | DNSBL (blocklist DNS) | not enforcing for about 5 months: feed files about 3,570 hours old, a listed ad domain resolved normally | enforcing, listed domains answer `0.0.0.0`, feeds refreshed daily | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#4-is-dnsbl-actually-enforcing) |
-| pfBlockerNG feeds known dead or broken | unknown | audited; see below | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) |
+| pfBlockerNG feeds known dead or broken | unknown | 6 found dead or broken, 2 fixed, 1 removed; see below | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) |
 | EVE forwarder to the SIEM | dead since 2026-07-30 (72 days, nobody noticed) | running, 16 interfaces; watchdog restart verified within one minute | [Forwarder monitoring](../operations/SURICATA_FORWARDER_MONITORING.md) |
 | DNS repeat lookups | cold lookup about 179 ms (DoT + DNSSEC) | repeat lookups 0 ms with prefetch and a 32 MB cache; cold path unchanged | [Shaping notes](SHAPING_OPTIMIZATION_NOTES.md) |
 
@@ -56,7 +56,7 @@ About 25 IP feeds and 40 DNSBL feeds were checked for entry count, file age and 
 | Feeds that fail to download repeatedly | `Maltrail_Scanners_All` (15 in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) |
 | Orphan list files 150 days old | 3 (from feeds that were renamed or removed) |
 | DNSBL feeds showing 0 entries | about 10, most likely cross-feed de-duplication, not proven broken |
-| Fixes applied | `Abuse_SSLBL` removed; the two ISC URLs switched to their `?text` form |
+| Fixes applied | `Abuse_SSLBL` removed; the two ISC URLs switched to their `?text` form. With the new URL the downloads parse 988 (Shadowserver) and 55 (Shodan) addresses instead of 3 and 2; after de-duplication against the other scanner lists 24 and 2 are new. The next scheduled fetch (00:01) is what confirms the URL change end to end. |
 
 See the guide's section for the commands to reproduce this on your own box.
 
