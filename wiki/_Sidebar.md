@@ -76,5 +76,6 @@
 - [Roadmap](../ROADMAP.md)
 - [Changelog](../CHANGELOG.md)
 - [Contributing](../CONTRIBUTING.md)
+- [Security policy](../SECURITY.md)
 - [Archived Material](../docs/ARCHIVE.md)
 </details>
