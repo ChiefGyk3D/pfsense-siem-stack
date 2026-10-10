@@ -402,8 +402,16 @@ suricata_forwarder_start() {
         return 0
     fi
     if [ ! -x "$python" ]; then
-        echo "${name}: interpreter ${python} not found — re-run setup.sh (pfSense upgrade?)" >&2
-        return 1
+        # A pfSense upgrade can move Python (3.11 -> 3.12 ...): use the newest installed
+        python=$(ls /usr/local/bin/python3.[0-9]* 2>/dev/null | grep -E 'python3\.[0-9]+$' | sort -t. -k2 -n | tail -1)
+        if [ -z "$python" ] || [ ! -x "$python" ]; then
+            echo "${name}: no python3 interpreter found — re-run setup.sh" >&2
+            return 1
+        fi
+        echo "${name}: baked interpreter missing, using ${python}"
+    fi
+    if ! "$python" -c 'import maxminddb' 2>/dev/null; then
+        echo "${name}: warning: maxminddb not importable by ${python}; GeoIP enrichment will be off" >&2
     fi
     echo "Starting ${name}..."
     # -P supervisor pidfile, -p child pidfile, -r restart child if it exits
