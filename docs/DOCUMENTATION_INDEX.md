@@ -101,6 +101,8 @@ Grafana panels depend on the rest of this repo.
   weighted queues for streaming/gaming/VoIP alongside bulk traffic
 - **[Optimizing traffic shaping on a gigabit cable line](pfsense/SHAPING_OPTIMIZATION_NOTES.md)** —
   measured lessons: ACK starvation, queue sizes, mask direction, failover links, the class design that worked
+- **[October 2026 tuning results](pfsense/TUNING_RESULTS_2026-10.md)** —
+  one before/after table across shaping, Suricata CPU, rule volume, DNSBL, forwarder and feed health, with what was *not* measured
 - **[Hardware Requirements](install/HARDWARE_REQUIREMENTS.md)** — sizing pfSense for
   IDS/IPS (and the SIEM server), and why SD cards will ruin your day
 - **[CrowdSec (exploratory)](pfsense/crowdsec-phase1.md)** — notes toward a CrowdSec

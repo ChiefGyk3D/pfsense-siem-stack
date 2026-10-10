@@ -191,6 +191,51 @@ pfBlockerNG's `ip_block.log` and `dnsbl.log` are tailed by Telegraf on the firew
 
 ---
 
+### 6. Are the feeds themselves alive?
+
+A feed can fail for months while the list keeps "working": pfBlockerNG keeps the last good copy, or, when a download
+returns an error page or nothing, fills the table with the placeholder address `127.1.7.7`. Nothing alerts. In October
+2026 an audit of a running box found, among about 25 IP feeds:
+
+| Symptom | Example found | Cause |
+|---|---|---|
+| Table is just `127.1.7.7` | `Abuse_SSLBL` (last updated 2025-01-02) | abuse.ch retired the SSL IP blacklist; the URL answers with a stub |
+| Table has 1 to 3 entries from a feed that should have hundreds | `ISC_Shadowserver`, `ISC_Shodan` | The URL returned an HTML page (Shadowserver) or XML on a single line (Shodan), and the parser keeps what it can find per line. The `isc.sans.edu/api/threatlist/<name>?text` form returns one entry per line and parses. |
+| Header only, no IPs | `Darklist` (one run) | Upstream returned a header with an empty list; recheck later before removing |
+| Same feed fails every day | `Maltrail_Scanners_All` (15 failures in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) | Intermittent or persistent download failure; the log line is `Download FAIL` |
+| Per-feed DNSBL file shows 0 lines | about 10 feeds | Usually normal: pfBlockerNG removes domains already listed by an earlier feed, so a feed that is a subset of another shows 0. Not proof of a dead feed. |
+
+Check your own box (read-only, on pfSense):
+
+```sh
+# 1. Placeholder or near-empty IP tables, and files that stopped changing
+now=$(date +%s)
+for f in /var/db/pfblockerng/deny/*_v4.txt; do
+  n=$(grep -cE '^[0-9]' "$f"); a=$(( (now - $(stat -f %m "$f")) / 86400 ))
+  [ "$n" -le 2 ] || [ "$a" -gt 3 ] && echo "$(basename "$f" .txt): $n entries, ${a}d old"
+done
+
+# 2. What the feed really returned (the raw download), not what the parser kept
+head -c 300 /var/db/pfblockerng/original/<ListName>_v4.orig
+
+# 3. Which feeds failed to download, and how often (the log only goes back a few days)
+grep 'Download FAIL' /var/log/pfblockerng/pfblockerng.log | sed -E 's/ \[ [0-9\/]+ [0-9:]+ \]//' | sort | uniq -c | sort -rn
+```
+
+A cheap monthly habit: run the first loop, open the `.orig` of anything it prints, and replace or drop the feed.
+
+**Making a URL change take effect.** Editing a feed's URL does not redownload it: `Force Reload IP only` (`pfblockerng.php updateip`)
+only rebuilds tables from the cached download, and a feed is refetched only when the remote timestamp is newer. After
+changing a URL, age the cached file (`touch -t 200001010000 /var/db/pfblockerng/original/<ListName>_v4.orig`) and run a
+full `pfblockerng.php update` (which also reloads DNSBL, so expect a short DNS blip).
+
+**Overlap with Suricata, measured.** Before moving Suricata rule files "into" pfBlockerNG, count the real overlap:
+the abuse.ch `feodotracker.rules` is 5 rules, `emerging-threatview_CS_c2.rules` has 752 Cobalt Strike C2 addresses of
+which only 1 is in any pfBlockerNG list (so it is unique coverage), and `sslblacklist_tls_cert.rules` is 10,879
+certificate-fingerprint rules that an IP list cannot replace. The only large, safe overlap was the ET IP-reputation set
+(97% of the WAN IPS's blocked sources were already in pfBlockerNG tables); see the
+[Suricata guide](SURICATA_OPTIMIZATION_GUIDE.md#inline-ips-cost-what-it-takes-what-cuts-it-what-does-not).
+
 ## Troubleshooting
 
 ### A legitimate site is blocked
