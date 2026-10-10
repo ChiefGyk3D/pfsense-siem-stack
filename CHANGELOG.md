@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed: orphaned supervisors.** `stop` and `status` now find the forwarder by process, not only by pidfile, so a lost pidfile can no longer leave a `daemon` supervisor respawning an unmanaged forwarder that `status` reports as stopped.
 - **New: `./setup.sh --forwarder-only`** redeploys just the forwarder, rc.d unit and watchdog, and verifies delivery from the pfSense side. It needs no access to OpenSearch, Logstash or Grafana from the workstation. Use it after a pfSense upgrade.
 
+### SIEM freshness check (2026-10)
+
+- **New: `scripts/check-siem-freshness.sh`** — exits non-zero when the newest Suricata event in OpenSearch is older than a threshold (default 15 min; `--via-pfsense` queries from the firewall when the workstation cannot reach OpenSearch). A dead forwarder, Logstash or OpenSearch went unnoticed for 2.5 months; this makes it a cron-able alarm. Exit codes: 0 fresh, 1 stale, 2 cannot query.
+
+
 ### pfSense shaping notes (2026-10)
 
 - **New: [Shaping Optimization Notes](docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md)** — measured lessons from moving to a 1 Gbit/s down, 500 Mbit/s up cable line: the upload limiter capping download, 50-slot child queues, the CoDel slot-limit trap, inverted per-host masks, failover-link shaping, dead ALTQ/wizard rules, resolver tuning, and the real-time/RTMP/default/bulk class design.
