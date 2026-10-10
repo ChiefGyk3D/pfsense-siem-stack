@@ -117,6 +117,8 @@ Grafana (siem-docker-stack)" and offers `install.sh` behind an explicit `--insta
 
 - [ ] LAN/east-west dashboard, lateral movement detection
 - [ ] Filterlog dashboard (firewall rule analysis), Unbound DNS analytics, VPN monitoring, DHCP lease tracking
+- [ ] Network-quality panels and alerts: dummynet pipe/queue drops, gateway delay and loss, and a scheduled loaded-latency probe that alerts when latency under load exceeds idle by more than 15 ms (catches bufferbloat regressions after a change or an upgrade)
+- [ ] Publish the shaping test harness (shaped-versus-unshaped battery, dead-man apply with gates, per-class counter check) as a parameterised tool, once it is free of site-specific addresses
 - [ ] Multi-firewall support (central monitoring of several pfSense boxes)
 - [ ] Threat intel feeds (MISP, abuse.ch, OTX) — coordinate with siem-docker-stack's MISP plans ([siem-docker-stack#5](https://github.com/ChiefGyk3D/siem-docker-stack/issues/5))
 - [ ] Ansible playbooks / repeatable deployment (see Phase B½ — one-command distribution)

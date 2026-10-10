@@ -26,6 +26,7 @@
 - [Upgrading pfSense](../docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) ⭐
 - [Filterlog Stops After Rotation](../docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md)
 - [Traffic Shaping Guide](../docs/pfsense/TRAFFIC_SHAPING_GUIDE.md)
+- [Shaping Optimization Notes](../docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md)
 - [CrowdSec (exploratory)](../docs/pfsense/crowdsec-phase1.md)
 
 **SIEM: deploy**

@@ -35,9 +35,13 @@ Works for any pfSense CE upgrade; the 2.9.0-specific notes are marked.
    *Backup extra data* to include package data such as pfBlockerNG feeds and
    Suricata rules). Store it off the firewall. This is the only artifact pfSense
    guarantees to restore.
-2. **ZFS boot environment** — if the box is on ZFS (default since 2.6), System →
-   Boot Environments → *Create* (name it `pre-2.9.0`). Rolling back is then a
-   reboot away.
+2. **ZFS boot environment** — if the box is on ZFS (default since 2.6), snapshot it
+   from the shell (SSH or console): `bectl create pre-2.9.0`, then confirm with
+   `bectl list`. pfSense **CE has no Boot Environments page in the GUI**: Netgate
+   documents that page for pfSense Plus only. `bectl` still works on a CE ZFS
+   install; verify that `bectl list` shows your snapshot before you rely on it.
+   Rolling back is `bectl activate pre-2.9.0` and a reboot, or choose it from the
+   loader's boot environments menu.
 3. **Note your package list** — System → Package Manager → Installed Packages.
    The upgrader reinstalls them, but you want the list if something is missing
    afterwards. Typical for this stack: `suricata`, `pfBlockerNG-devel`, `Telegraf`,
@@ -117,7 +121,7 @@ Works for any pfSense CE upgrade; the 2.9.0-specific notes are marked.
    `config.xml`). Anything you added with `crontab -e` or by editing `/etc/crontab`
    directly is *not* managed by pfSense — see Part 2.
 9. **Reboot once more** and verify everything comes up unattended. If the box does
-   not, boot the previous ZFS boot environment from the loader menu.
+   not, boot the previous ZFS boot environment (loader menu, or `bectl activate`).
 
 ---
 
@@ -175,7 +179,7 @@ Diagnostics → Command Prompt for the checks above.
 
 ### Rolling back
 
-Boot the `pre-2.9.0` ZFS boot environment (System → Boot Environments, or the
+Boot the `pre-2.9.0` ZFS boot environment (`bectl activate pre-2.9.0` and reboot, or the
 loader menu), then re-run `./setup.sh` once more so the forwarder's shebang matches
 the old interpreter again.
 
@@ -195,3 +199,41 @@ the old interpreter again.
   breakage on a future release.
 - No automated check compares the Suricata package version before/after an upgrade
   to warn about EVE schema changes.
+
+---
+
+## Part 3 — What is verified, what is reported, and what to re-test
+
+Sources: the [Netgate announcement](https://www.netgate.com/blog/netgate-releases-pfsense-community-edition-version-2.9.0),
+the [2.9.0 release notes](https://docs.netgate.com/pfsense/en/latest/releases/2-9-0.html) and the
+[Upgrade Guide](https://docs.netgate.com/pfsense/en/latest/install/upgrade-guide.html).
+
+**Confirmed in the official release notes**
+
+- Base OS FreeBSD 16-CURRENT, PHP 8.5.7, OpenSSL 3.5.7, OpenSSH 10.3p1.
+- DHCP: Kea 3.0.2; the `client-class` parameter is deprecated.
+- Gateways: recovery for the default failover group; the shaper notes list a fix for
+  **limiter behavior with gateway groups**. If you run limiter rules that name a gateway, re-test
+  them after the upgrade (see below).
+- Hardware: Celeron J panic tunable (`hint.acpi_spmc.0.disabled=1`). The notes do not mention `igc`, `igb` or `ix` drivers.
+- Weak or expired GUI certificates are regenerated during the upgrade; older SSH clients may fail to connect.
+- The notes do **not** list package-specific known issues (Suricata, pfBlockerNG, Telegraf, WireGuard).
+
+**Telegraf** — [Redmine #16674](https://redmine.pfsense.org/issues/16674): the Telegraf service page writes the
+`ssl_ca` parameter that Telegraf 1.35 deprecated, and the package now ships Telegraf 1.36.2, so the service fails to
+start when the InfluxDB output is selected. The interim `sed` in Part 1 is the workaround.
+
+**Reported but not verified here** (found through search summaries; the tracker needs a login to read, so check the
+primary issues before relying on them)
+
+- A failed post-reboot stage when upgrading 2.8.1 to 2.9.0, leaving a mix of 2.9.0 core and 2.8.1 metadata with a
+  wrong `pkg` OSVERSION.
+- Suricata being removed during the base upgrade (attributed to a `pkg rquery` bug that newer `pkg` fixes).
+
+Treat both as risks, not facts: take the boot environment snapshot first, have console or IPMI access ready, upgrade
+from the console (`pfSense-upgrade -d`) so you can watch it, and afterwards check
+`pkg info | grep -E "pfSense-pkg|suricata"` against the list you saved.
+
+**If you use limiters and ALTQ** — before and after, capture `dnctl pipe show`, `dnctl queue show` and the count of
+`pfctl -sr` lines, then repeat a loaded-latency test. See
+[Optimizing pfSense traffic shaping on a gigabit cable line](SHAPING_OPTIMIZATION_NOTES.md) for the method.

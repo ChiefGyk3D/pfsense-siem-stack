@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### pfSense shaping notes (2026-10)
+
+- **New: [Shaping Optimization Notes](docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md)** — measured lessons from moving to a 1 Gbit/s down, 500 Mbit/s up cable line: the upload limiter capping download, 50-slot child queues, the CoDel slot-limit trap, inverted per-host masks, failover-link shaping, dead ALTQ/wizard rules, resolver tuning, and the real-time/RTMP/default/bulk class design.
+- **Corrected: [Traffic Shaping Guide](docs/pfsense/TRAFFIC_SHAPING_GUIDE.md)** — per-host mask direction was inverted (upload pipes key on source, download pipes on destination); added a corrections banner and the note that LAN-rule limiters do not see inbound port-forward traffic.
+- **Corrected: [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)** — pfSense CE has no Boot Environments page in the GUI (Plus only); use `bectl create pre-2.9.0` from the shell. Added Part 3: what the official release notes confirm for 2.9.0, what is only reported, and what to re-test if you run limiters.
+
 ### Documentation overhaul (2026-09)
 
 The docs tree was audited end to end against the code and reorganised into two tracks:
