@@ -68,7 +68,7 @@ Follow [QUICK_START.md](../../QUICK_START.md) steps 1-3. Check off as you go:
 #### 5. Run the automated setup
 - [ ] `./setup.sh` completed without errors (it re-runs preflight, installs the OpenSearch index template, deploys the Logstash pipeline, deploys forwarder + rc.d service + watchdog to pfSense, imports the Suricata dashboards, verifies data flow)
 - [ ] `ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'` reports running
-- [ ] `ssh admin@<PFSENSE_IP> 'crontab -l | grep watchdog'` shows the every-minute entry
+- [ ] `ssh admin@<PFSENSE_IP> 'grep suricata-forwarder-watchdog /etc/crontab'` shows the every-minute entry (installed through the Cron package)
 - [ ] Event count increasing: `curl -s http://localhost:9200/suricata-*/_count | jq .count`
 
 ---
@@ -174,7 +174,7 @@ Follow the [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.
 - Export dashboard backups; review retention vs disk usage
 
 ### After upgrading pfSense
-- Re-run `./setup.sh` and then `./scripts/status.sh`. The forwarder, rc.d service and root crontab entry are outside `config.xml` and can be removed by an upgrade or package reinstall. See [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
+- Re-run `./setup.sh --forwarder-only` and then `./scripts/status.sh`. The forwarder and rc.d service are outside `config.xml` and can be removed by an upgrade or package reinstall (the Cron-package watchdog entry is inside `config.xml` and survives). See [pfSense Upgrade Guide](../pfsense/PFSENSE_UPGRADE_GUIDE.md).
 
 ### Quarterly
 - Review security posture based on alerts

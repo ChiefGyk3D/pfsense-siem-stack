@@ -19,6 +19,7 @@
 #
 # Options:
 #   --skip-preflight   Skip the scripts/preflight.sh gate (not recommended)
+#   --forwarder-only   Only (re)deploy the forwarder + rc.d unit + watchdog (step 4)
 #
 # Requirements:
 #   - SSH key access to pfSense (ssh-copy-id admin@<pfsense-ip>)
@@ -38,13 +39,19 @@ CONFIG_FILE="${SCRIPT_DIR}/config.env"
 
 # ── Arguments ─────────────────────────────────────────────────────────────────
 SKIP_PREFLIGHT=false
+FORWARDER_ONLY=false
 for arg in "$@"; do
     case "$arg" in
         --skip-preflight) SKIP_PREFLIGHT=true ;;
+        --forwarder-only) FORWARDER_ONLY=true ;;
         -h|--help)
-            echo "Usage: ./setup.sh [--skip-preflight]"
+            echo "Usage: ./setup.sh [--skip-preflight] [--forwarder-only]"
             echo ""
             echo "  --skip-preflight   Skip the scripts/preflight.sh gate (not recommended)"
+            echo "  --forwarder-only   Only (re)deploy the pfSense forwarder, rc.d unit and watchdog."
+            echo "                     Needs no access to OpenSearch, Logstash or Grafana from this"
+            echo "                     machine; verifies delivery from the pfSense side. Use it after"
+            echo "                     a pfSense upgrade or when the SIEM host is not reachable here."
             exit 0
             ;;
         *)
@@ -148,6 +155,7 @@ if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
 fi
 info "Local tools OK (curl, jq, ssh, scp, python3)"
 
+if [[ "$FORWARDER_ONLY" == false ]]; then
 # Check OpenSearch
 if curl -sf "${OPENSEARCH_URL}" &>/dev/null; then
     OS_VERSION=$(curl -sf "${OPENSEARCH_URL}" | jq -r '.version.number // "unknown"')
@@ -165,6 +173,10 @@ if curl -sf "${GRAFANA_URL}/api/health" &>/dev/null; then
     GRAFANA_OK=true
 else
     warn "Cannot reach Grafana at ${GRAFANA_URL} — dashboards will need manual import"
+fi
+else
+    info "Forwarder-only mode: skipping OpenSearch and Grafana checks"
+    GRAFANA_OK=false
 fi
 
 # Check pfSense SSH
@@ -207,6 +219,7 @@ if [[ -z "$PFSENSE_PYTHON" ]]; then
 fi
 info "Python on pfSense: ${PFSENSE_PYTHON}"
 
+if [[ "$FORWARDER_ONLY" == false ]]; then
 # =============================================================================
 # STEP 2: Configure OpenSearch
 # =============================================================================
@@ -277,9 +290,10 @@ if ssh -o ConnectTimeout=5 -o BatchMode=yes "${SIEM_SSH_USER}@${SIEM_HOST}" 'ech
         # Backup existing config, deploy new one
         ssh "${SIEM_SSH_USER}@${SIEM_HOST}" \
             "sudo cp /etc/logstash/conf.d/suricata.conf /etc/logstash/conf.d/suricata.conf.bak 2>/dev/null || true"
-        scp -q "$TEMP_CONF" "${SIEM_SSH_USER}@${SIEM_HOST}:/tmp/suricata-logstash.conf"
+        REMOTE_CONF=$(ssh "${SIEM_SSH_USER}@${SIEM_HOST}" 'umask 077; mktemp /tmp/suricata-logstash.XXXXXX')
+        scp -q "$TEMP_CONF" "${SIEM_SSH_USER}@${SIEM_HOST}:${REMOTE_CONF}"
         ssh "${SIEM_SSH_USER}@${SIEM_HOST}" \
-            "sudo mv /tmp/suricata-logstash.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash" 2>/dev/null
+            "sudo install -m 0644 -o root -g root '${REMOTE_CONF}' /etc/logstash/conf.d/suricata.conf && rm -f '${REMOTE_CONF}' && sudo systemctl restart logstash" 2>/dev/null
         rm -f "$TEMP_CONF"
         info "Logstash config deployed and restarted on ${SIEM_HOST}"
         LOGSTASH_DEPLOYED=true
@@ -297,6 +311,7 @@ if [[ "$LOGSTASH_DEPLOYED" == false ]]; then
     echo "    # Edit 'hosts' line to point to your OpenSearch URL"
     echo "    sudo systemctl restart logstash"
     echo ""
+fi
 fi
 
 # =============================================================================
@@ -345,12 +360,13 @@ ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat > /usr/local/bin/suricata-forwarder-w
 RCD="/usr/local/etc/rc.d/suricata_forwarder.sh"
 TAG="suricata-watchdog"
 
-if ! pgrep -f "forward-suricata-eve.py" > /dev/null 2>&1; then
+PAT='^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
+if ! pgrep -u root -f "$PAT" > /dev/null 2>&1; then
     logger -t "$TAG" "Forwarder not running — starting via rc.d"
-    rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid
+    "$RCD" stop > /dev/null 2>&1
     "$RCD" start > /dev/null 2>&1
     sleep 2
-    PID=$(pgrep -f "forward-suricata-eve.py" | head -1)
+    PID=$(pgrep -u root -f "$PAT" | head -1)
     if [ -n "$PID" ]; then
         logger -t "$TAG" "Started (PID: $PID)"
     else
@@ -360,11 +376,18 @@ fi
 WATCHDOG_SCRIPT
 ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'chmod +x /usr/local/bin/suricata-forwarder-watchdog.sh'
 
-# Install cron (idempotent — removes old entry first)
-ssh "${PFSENSE_USER}@${PFSENSE_HOST}" '
-    CRON="* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh"
-    (crontab -l 2>/dev/null | grep -v "suricata-forwarder-watchdog" ; echo "$CRON") | crontab -
-'
+# Schedule the watchdog through the pfSense Cron package. Its entries live in
+# config.xml, so they survive upgrades; a root crontab line does not.
+info "Scheduling watchdog via the pfSense Cron package..."
+ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'crontab -l 2>/dev/null | grep -q suricata-forwarder-watchdog && { crontab -l | grep -v suricata-forwarder-watchdog | crontab - 2>/dev/null || crontab -r; }; true'
+if ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'test -f /usr/local/pkg/cron.inc'; then
+    # Script goes over stdin: no file in a world-writable directory that root then executes
+    ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'php' < "${SCRIPT_DIR}/scripts/pfsense-add-watchdog-cron.php"
+else
+    warn "pfSense Cron package not installed — watchdog NOT scheduled."
+    echo "  Install it (System > Package Manager > pfSense-pkg-Cron) and re-run with --forwarder-only."
+    echo "  The rc.d unit still starts the forwarder at boot and respawns it if it exits."
+fi
 
 # Install rc.d service for boot auto-start
 # pfSense starts package rc scripts matching /usr/local/etc/rc.d/*.sh at boot
@@ -397,13 +420,21 @@ stop_cmd="${name}_stop"
 status_cmd="${name}_status"
 
 suricata_forwarder_start() {
-    if [ -f "$child_pidfile" ] && kill -0 "$(cat "$child_pidfile")" 2>/dev/null; then
-        echo "${name} already running (pid=$(cat "$child_pidfile"))"
+    if [ -n "$(fwd_pids)" ]; then
+        echo "${name} already running (pid=$(fwd_pids | head -1))"
         return 0
     fi
     if [ ! -x "$python" ]; then
-        echo "${name}: interpreter ${python} not found — re-run setup.sh (pfSense upgrade?)" >&2
-        return 1
+        # A pfSense upgrade can move Python (3.11 -> 3.12 ...): use the newest installed
+        python=$(ls /usr/local/bin/python3.[0-9]* 2>/dev/null | grep -E 'python3\.[0-9]+$' | sort -t. -k2 -n | tail -1)
+        if [ -z "$python" ] || [ ! -x "$python" ]; then
+            echo "${name}: no python3 interpreter found — re-run setup.sh" >&2
+            return 1
+        fi
+        echo "${name}: baked interpreter missing, using ${python}"
+    fi
+    if ! "$python" -c 'import maxminddb' 2>/dev/null; then
+        echo "${name}: warning: maxminddb not importable by ${python}; GeoIP enrichment will be off" >&2
     fi
     echo "Starting ${name}..."
     # -P supervisor pidfile, -p child pidfile, -r restart child if it exits
@@ -411,21 +442,31 @@ suricata_forwarder_start() {
     echo "${name} started."
 }
 
+# Anchored so it matches only the forwarder itself, never a shell whose command
+# line merely mentions the file name.
+fwd_pids() {
+    pgrep -u root -f '^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
+}
+
 suricata_forwarder_stop() {
-    if [ -f "$pidfile" ] || [ -f "$child_pidfile" ]; then
-        # Stop the supervisor first so it cannot respawn the child, then the child
-        [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null
-        [ -f "$child_pidfile" ] && kill "$(cat "$child_pidfile")" 2>/dev/null
-        rm -f "$pidfile" "$child_pidfile"
-        echo "${name} stopped."
-    else
-        echo "${name} not running."
-    fi
+    # Supervisors first (so nothing respawns the child), found by pidfile and by
+    # parentage: a lost pidfile must not leave an orphaned supervisor behind.
+    [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null
+    for pid in $(fwd_pids); do
+        ppid=$(ps -o ppid= -p "$pid" | tr -d ' ')
+        [ "$(ps -o comm= -p "$ppid" 2>/dev/null)" = "daemon" ] && kill "$ppid" 2>/dev/null
+    done
+    sleep 1
+    [ -f "$child_pidfile" ] && kill "$(cat "$child_pidfile")" 2>/dev/null
+    for pid in $(fwd_pids); do kill "$pid" 2>/dev/null; done
+    rm -f "$pidfile" "$child_pidfile"
+    echo "${name} stopped."
 }
 
 suricata_forwarder_status() {
-    if [ -f "$child_pidfile" ] && kill -0 "$(cat "$child_pidfile")" 2>/dev/null; then
-        echo "${name} is running (pid=$(cat "$child_pidfile"))"
+    pid=$(fwd_pids | head -1)
+    if [ -n "$pid" ]; then
+        echo "${name} is running (pid=${pid})"
     else
         echo "${name} is not running."
         return 1
@@ -447,7 +488,7 @@ info "Starting forwarder via rc.d service..."
 ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "pkill -f forward-suricata-eve 2>/dev/null; sleep 1; rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid; ${RCD_SCRIPT} start"
 sleep 3
 
-FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.child.pid 2>/dev/null || pgrep -f 'forward-suricata-eve' | head -1" || echo "")
+FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.child.pid 2>/dev/null || pgrep -u root -f '^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py' | head -1" || echo "")
 if [[ -n "$FORWARDER_PID" ]]; then
     info "Forwarder running (PID: ${FORWARDER_PID}, ${EVE_COUNT} interfaces)"
 else
@@ -456,6 +497,7 @@ else
     ERRORS=$((ERRORS+1))
 fi
 
+if [[ "$FORWARDER_ONLY" == false ]]; then
 # =============================================================================
 # STEP 5: Configure Grafana Datasources & Import Dashboards
 # =============================================================================
@@ -672,6 +714,21 @@ if [[ "$PFBLOCK_COUNT" -gt 0 ]]; then
 else
     warn "No pfBlockerNG events yet (requires Telegraf with opensearch output on pfSense)"
     echo "    See docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md"
+fi
+else
+    header "Verify Delivery (from pfSense)"
+    info "Waiting 20 seconds for events to flow..."
+    sleep 20
+    TODAY=$(date -u +%Y.%m.%d)
+    EVENT_COUNT=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" \
+        "curl -s -m 8 http://${SIEM_HOST}:${OPENSEARCH_PORT}/${INDEX_PREFIX}-${TODAY}/_count" 2>/dev/null \
+        | sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p')
+    if [[ "${EVENT_COUNT:-0}" -gt 0 ]]; then
+        info "Suricata data flowing: ${EVENT_COUNT} events in ${INDEX_PREFIX}-${TODAY}"
+    else
+        warn "No events in ${INDEX_PREFIX}-${TODAY} yet (UDP ${LOGSTASH_UDP_PORT} to ${SIEM_HOST}; check Logstash is listening)"
+        ERRORS=$((ERRORS+1))
+    fi
 fi
 
 # =============================================================================

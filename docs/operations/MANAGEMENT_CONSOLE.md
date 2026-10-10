@@ -89,7 +89,7 @@ Details: [INSTALL_SIEM_STACK.md](../install/INSTALL_SIEM_STACK.md).
 Runs `./setup.sh`. Against pfSense it detects the Python interpreter, deploys
 `/usr/local/bin/forward-suricata-eve.py` with your `config.env` values baked in, installs
 the rc.d service `/usr/local/etc/rc.d/suricata_forwarder.sh` (boot start), installs the
-watchdog `/usr/local/bin/suricata-forwarder-watchdog.sh` in root's crontab (every minute),
+watchdog `/usr/local/bin/suricata-forwarder-watchdog.sh` scheduled through the pfSense Cron package (every minute),
 starts the service and confirms a PID. It also applies the OpenSearch template and
 deploys the Logstash pipeline, so it is safe and normal to re-run it after a pfSense
 upgrade or a config change.
@@ -143,7 +143,7 @@ in order:
   with document counts; total events; newest `@timestamp` and its age.
 - **pfBlockerNG:** `pfblockerng-*` document counts (IP block and DNSBL), newest event age.
 - **pfSense (over SSH):** forwarder process running with PID (flags duplicates); `eve.json`
-  files it has open; watchdog line in root's crontab; number of Suricata `eve.json` files
+  files it has open; watchdog line in `/etc/crontab` (Cron package); number of Suricata `eve.json` files
   and whether they were written in the last 5 minutes; **filterlog health** (filter.log
   age and whether `filterlog` has the file open, see
   [PFSENSE_FILTERLOG_ROTATION_FIX.md](../troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md)).
