@@ -6,6 +6,14 @@
 
 > **Scope**: This is generic pfSense material. Nothing in it depends on the SIEM stack in this repository; it applies to any pfSense box. Interface names (`igc0`), VLAN numbers and addresses are examples from one deployment — substitute your own.
 
+> **Corrections (measured October 2026 on a 1 Gbit/s down, 500 Mbit/s up cable line).** Earlier versions of
+> this guide were wrong or incomplete on three points, all fixed below: the **mask direction** for per-host
+> limiters (it was inverted, which keys the buckets on the remote server instead of the LAN host), the
+> **child queue size** (the 50-slot default is far too small above roughly 100 Mbit/s and quietly costs
+> throughput), and giving one PC most of the upload, which starves everything else. The measurements, the
+> class design that worked and the gotchas are in
+> [Optimizing pfSense traffic shaping on a gigabit cable line](SHAPING_OPTIMIZATION_NOTES.md).
+
 ---
 
 ## Table of Contents
@@ -138,8 +146,10 @@ Pipe 6 (Security_Up): 20 Mbps
 Limiters support **masks** that create separate bandwidth buckets per host:
 
 ```xml
-<!-- Per-host: each device on VLAN gets its own 3 Mbps limit -->
-<mask>dstaddress</mask>
+<!-- Per-host UPLOAD limiter: each LAN device gets its own 3 Mbps bucket.
+     Upload packets have the LAN host as SOURCE, so key on the source address.
+     A DOWNLOAD limiter keys on dstaddress (the LAN host is the packet's destination). -->
+<mask>srcaddress</mask>
 <maskbits>32</maskbits>
 
 <!-- Per-subnet: entire VLAN shares one 3 Mbps limit -->
@@ -164,7 +174,7 @@ In the GUI, edit a firewall rule → Advanced Options → In/Out pipe:
 ```
 Pipe: Crypto_Node_Up
   Bandwidth: 3 Mbps
-  Mask: dstaddress/32 (per-host on destination = per-source-host for upload)
+  Mask: srcaddress/32 (the LAN host is the source of upload packets, so this is per host)
   AQM: droptail
   Scheduler: FIFO
 
@@ -422,7 +432,7 @@ For each VLAN's "pass all" rule:
 
 ### Per-Host vs Shared
 
-- **Per-host mask** (`dstaddress/32` for upload, `srcaddress/32` for download): Each device gets its own bandwidth bucket. 10 IoT devices each get 2 Mbps upload independently.
+- **Per-host mask** (`srcaddress/32` for upload, `dstaddress/32` for download, on a rule on the LAN-side interface): Each device gets its own bandwidth bucket. 10 IoT devices each get 2 Mbps upload independently.
 - **No mask** (`none`): All devices on the VLAN share the limit. 10 IoT devices share 2 Mbps upload total.
 
 Choose per-host for guest/IoT (fairness), shared for VLANs where total aggregate matters (crypto nodes, NAS).
@@ -649,12 +659,22 @@ ALTQ queue assignments (`queue qOthersHigh`) and limiter queue assignments (`dnq
 
 ### 4. Wrong Mask Direction
 
-For **upload** limiters (traffic leaving the LAN toward the firewall):
-- In-pipe mask should be `dstaddress` (destination = the internet, one bucket per internet destination) or `none` (shared)
-- Most commonly use `dstaddress/32` to create per-host buckets **from pfSense's perspective**
+On a rule on a **LAN-side interface**, the in-pipe carries upload (LAN host to internet) and the out-pipe carries
+the replies (download):
 
-For **download** limiters:
-- Out-pipe mask should be `srcaddress` (source = the internet, one bucket per source)
+- **Upload pipe mask = `srcaddress`**: the LAN host is the packet's source, so you get one bucket per LAN device.
+- **Download pipe mask = `dstaddress`**: replies are addressed to the LAN host, so again one bucket per device.
+- The inverse (`dstaddress` on upload, `srcaddress` on download), which earlier versions of this guide recommended,
+  keys the buckets on the *remote server*: a device talking to fifty servers gets fifty separate caps, so the
+  "per-host" limit does not limit the host at all.
+
+Verified live for the download side: with `dstaddress` on the download pipes, `dnctl sched <number> show` lists
+active buckets whose destination column holds your LAN hosts' addresses. Check the same way for the upload side
+during a transfer (`dnctl sched <number> show`, bucket rows under the `BKT` header).
+
+**A limiter on a LAN rule only sees connections started from that LAN.** Traffic from an inbound port forward
+belongs to a state created by the WAN-side rule, so to cap it, set the limiter on that forward's associated WAN
+rule (in = download pipe, out = upload pipe).
 
 **When in doubt**: Use `none` for shared limits, test, then add masks if you need per-host fairness.
 

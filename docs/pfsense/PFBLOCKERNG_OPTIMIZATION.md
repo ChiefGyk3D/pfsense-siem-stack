@@ -142,7 +142,45 @@ ssh admin@<PFSENSE_IP> "grep -c '\"event_type\":\"alert\"' /var/log/suricata/sur
 
 A 20-40% drop in raw WAN alerts is typical once the C2 and scanner feeds are active, mostly from `ET SCAN` and `ET DROP` signatures that no longer fire.
 
-### 3. Dashboard Panels
+### 3. Do both layers block the same thing?
+
+Suricata inline sees a packet **before** `pf`, so an IP that is on a pfBlockerNG list is still inspected, and often
+dropped, by Suricata first. If you run the IP-reputation rule categories (for example ET CINS and compromised-host
+rules) in Suricata *and* similar IP feeds in pfBlockerNG, measure how much they overlap before keeping both:
+
+```bash
+# source IPs the WAN instance blocked, tested against the pfBlockerNG tables
+grep '"event_type":"alert"' /var/log/suricata/suricata_<iface><id>/eve.json \
+  | sed -E 's/.*"src_ip":"([0-9.]+)".*/\1/' | sort -u > /tmp/blocked.txt
+for ip in $(cat /tmp/blocked.txt); do
+  for t in $(pfctl -sT | grep '^pfB_' | grep -v _v6); do
+    pfctl -t $t -T test $ip >/dev/null 2>&1 && { echo $ip; break; }
+  done
+done | wc -l        # how many of the blocked IPs are already in a pfBlockerNG table
+```
+
+On the reference firewall 102 of 105 unique blocked IPs (97 percent) were already on a pfBlockerNG list. That makes the
+Suricata IP-reputation rules mostly redundant noise on the WAN instance. They are a small share of the rule count, so
+the saving is memory and alert volume more than CPU; decide with your own numbers.
+
+### 4. Is DNSBL actually enforcing?
+
+DNSBL failing leaves the IP lists working, so **nothing looks broken**. Check it explicitly, and after every pfBlockerNG
+install, reinstall or upgrade:
+
+```bash
+# 1. a domain that is on your lists should NOT resolve normally
+#    (Python mode answers 0.0.0.0; Unbound mode answers the DNSBL virtual IP)
+drill <a-known-ad-domain> @127.0.0.1
+
+# 2. the log should not say the VIP is missing
+grep -c 'DNSBL disabled' /var/log/pfblockerng/pfblockerng.log
+
+# 3. DNSBL data should be fresh (age in hours of the newest file)
+ls -lt /var/db/pfblockerng/dnsbl | head -3
+```
+
+### 5. Dashboard Panels
 
 *(SIEM stack only)*
 
@@ -169,6 +207,31 @@ The [whitelisting guide](PFBLOCKERNG_FEED_REFERENCE.md#whitelisting-guide) lists
 2. Feeds downloaded: **Update → View Update Status**
 3. Rules present: `pfctl -sr | grep pfB_ | head`
 4. For DNSBL: the DNS Resolver (Unbound) is enabled and clients actually use the firewall for DNS (devices with hard-coded 8.8.8.8 or DoH bypass DNSBL entirely)
+
+### DNSBL silently stopped after a package reinstall or upgrade
+
+**Symptoms**: the IP lists still update and block, but a domain on your DNSBL feeds resolves normally,
+`pfblockerng.log` repeats `DNSBL disabled: no VIP configured`, and the DNSBL feed files stop updating.
+
+**Cause** (seen on pfBlockerNG-devel 3.2.14_1): the package upgrade rewrote the DNSBL settings. In the new schema the
+DNSBL virtual IP is stored as a VIP **ID** (`_vip<uniqid>`) under `pfb_dnsvip4`, the VIP must sit on the same interface as
+`dnsbl_interface`, and the Unbound python hook is managed by the package. The migration dropped the VIP selection and the
+VIP itself, so the package disabled DNSBL and removed its Unbound integration, without any error in the GUI.
+
+**Fix**: create the virtual IP again (type *IP Alias*, a single `/32` from a private range you do not use elsewhere, on
+the DNSBL interface), select it on **Firewall → pfBlockerNG → DNSBL**, save, then force a DNSBL reload. From the shell:
+
+```bash
+php /usr/local/www/pfblockerng/pfblockerng.php updatednsbl
+```
+
+With about 85 feeds this takes roughly ten minutes. Then run the three checks in
+[Is DNSBL actually enforcing?](#4-is-dnsbl-actually-enforcing). Setting only the old key names (`pfb_dnsvip`) from a
+backup does **not** work on the new schema.
+
+**Detect it early**: config backups record the change (`pfBlockerNG: saving DNSBL changes` right after a
+`Creating restore point before package installation` entry), and the DNSBL feed files go stale. A weekly check of the
+three commands above catches it in days instead of months.
 
 ### Updates are slow or CPU-heavy
 

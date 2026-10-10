@@ -72,6 +72,43 @@ Every interface is a separate Suricata process with its own copy of the rule set
 - **igc3 (WAN2)** — backup WAN, inline IPS
 - **igc1.20 (IoT VLAN)** — untrusted devices, IDS
 
+### Do not inspect the same packets twice
+
+On a VLAN trunk, a legacy-mode (libpcap) instance on the **parent** interface sees every tagged frame as well, so
+traffic on a VLAN that has its own instance is inspected twice, and three times once the WAN inline IPS is counted. On
+the reference firewall a forwarded 237 to 251 Mbit/s download cost, as a percentage of one core:
+
+| Instance | CPU for that download |
+|---|---|
+| Trunk parent (legacy, unfiltered) | +64% |
+| WAN inline IPS | +49% |
+| The VLAN's own instance | +23% |
+
+The parent is the most expensive instance because it carries the whole trunk. Give it a capture filter so it only sees
+what no other instance covers: untagged traffic plus the VLANs that have **no** instance of their own. In
+**Services → Suricata → Interfaces → [parent] → Advanced Configuration Pass-Through** (a later `pcap:` block overrides
+the generated one):
+
+```yaml
+pcap:
+  - interface: lagg0
+    checksum-checks: auto
+    promisc: no
+    bpf-filter: "not vlan or vlan 30 or vlan 40"     # 30 and 40 = VLANs with no instance of their own
+```
+
+Check it before you rely on it:
+
+```bash
+tcpdump -i lagg0 -d "not vlan or vlan 30 or vlan 40" | head -3      # the expression compiles
+suricata --dump-config -c /usr/local/etc/suricata/suricata_<uuid>_lagg0/suricata.yaml | grep bpf-filter
+```
+
+Restarting that one instance (stop, regenerate the YAML, start) leaves every other instance alone. After the change the
+parent used +3% of a core for the same download, and the total across all instances fell by about 45 percent with no
+inspection removed. Measure it yourself with per-process CPU time (`ps -axo pid,time,command`) before and after a
+timed transfer; compare CPU seconds per second, not `top` snapshots.
+
 ### Interface Settings
 
 For each interface, configure:
@@ -245,6 +282,10 @@ Roughly, per interface with the Phase 1 ET set: 15-30% of one core at idle-to-mo
 - **Reassembly Memcap:** pfSense GUI default **128 MB** (134217728 bytes)
 
 Leave the defaults unless you see memcap trouble. The symptoms are `stream.memcap` / `tcp.reassembly_memcap` counters climbing in `stats.log` or the Interface Stats page, or an instance dying at startup with an out-of-memory message on a busy link. In that case raise the stream memcap in steps, up to **1 GB (`1073741824`)** per interface. The [reference deployment](#reference-deployment) runs 1 GB on every interface after memcap-related crashes on its 15-instance, 8-core box; with that many instances plan RAM accordingly (16 GB there). The value is a cap, not a reservation, but a busy interface will grow into it.
+
+**Count your instances.** Every instance loads its own copy of the rule set: the reference firewall ran 16 instances at
+roughly 0.8 to 1 GB each, about 16 GB in total, and the 14 VLAN instances logged essentially no alerts. Keep the
+instances whose per-VLAN attribution you actually use, and ask whether the rest earn their memory.
 
 ### Network
 

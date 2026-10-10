@@ -62,6 +62,7 @@ you have none.
 - [Upgrading pfSense](../docs/pfsense/PFSENSE_UPGRADE_GUIDE.md) ⭐ — general checklist, the 2.9.0 specifics, what survives and what does not.
 - [Filterlog Stops After Rotation](../docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md) — firewall and pfBlockerNG logging silently stopping, and the Cron job that fixes it.
 - [Traffic Shaping Guide](../docs/pfsense/TRAFFIC_SHAPING_GUIDE.md) — limiters, CoDel and weighted queues for streaming, gaming and VoIP.
+- [Shaping Optimization Notes](../docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md) — measured lessons from a 1 Gbit/s cable line: what actually moved throughput and latency.
 - [Hardware Requirements](../docs/install/HARDWARE_REQUIREMENTS.md) — sizing pfSense for IDS/IPS, and why SD cards will ruin your day.
 - [CrowdSec (exploratory)](../docs/pfsense/crowdsec-phase1.md) — design notes, not part of the stack yet.
 

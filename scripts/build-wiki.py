@@ -74,6 +74,7 @@ PAGES = {
     "docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md": "MAC-Vendor-Lookup",
     "docs/pfsense/PFSENSE_UPGRADE_GUIDE.md": "Upgrading-pfSense",
     "docs/pfsense/TRAFFIC_SHAPING_GUIDE.md": "Traffic-Shaping-Guide",
+    "docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md": "Shaping-Optimization-Notes",
     "docs/pfsense/crowdsec-phase1.md": "CrowdSec-Exploratory-Notes",
     "config/sid/README.md": "Suricata-SID-Management",
     # Deploy
