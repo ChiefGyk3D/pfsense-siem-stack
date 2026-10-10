@@ -75,6 +75,7 @@ PAGES = {
     "docs/pfsense/PFSENSE_UPGRADE_GUIDE.md": "Upgrading-pfSense",
     "docs/pfsense/TRAFFIC_SHAPING_GUIDE.md": "Traffic-Shaping-Guide",
     "docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md": "Shaping-Optimization-Notes",
+    "docs/pfsense/TUNING_RESULTS_2026-10.md": "October-2026-Tuning-Results",
     "docs/pfsense/crowdsec-phase1.md": "CrowdSec-Exploratory-Notes",
     "config/sid/README.md": "Suricata-SID-Management",
     # Deploy

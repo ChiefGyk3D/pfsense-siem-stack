@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **New: `scripts/check-siem-freshness.sh`** — exits non-zero when the newest Suricata event in OpenSearch is older than a threshold (default 15 min; `--via-pfsense` queries from the firewall when the workstation cannot reach OpenSearch). A dead forwarder, Logstash or OpenSearch went unnoticed for 2.5 months; this makes it a cron-able alarm. Exit codes: 0 fresh, 1 stale, 2 cannot query.
 
+### Measured tuning results (2026-10)
+
+- **New: [October 2026 Tuning Results](docs/pfsense/TUNING_RESULTS_2026-10.md)** — one table of before/after measurements from a real 1 Gbit/s cable migration (shaping, latency under load, Suricata CPU, rule volume, DNSBL, forwarder, feed health), plus what was applied but not isolated and what was not measured.
+- **New in [Suricata Optimization Guide](docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md)**: measured inline-IPS capacity (UDP sweep to 950 Mbit/s), what cut CPU (parent BPF filter, `balanced` policy, removing duplicated IP-reputation rules), the TLS/stream bypass experiment (about a third less CPU for many short HTTPS connections, none for bulk downloads, reverted), the pfSense package's `encrypt-handling` versus Suricata's `encryption-handling` key mismatch, and scripting gotchas (`$rebuild_rules`, pass-throughs replace whole sections, stats need two flags).
+- **New in [pfBlockerNG Optimization](docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md)**: "Are the feeds themselves alive?" — placeholder-only tables, feeds that parse to 1 to 3 entries, repeated download failures, read-only commands to audit your own box, how to force a re-download after a URL change, and the measured Suricata/pfBlockerNG overlap.
+- **Updated in [pfBlockerNG Feed Reference](docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md)**: abuse.ch SSLBL marked retired (last update 2025-01-02), ISC Shadowserver/Shodan URLs corrected to the `?text` form.
+- **New in [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)**: a tuned-box checklist of what to capture before and compare after 2.9.0 (limiters, flow control, DNSBL VIP, feeds, Suricata instances and drops, forwarder, watchdog, Kea, gateways).
+
 
 ### pfSense shaping notes (2026-10)
 

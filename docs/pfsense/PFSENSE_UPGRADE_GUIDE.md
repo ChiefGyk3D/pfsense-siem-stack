@@ -235,3 +235,25 @@ from the console (`pfSense-upgrade -d`) so you can watch it, and afterwards chec
 **If you use limiters and ALTQ** — before and after, capture `dnctl pipe show`, `dnctl queue show` and the count of
 `pfctl -sr` lines, then repeat a loaded-latency test. See
 [Optimizing pfSense traffic shaping on a gigabit cable line](SHAPING_OPTIMIZATION_NOTES.md) for the method.
+
+### Tuned-box checklist: capture before, compare after
+
+If you have applied the tuning in [October 2026 Tuning Results](TUNING_RESULTS_2026-10.md), record these before the upgrade
+and compare afterwards. Each item was a real way for a tuned box to silently lose a change.
+
+| Item | Capture / check | Expected after |
+|---|---|---|
+| Boot environment | `bectl create pre-2.9.0` (CE has no GUI page for it) | exists; remember `bectl activate` is the rollback |
+| pf ruleset size | `pfctl -sr \| wc -l` | within a few lines of before (pfBlockerNG rules regenerate) |
+| Limiters | `dnctl pipe show`, `dnctl queue show`; repeat a loaded-latency test | same pipes, queue sizes and weights; loaded latency within noise of before |
+| Flow control | `sysctl dev.igc.0.fc dev.igc.1.fc dev.igb.0.fc dev.igb.1.fc` | all `0`; if not, the tunables did not survive, re-apply them |
+| DNSBL | resolve a listed domain, `grep -i 'vip' /var/log/pfblockerng/pfblockerng.log`, `pfSsh.php` check of the VIP | listed domain answers `0.0.0.0` (Python mode); log does not say the VIP is missing. A package reinstall once dropped the VIP silently. |
+| pfBlockerNG feeds | the feed-health loop in [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) | no new placeholder-only tables |
+| Suricata instances | `ps -axo command \| grep -c '[s]uricata'` per instance; `suricata --dump-config` diff against the pre-upgrade dump | same instances running; only intended keys differ; any pass-through (BPF filter) still present |
+| Suricata drops | per-instance `kernel_drops` in `stats.log` after a loaded test | still 0 |
+| Forwarder | `service suricata_forwarder.sh status`, then `./scripts/check-siem-freshness.sh --via-pfsense` | running; newest event minutes old. If not: `./setup.sh --forwarder-only` |
+| Watchdog | `grep suricata-forwarder-watchdog /etc/crontab` | present (it lives in `config.xml`) |
+| DHCP | `kea-dhcp4 -t /usr/local/etc/kea/kea-dhcp4.conf`; a known client renews | config valid; Kea 3.0.2 deprecates `client-class`, so check any deny-unknown class setup |
+| Gateways | `pfSsh.php playback gatewaystatus` | all gateways online (the release notes mention limiter-with-gateway-group changes) |
+
+Keep the pre-upgrade captures in a private location, since they contain your addressing.

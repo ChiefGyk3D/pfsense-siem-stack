@@ -300,6 +300,65 @@ If `suricata.log` shows "QUIC crypto fragments too long" warnings:
 2. Set **QUIC crypto max length** to `65536`
 3. Save and restart
 
+### Inline IPS cost: what it takes, what cuts it, what does not
+
+Measured on a 4-core Xeon D (no turbo) with Suricata 7.0.11, inline netmap IPS on a 2.5G WAN port, about 59,000 rules
+loaded, October 2026. These are single-box numbers from a few runs each; use them as orders of magnitude, not guarantees.
+
+**Capacity.** A UDP download through the inline WAN instance (1400-byte packets):
+
+| Offered load | Box CPU | IPS cost (cores) |
+|---|---|---|
+| 200 Mbit/s | 11% | 0.28 |
+| 400 Mbit/s | 11% | 0.42 |
+| 600 Mbit/s | 14% | 0.52 |
+| 950 Mbit/s | 17% | 0.73 |
+
+TCP measured about 1.6 to 2 IPS cores per Gbit/s earlier, and the busiest worker thread reached 86% of a core at about
+1 Gbit/s. Treat inline IPS as the first limit above roughly 1 Gbit/s; 2 Gbit/s is borderline and 2.5 Gbit/s down is not
+sustainable with today's rule volume on that CPU. Without inline IPS the same box is comfortable at 2.5 Gbit/s.
+
+**What cut the cost:**
+
+| Change | Measured effect |
+|---|---|
+| BPF filter on the parent (untagged) instance so it stops re-inspecting every VLAN's traffic (see [above](#do-not-inspect-the-same-packets-twice)) | parent instance +64% of a core to +3% for the same 237 Mbit/s download; all instances together +136% to about +73% |
+| Snort IPS policy `security` to `balanced` on the inline instances | loaded rules 70,600 to 59,233 (-16%); about 2,200 obsolete Flash/IE-era rules remain under `balanced` |
+| Remove the ET IP-reputation files (CINS, ciarmy, botcc, compromised) from the inline instances | In one hour the WAN IPS dropped 116 packets from remote hosts; 113 of them were CINS IP-reputation hits for addresses pfBlockerNG already blocks (97% of blocked IPs were already in pfBlockerNG tables). Removing them costs no coverage. |
+
+**What did not help (measured, then reverted).** Bypassing flows once TLS is encrypted
+(`stream.bypass: yes` with `app-layer.protocols.tls.encryption-handling: bypass`) bypassed 91% of packets and cut CPU by
+about a third for **many short HTTPS connections** (4.6 ms versus 6.7 to 7.5 ms of CPU per connection), but made **no
+difference for bulk downloads** (about 7 ms per MB either way): in netmap IPS mode the packet still has to be copied
+through the worker, so the packet path, not detection, dominates. At 1 Gbit/s that did not justify the cost below, so it
+was reverted.
+
+**Package bug to know about:** the pfSense Suricata package writes `app-layer.protocols.tls.encrypt-handling`, but
+Suricata 7.0.11 reads `encryption-handling`. The GUI's *TLS encryption handling: Bypass* therefore silently does nothing
+for TLS (it still turns on `stream.bypass`). The only workaround is a pass-through that supplies the whole `app-layer:`
+section (next section), which freezes that section: later changes in the App Parsers GUI stop applying to that
+instance. Check whether a newer package fixes the key before using it.
+
+**A restarted instance is expensive for a while.** After a restart an instance used about 25 CPU-seconds over roughly two
+minutes loading rules. Wait for it to settle before measuring anything, and expect a few seconds of packet loss on the
+link while an inline instance restarts (about 7.5% of pings across four back-to-back restarts).
+
+### Config gotchas worth knowing before you script anything
+
+- **A pass-through replaces the whole section.** A `stream:` or `app-layer:` block in the pass-through box does not merge
+  with the generated one, even through `include:`; Suricata logs `Configuration node 'app-layer' redefined` and the
+  last definition wins. Supply the complete section, then prove the result with
+  `suricata --dump-config -c <suricata.yaml> | sort` before and after and diff the two: only the keys you meant to
+  change should differ. (`HOME_NET` may also differ if the package regenerated it from current interfaces; that is not
+  your change.)
+- **Scripted rule or policy edits do nothing unless `global $rebuild_rules = true;` is set** before calling
+  `suricata_prepare_rule_files()`; without it the function returns immediately and the rule files stay as they were.
+- **Capture-drop statistics need both** `enable_stats_collection` and `enable_stats_log`. With only one the control
+  socket answers "stats are disabled in the config". With both on, a short sample after the changes above showed 0
+  kernel drops on the WAN, cell and LAN instances.
+- **Measure CPU per instance, not per box.** Sample `ps -axo pid,time,command` twice and divide the difference in CPU
+  seconds by the wall seconds; box-level percentages hide a single hot instance.
+
 ---
 
 ## Log Management
@@ -473,6 +532,8 @@ Expect every instance to sit at 100% CPU for 3-5 minutes during a rule reload. I
 **High CPU:** fewer categories, fewer interfaces, check for drops (a box that cannot keep up needs more hardware or less work).
 **False positives:** confirm the traffic is legitimate, then disable (global noise) or suppress (specific hosts); see [config/sid/README.md](../../config/sid/README.md).
 **Packet drops:** raise stream/reassembly memcaps if the memcap counters are climbing; otherwise reduce rules or interfaces.
+**Rule or policy change had no effect:** a scripted edit needs `global $rebuild_rules = true;` (see above).
+**Pass-through change replaced more than you expected:** it replaces whole sections; diff `suricata --dump-config` before and after.
 **Logs not forwarding (SIEM stack):** [SURICATA_FORWARDER_MONITORING.md](../operations/SURICATA_FORWARDER_MONITORING.md).
 
 ---

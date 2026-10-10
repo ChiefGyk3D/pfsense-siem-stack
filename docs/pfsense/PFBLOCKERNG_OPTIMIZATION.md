@@ -191,6 +191,102 @@ pfBlockerNG's `ip_block.log` and `dnsbl.log` are tailed by Telegraf on the firew
 
 ---
 
+### 6. Are the feeds themselves alive?
+
+A feed can fail for months while the list keeps "working": pfBlockerNG keeps the last good copy, or, when a download
+returns an error page or nothing, fills the table with the placeholder address `127.1.7.7`. Nothing alerts. In October
+2026 an audit of a running box found, among about 25 IP feeds:
+
+| Symptom | Example found | Cause |
+|---|---|---|
+| Table is just `127.1.7.7` | `Abuse_SSLBL` (last updated 2025-01-02) | abuse.ch retired the SSL IP blacklist; the URL answers with a stub |
+| Table has 1 to 3 entries from a feed that should have hundreds | `ISC_Shadowserver`, `ISC_Shodan` | The URL returned an HTML page (Shadowserver) or XML on a single line (Shodan), and the parser keeps what it can find per line. The `isc.sans.edu/api/threatlist/<name>?text` form returns one entry per line and parses. |
+| Header only, no IPs | `Darklist` (one run) | Upstream returned a header with an empty list; recheck later before removing |
+| Same feed fails every day | `Maltrail_Scanners_All` (15 failures in 3 days), `H3X_1M`, `osint_malicious`, `1Hosts_Pro` (5 each) | Intermittent or persistent download failure; the log line is `Download FAIL` |
+| DNSBL source cache is months old | `dnsblorig/*.orig` dated months ago for about 45 feeds while the log says "Update found" every night | The TOP1M whitelist (Services > pfBlockerNG > DNSBL > TOP1M) is a zip. pfBlockerNG validates downloads with `/usr/bin/file --mime-type`, which on this FreeBSD 15 base reports zip files as `application/octet-stream`; the download is rejected ("Failed or invalid Mime Type"), `pfbalexawhitelist.txt` is never built, and every run then sets "reuse the cache" for the whole DNSBL, so **nothing downloads**. Check: `ls /var/db/pfblockerng/pfbalexawhitelist.txt` and `grep 'Failed or invalid Mime Type' /var/log/pfblockerng/pfblockerng.log`. Fix: place the unzipped `top-1m.csv` in `/var/db/pfblockerng/` yourself (any zip of rank,domain lines, for example Cisco's or Tranco's), or turn the TOP1M whitelist off. |
+| A CDN-hosted list returns 403 | Hagezi Pro/TIF via `cdn.jsdelivr.net` ("Package size exceeded the configured limit") | Use the project's own mirrors (GitLab or Codeberg) instead |
+| Per-feed DNSBL file shows 0 lines | about 10 feeds | Usually normal: pfBlockerNG removes domains already listed by an earlier feed, so a feed that is a subset of another shows 0. Not proof of a dead feed. |
+
+Check your own box (read-only, on pfSense):
+
+```sh
+# 1. Placeholder or near-empty IP tables, and files that stopped changing
+now=$(date +%s)
+for f in /var/db/pfblockerng/deny/*_v4.txt; do
+  n=$(grep -cE '^[0-9]' "$f"); a=$(( (now - $(stat -f %m "$f")) / 86400 ))
+  [ "$n" -le 2 ] || [ "$a" -gt 3 ] && echo "$(basename "$f" .txt): $n entries, ${a}d old"
+done
+
+# 2. What the feed really returned (the raw download), not what the parser kept
+head -c 300 /var/db/pfblockerng/original/<ListName>_v4.orig
+
+# 3. Which feeds failed to download, and how often (the log only goes back a few days)
+grep 'Download FAIL' /var/log/pfblockerng/pfblockerng.log | sed -E 's/ \[ [0-9\/]+ [0-9:]+ \]//' | sort | uniq -c | sort -rn
+```
+
+A cheap monthly habit: run the first loop, open the `.orig` of anything it prints, and replace or drop the feed.
+
+**Making a URL change take effect.** Editing a feed's URL does not redownload it. Each list is fetched only when the cron
+job reaches its own schedule (a list set to `EveryDay` at hour 0 is fetched once a day at 00:01), and both
+`pfblockerng.php update` and `updateip` only *reload* from the cached download. A full forced update takes about 10 to
+12 minutes, restarts the DNSBL resolver for a moment, and still left the old HTML page in the cache. To test a URL
+change now, fetch the file yourself into `/var/db/pfblockerng/original/<ListName>_v4.orig` with the same User-Agent
+pfBlockerNG uses (`pfSense/pfBlockerNG cURL download agent-...`), then run `updateip`; otherwise wait for the schedule.
+Confirm afterwards that the raw entry count in the `.orig` and the final count make sense: pfBlockerNG removes
+addresses already present in other lists, so a feed that overlaps heavily shows few entries (the ISC Shadowserver list
+parsed 988 addresses but only 24 were new, and ISC Shodan 55 but only 2, after de-duplication against the mass-scanner lists).
+
+**Overlap with Suricata, measured.** Before moving Suricata rule files "into" pfBlockerNG, count the real overlap:
+the abuse.ch `feodotracker.rules` is 5 rules, `emerging-threatview_CS_c2.rules` has 752 Cobalt Strike C2 addresses of
+which only 1 is in any pfBlockerNG list (so it is unique coverage), and `sslblacklist_tls_cert.rules` is 10,879
+certificate-fingerprint rules that an IP list cannot replace. The only large, safe overlap was the ET IP-reputation set
+(97% of the WAN IPS's blocked sources were already in pfBlockerNG tables); see the
+[Suricata guide](SURICATA_OPTIMIZATION_GUIDE.md#inline-ips-cost-what-it-takes-what-cuts-it-what-does-not).
+
+### 7. Which blocks hurt real use? (false-positive review)
+
+Method used on a busy home network: take `dnsbl.log` (client address and domain per block) and `ip_block.log`, de-duplicate,
+and read them by VLAN and by feed. The client's third octet gives the VLAN. Eight days of history (the log was lost
+and rebuilt, so the dates are not contiguous) was about 2,400 distinct domain-and-client pairs.
+
+**IP lists were clean.** In 8 days there were about 40,400 blocks, every one inbound (scanners and botnets hitting the
+WAN), and none caused by a LAN device reaching a listed address. A few log rows say `out`, but they are inbound SYNs whose
+destination is the WAN address, logged around Suricata restarts; do not read them as your devices being blocked.
+
+**DNSBL false positives were concentrated in two feeds, for a structural reason.** Feeds that list individual phishing
+or malware *URLs* (PhishTank, OpenPhish) and "ad-fritzbox" style lists get reduced to hostnames by pfBlockerNG, so one bad
+page on a big site blocks the whole site:
+
+| Blocked domain | Feed | Effect |
+|---|---|---|
+| `apis.google.com`, `firebasestorage.googleapis.com` | PhishTank | breaks Google sign-in widgets and apps that store data in Firebase |
+| `www.bing.com`, `th.bing.com` | PhishTank | search and image thumbnails fail |
+| `gravatar.com`, `0.gravatar.com`, `framer.com`, `issuu.com`, `embeds.beehiiv.com`, `us5.campaign-archive.com` | PhishTank | avatars, embeds and newsletter archive pages fail |
+| `paypalobjects.com`, `disqus.com`, `onesignal.com`, `ucarecdn.com` | Kowabit | PayPal's static assets (checkout pages), comment widgets, push notifications and a CDN fail |
+
+A domain on its own in this table was blocked at least once; `apis.google.com` and `www.bing.com` were still returning
+`0.0.0.0` when checked. Pure tracker and telemetry blocks (Microsoft `events.data` endpoints, Firebase logging, ad
+networks) outnumber everything else and are harmless to function.
+
+**Your choices, in order of effect:**
+
+1. Drop or demote the URL-based phishing feeds from DNSBL (PhishTank first), and keep domain-based ones
+   (`phishing_army`, Hagezi TIF). This removes the largest source of whole-site blocks at the cost of some coverage.
+2. Allowlist the specific domains you rely on (**DNSBL > DNSBL Whitelist**), then run **Force Reload** on the DNSBL; the
+   resolver reads a generated copy that is rebuilt at the end of that reload (it took about 15 minutes with 3.5 million
+   domains). The saved whitelist takes **plain hostnames, one per line**. Entries written in the generated-file form
+   (`,host,,`) are silently ignored: 16 entries added that way did nothing until they were replaced with plain names.
+   Use exact hostnames, not `.domain` wildcards, when the parent also hosts trackers (whitelisting `www.bing.com`
+   and `th.bing.com` left `bat.bing.com` blocked). Verified: after the reload every allowlisted name resolved normally,
+   including ones that are alias chains (`www.bing.com` resolves through several CNAMEs, so a check that only looks
+   for an address on the queried name wrongly reports "no answer"). Do this after every "it only breaks at home" complaint; the list on the box had 2,449 entries after a few
+   months of that.
+3. Keep telemetry blocking away from a managed work machine if your employer's device-management tooling expects its
+   telemetry endpoints. The DNSBL cannot exempt a *network*, but its Python mode has a **Group Policy bypass list**
+   (DNSBL settings; off by default) that exempts individual *client IPs*, exact match, no CIDR. Give those machines
+   DHCP reservations first so the addresses do not change. Unbound's `access-control-view` is the alternative if you
+   need whole-network exemptions.
+
 ## Troubleshooting
 
 ### A legitimate site is blocked

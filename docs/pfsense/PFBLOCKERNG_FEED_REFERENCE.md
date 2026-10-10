@@ -55,8 +55,8 @@ It applies to any pfSense box running pfBlockerNG-devel 3.x (tested on pfSense 2
 
 | Feed Name | URL | Source | Purpose |
 |-----------|-----|--------|---------|
-| **Abuse.ch SSL Blacklist** | `https://sslbl.abuse.ch/blacklist/sslipblacklist.txt` | Abuse.ch | Malicious SSL certificates |
-| **Abuse.ch Feodo Tracker** | Pre-configured in pfBlockerNG | Abuse.ch | Banking trojans (Feodo/Emotet) |
+| ~~Abuse.ch SSL Blacklist~~ **retired** | `https://sslbl.abuse.ch/blacklist/sslipblacklist.txt` | Abuse.ch | Retired: last updated 2025-01-02; the list is only the `127.1.7.7` placeholder. Remove it. The Suricata `sslblacklist_tls_cert.rules` certificate rules are still maintained and are the working replacement. |
+| **Abuse.ch Feodo Tracker** | Pre-configured in pfBlockerNG | Abuse.ch | Banking trojans (Feodo/Emotet). The recommended list is small (a single address in October 2026); that is upstream, not a failure. |
 | **AlienVault Reputation** | Pre-configured in pfBlockerNG | AlienVault | IP reputation database |
 | **CINS Army** | Pre-configured in pfBlockerNG | CINS | Command & Control servers |
 | **Emerging Threats Block** | Pre-configured in pfBlockerNG | Proofpoint ET | Known malicious IPs |
@@ -117,8 +117,11 @@ It applies to any pfSense box running pfBlockerNG-devel 3.x (tested on pfSense 2
 | Feed Name | URL | Source | Purpose |
 |-----------|-----|--------|---------|
 | **Maltrail Scanners** | Pre-configured (Maltrail_Scanners_All) | Maltrail | Port scanners |
-| **ISC Shadowserver** | Pre-configured (ISC_Shadowserver) | SANS ISC | Shadowserver scanners |
-| **ISC Shodan** | Pre-configured (ISC_Shodan) | SANS ISC | Shodan scanners |
+| **ISC Shadowserver** | `https://isc.sans.edu/api/threatlist/shadowserver?text` | SANS ISC | Shadowserver scanners. Use the `?text` form: the bare URL returns an HTML page and the list ends up with 1 to 3 entries. |
+| **ISC Shodan** | `https://isc.sans.edu/api/threatlist/shodan?text` | SANS ISC | Shodan scanners. The `/shodan/` URL returns XML on one line, of which the parser keeps about 2 addresses. |
+
+> **Check that a feed is alive after you add it** (and monthly): see
+> [Are the feeds themselves alive?](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive).
 
 ---
 
