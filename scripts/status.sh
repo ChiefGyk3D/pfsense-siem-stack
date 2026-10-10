@@ -237,11 +237,11 @@ if [ -n "$PFSENSE_HOST" ]; then
         
         # Check watchdog cron
         echo -n "Checking watchdog cron... "
-        WATCHDOG_CRON=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "crontab -l 2>/dev/null | grep -c watchdog" || echo "0")
+        WATCHDOG_CRON=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "grep -c suricata-forwarder-watchdog /etc/crontab 2>/dev/null" || echo "0")
         if [ "$WATCHDOG_CRON" -gt 0 ]; then
             print_status 0 "Watchdog cron is installed"
         else
-            print_status 1 "Watchdog cron is NOT installed"
+            print_status 1 "Watchdog cron is NOT installed (re-run: ./setup.sh --forwarder-only)"
         fi
         
         # Check Suricata logs

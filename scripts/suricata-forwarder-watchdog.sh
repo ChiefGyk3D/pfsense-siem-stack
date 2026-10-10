@@ -16,12 +16,13 @@
 RCD="/usr/local/etc/rc.d/suricata_forwarder.sh"
 TAG="suricata-watchdog"
 
-if ! pgrep -f "forward-suricata-eve.py" > /dev/null 2>&1; then
+PAT='^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
+if ! pgrep -f "$PAT" > /dev/null 2>&1; then
     logger -t "$TAG" "Forwarder not running — starting via rc.d"
-    rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid
+    "$RCD" stop > /dev/null 2>&1
     "$RCD" start > /dev/null 2>&1
     sleep 2
-    PID=$(pgrep -f "forward-suricata-eve.py" | head -1)
+    PID=$(pgrep -f "$PAT" | head -1)
     if [ -n "$PID" ]; then
         logger -t "$TAG" "Started (PID: $PID)"
     else

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Forwarder hardening (2026-10)
+
+- **Fixed: the forwarder could stay dead for months.** After a pfSense upgrade the Python path baked into the rc.d unit can vanish, and the watchdog lived in root's crontab, which does not survive. The rc.d unit now falls back to the newest installed `python3.N` and warns if `maxminddb` is not importable.
+- **Changed: watchdog is scheduled through the pfSense Cron package** (`scripts/pfsense-add-watchdog-cron.php`, entry kept in `config.xml`), not root's crontab. `status.sh` checks `/etc/crontab` accordingly.
+- **Fixed: orphaned supervisors.** `stop` and `status` now find the forwarder by process, not only by pidfile, so a lost pidfile can no longer leave a `daemon` supervisor respawning an unmanaged forwarder that `status` reports as stopped.
+- **New: `./setup.sh --forwarder-only`** redeploys just the forwarder, rc.d unit and watchdog, and verifies delivery from the pfSense side. It needs no access to OpenSearch, Logstash or Grafana from the workstation. Use it after a pfSense upgrade.
+
 ### pfSense shaping notes (2026-10)
 
 - **New: [Shaping Optimization Notes](docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md)** — measured lessons from moving to a 1 Gbit/s down, 500 Mbit/s up cable line: the upload limiter capping download, 50-slot child queues, the CoDel slot-limit trap, inverted per-host masks, failover-link shaping, dead ALTQ/wizard rules, resolver tuning, and the real-time/RTMP/default/bulk class design.
