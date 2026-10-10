@@ -209,6 +209,11 @@ epiphan.com
 .epiphan.com
 elgato.com
 .elgato.com
+opus.pro
+.opus.pro
+clip.opus.pro
+featureassets.org
+.featureassets.org
 
 ## Chat Aggregation / Multi-stream
 socialstream.ninja
@@ -752,6 +757,8 @@ hub.docker.com
 registry.docker.io
 ghcr.io
 .ghcr.io
+archive.org
+.archive.org
 
 ## Monitoring / Observability
 # APM, error tracking, alerting, and log aggregation platforms
@@ -770,6 +777,18 @@ splunk.com
 .splunk.com
 sumologic.com
 .sumologic.com
+# Datadog Browser SDK (RUM) intake endpoints
+# REQUIRED for third-party sites that embed Datadog Real User Monitoring (RUM).
+# When blocked, Datadog's SDK throws a CORS exception on startup which crashes
+# JavaScript upload widgets (seen as "NaN undefined" file size and a stuck progress
+# bar). datadoghq.com (console/API) is NOT whitelisted: it is not needed for
+# browser-side functionality on third-party sites.
+browser-intake-datadoghq.com
+www.datadoghq-browser-agent.com
+# Amplitude remote config endpoint (surgical exception, NOT all of amplitude.com).
+# When blocked, Amplitude fails to initialize and can crash embedded chatbot scripts.
+# cdn.amplitude.com and api.amplitude.com remain blocked (tracking/analytics).
+sr-client-cfg.amplitude.com
 
 ## CI/CD / DevOps Platforms
 circleci.com
@@ -921,6 +940,8 @@ pages.dev
 .pages.dev
 cdnjs.com
 .cdnjs.com
+cdn.optimizely.com
+logx.optimizely.com
 
 ## Privacy & Secure Communications
 signal.org
@@ -951,6 +972,8 @@ mullvad.net
 .mullvad.net
 ivpn.net
 .ivpn.net
+twingate.com
+.twingate.com
 
 # ============================================================================
 # CAUTION: Kape Technologies (formerly Crossrider) owned VPNs
@@ -1236,6 +1259,27 @@ www.onlyfans.com
 fansly.com
 www.fansly.com
 .fansly.com
+
+## False-positive exceptions from URL-based feeds (PhishTank, Kowabit) - added 2026-10-10
+# These feeds list single phishing/ad URLs; pfBlockerNG reduces them to hostnames, so one bad page
+# on a big site blocks the whole host. Exact hostnames only: wildcards would also unblock tracker
+# subdomains (for example bat.bing.com stays blocked).
+apis.google.com
+firebasestorage.googleapis.com
+www.bing.com
+th.bing.com
+gravatar.com
+www.gravatar.com
+0.gravatar.com
+framer.com
+issuu.com
+embeds.beehiiv.com
+us5.campaign-archive.com
+paypalobjects.com
+www.paypalobjects.com
+disqus.com
+ucarecdn.com
+onesignal.com
 
 # Banking - US National Banks
 .bankofamerica.com # Bank of America
@@ -1903,6 +1947,9 @@ bluepcu.com # Blue Federal Credit Union (WY)
 # .amazonaws.com
 # cloudfront.net  # AWS CDN - breaks many sites
 # .cloudfront.net
+# s3.amazonaws.com is whitelisted on the reference firewall; it is broad (any S3 bucket), review before copying
+s3.amazonaws.com
+.s3.amazonaws.com
 # s3.amazonaws.com
 # .s3.amazonaws.com
 # azureedge.net  # Azure CDN
