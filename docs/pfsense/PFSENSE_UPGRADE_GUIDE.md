@@ -134,9 +134,9 @@ edited. The repo's pfSense-side pieces:
 
 | Piece | Where | Installed by | In `config.xml`? | After upgrade |
 |-------|-------|--------------|------------------|---------------|
-| EVE forwarder | `/usr/local/bin/forward-suricata-eve.py` (shebang set to the Python detected at deploy time) | `setup.sh` | No | Usually present. Fails to start if the Python path changed (`python3.11` → newer). **Re-run `./setup.sh`**; it re-detects the interpreter and rewrites the shebang and rc.d script. |
+| EVE forwarder | `/usr/local/bin/forward-suricata-eve.py` (shebang set to the Python detected at deploy time) | `setup.sh` | No | Usually present. If the Python path changed (`python3.11` → newer) the rc.d script falls back to the newest `python3.N` and warns if `maxminddb` is not importable. **Run `./setup.sh --forwarder-only`** to bake the new interpreter in and verify delivery. |
 | rc.d service | `/usr/local/etc/rc.d/suricata_forwarder.sh` | `setup.sh` | No | Usually present. pfSense starts `*.sh` scripts in this directory at boot. Older deployments installed `suricata_forwarder` *without* `.sh` — that file was never started at boot (the watchdog covered it); `setup.sh` now removes it. |
-| Watchdog | `/usr/local/bin/suricata-forwarder-watchdog.sh` + a `* * * * *` line in **root's crontab** (`/var/cron/tabs/root`) | `setup.sh` | No | Root's crontab survives reboots and in-place upgrades unless `/var` is a RAM disk (System → Advanced → Miscellaneous → RAM Disk Settings). It is not in pfSense backups. Check with `crontab -l`. For a durable alternative add the same command in Services → **Cron** (Cron package), which is stored in `config.xml`. |
+| Watchdog | `/usr/local/bin/suricata-forwarder-watchdog.sh` + a Cron-package job (Services → Cron) | `setup.sh` | Cron job yes (`config.xml`); script no | Root's own crontab is **not** a safe place: it was empty on a live 2.8.1 box and the forwarder had been dead for over two months. `setup.sh` now schedules the job through the Cron package. Check with `grep suricata-forwarder-watchdog /etc/crontab`. |
 | GeoIP database | `/usr/local/share/ntopng/GeoLite2-City.mmdb` (or pfBlockerNG's `/usr/local/share/GeoIP/`) | ntopng / pfBlockerNG packages | Settings yes, DB file no | Re-downloaded by the owning package on its next update if your MaxMind key is configured. The forwarder logs `No GeoIP database found` and runs without enrichment until then. |
 | `maxminddb` Python module | `py3xx-maxminddb` in the current Python's `site-packages` | Dependency of the Suricata/pfBlockerNG packages | n/a | Reinstalled for the *new* Python by the package upgrade. A forwarder still pinned to the old interpreter will not see it → re-run `setup.sh`. |
 | Telegraf plugins | `/usr/local/bin/telegraf_*.php`, `telegraf_*.sh` | `install_plugins.sh` | No (unless you used the **Filer** package) | Usually present; re-run `./install_plugins.sh` if missing. PHP plugins run under the new PHP 8.5 — test with `telegraf --test`. |
@@ -161,7 +161,7 @@ Then on pfSense:
 ssh admin@<PFSENSE_IP> '
   service suricata_forwarder.sh status
   tail -5 /var/log/suricata-forwarder.log
-  crontab -l | grep watchdog
+  grep suricata-forwarder-watchdog /etc/crontab
   /usr/local/etc/rc.d/telegraf.sh status 2>/dev/null || pgrep -fl telegraf
 '
 ```
@@ -187,8 +187,6 @@ the old interpreter again.
 
 ## Known gaps this repo still has for upgrades (tracked in [ROADMAP.md](../../ROADMAP.md))
 
-- The watchdog cron is installed in root's crontab rather than via the Cron
-  package, so it is not in `config.xml` backups.
 - Several legacy scripts under `scripts/` (`setup_forwarder_monitoring.sh`,
   `suricata-restart-hook.sh`, `unified-monitoring-watchdog.sh`,
   `suricata-eve-forwarder.sh`) still hardcode `python3.11` and use

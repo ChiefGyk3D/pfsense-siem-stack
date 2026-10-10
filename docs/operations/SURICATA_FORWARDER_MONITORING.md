@@ -49,9 +49,12 @@ Two pfSense-specific details explain the design:
   restarts the child if it exits. This replaces the earlier unsupervised
   `nohup python3.11 ... &` start.
 
-setup.sh detects the pfSense Python interpreter (`/usr/local/bin/python3.11` or
-`/usr/local/bin/python3`) at deploy time and bakes it into the forwarder's shebang, so a
-pfSense release that ships a different Python only requires re-running `./setup.sh`.
+setup.sh detects the pfSense Python interpreter at deploy time and bakes it into the
+rc.d script. If a pfSense upgrade removes that interpreter (for example 3.11 replaced by
+3.12), the rc.d script falls back to the newest `python3.N` it finds, prints which one it
+used, and warns when `maxminddb` cannot be imported by it (GeoIP enrichment would then
+be off). It does not silently stay dead, which is what happens when the path is simply
+missing. Re-run `./setup.sh --forwarder-only` afterwards to bake the new path in.
 
 ---
 
@@ -59,15 +62,23 @@ pfSense release that ships a different Python only requires re-running `./setup.
 
 The rc.d service covers boot. The watchdog covers crashes.
 
-`/usr/local/bin/suricata-forwarder-watchdog.sh` runs from **root's crontab every minute**:
+`/usr/local/bin/suricata-forwarder-watchdog.sh` runs **every minute from the pfSense Cron
+package** (Services > Cron). That entry lives in `config.xml`, so it survives upgrades
+and configuration restores; pfSense writes it into `/etc/crontab` as:
 
 ```
-* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh
+*	*	*	*	*	root	/usr/local/bin/suricata-forwarder-watchdog.sh
 ```
 
-Each run checks for a `forward-suricata-eve.py` process; if none exists it runs
-`service suricata_forwarder.sh start` and logs the result to syslog under the
+Each run looks for a root-owned forwarder process (an anchored match on
+`python3.N /usr/local/bin/forward-suricata-eve.py`, so a shell whose command line merely
+mentions the file name never counts). If none exists it runs the rc.d `stop` (to clear
+any half-dead supervisor) and then `start`, and logs the result to syslog under the
 `suricata-watchdog` tag. Otherwise it exits, so the cost is one `pgrep` per minute.
+
+Why not root's own crontab: on a live pfSense 2.8.1 box root had no crontab at all, and
+the forwarder had been dead for more than two months without anyone noticing. Entries in
+`crontab -` are not part of `config.xml` and were not there after upgrades.
 
 The recovery chain, in order of what catches what:
 
@@ -80,20 +91,24 @@ pfSense upgrade       -> re-run ./setup.sh (see "What survives reboot and upgrad
 Check the watchdog is installed and see what it has done recently:
 
 ```bash
-ssh admin@<PFSENSE_IP> 'crontab -l | grep suricata-forwarder-watchdog'
+ssh admin@<PFSENSE_IP> 'grep suricata-forwarder-watchdog /etc/crontab'
 ssh admin@<PFSENSE_IP> 'grep suricata-watchdog /var/log/system.log | tail -20'
 ```
 
-Test it deliberately:
+Test it deliberately (measured: it restarted a stopped forwarder at the next cron minute,
+leaving exactly one supervisor and one forwarder process):
 
 ```bash
-ssh admin@<PFSENSE_IP> 'pkill -f forward-suricata-eve.py'
+ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh stop'
 sleep 70
 ssh admin@<PFSENSE_IP> 'service suricata_forwarder.sh status'
 # expected: suricata_forwarder is running (pid=NNNN)
 ```
 
-Use `pkill -f forward-suricata-eve.py` when you really need to kill the process by hand.
+`service suricata_forwarder.sh stop` is the clean way to stop it. It finds the forwarder
+by process as well as by pidfile, so a lost pidfile cannot leave an orphaned `daemon`
+supervisor respawning an unmanaged forwarder (that exact state was reproduced once during
+testing: `status` said "not running" while a supervisor kept a forwarder alive).
 Do **not** use `killall python3.11`: it kills every Python process on the firewall and
 silently does nothing at all once pfSense ships a different interpreter version.
 
@@ -109,7 +124,7 @@ and is idempotent, so re-running it is always safe:
 | `/usr/local/bin/forward-suricata-eve.py` | the forwarder, with `SIEM_HOST`, `LOGSTASH_UDP_PORT`, `DEBUG_ENABLED` from `config.env` baked in |
 | `/usr/local/etc/rc.d/suricata_forwarder.sh` (enabled by default — pfSense does not manage `/etc/rc.conf`, so no `sysrc` is needed) | boot start, `service` control |
 | `/usr/local/bin/suricata-forwarder-watchdog.sh` | crash recovery |
-| root crontab line `* * * * * /usr/local/bin/suricata-forwarder-watchdog.sh` | runs the watchdog (installed with `crontab -`, old line removed first) |
+| a pfSense Cron-package entry (`scripts/pfsense-add-watchdog-cron.php`, stored in `config.xml`) | runs the watchdog every minute; any old root-crontab line is removed first. If the Cron package is not installed, setup.sh says so and skips it (the rc.d unit still starts at boot and respawns the child). |
 
 Nothing else is required. The following exist in the repository but are **not**
 installed by setup.sh:
@@ -140,12 +155,14 @@ server, `./pfsense-siem` options 9-11 wrap the most common ones.
 | Follow live | `tail -f /var/log/system.log \| grep suricata` |
 | Daemon stdout/stderr (Python tracebacks) | `tail -50 /var/log/suricata-forwarder.log` |
 | Watchdog activity | `grep suricata-watchdog /var/log/system.log \| tail -20` |
-| Watchdog cron line present? | `crontab -l \| grep suricata-forwarder-watchdog` |
+| Watchdog cron line present? | `grep suricata-forwarder-watchdog /etc/crontab` |
 | Boot start enabled? | `ls /usr/local/etc/rc.d/suricata_forwarder.sh` — pfSense runs every `*.sh` there at boot; the script defaults `suricata_forwarder_enable=YES` |
 | Duplicate processes? | `pgrep -fl forward-suricata-eve.py` (expect exactly one line) |
 | Hard kill (last resort) | `pkill -f forward-suricata-eve.py` then `service suricata_forwarder.sh start` |
 | Run in the foreground to see errors | `service suricata_forwarder.sh stop; /usr/local/bin/forward-suricata-eve.py` (Ctrl+C, then `start` again) |
 | Redeploy after editing the script or config.env | on the SIEM server: `./setup.sh` |
+| Redeploy only the pfSense side (after a pfSense upgrade, or when the workstation cannot reach OpenSearch) | `./setup.sh --forwarder-only` (verifies delivery from the pfSense side) |
+| Is data still arriving? (exit 0 fresh, 1 stale, 2 cannot query) | `./scripts/check-siem-freshness.sh [--max-age MINUTES] [--via-pfsense]` |
 | Full health check | on the SIEM server: `./scripts/status.sh` |
 
 A healthy startup looks like this in `/var/log/system.log` (N = number of Suricata
@@ -229,15 +246,16 @@ forwarder pieces live on the filesystem, so:
 
 | Event | Forwarder + rc.d + watchdog cron | Notes |
 |-------|----------------------------------|-------|
-| Reboot | Survive | rc.d starts the forwarder; cron reloads root's crontab from `/var/cron/tabs/root` |
-| In-place pfSense upgrade (e.g. 2.7.x to 2.8.x) | Usually survive, not guaranteed | Files under `/usr/local/bin` and `/usr/local/etc/rc.d` and root's crontab can be removed or the Python version can change |
-| Reinstall or restore from backup | Lost | Not part of config.xml, so not in pfSense backups |
+| Reboot | Survive | rc.d (`.sh` suffix) starts the forwarder; the Cron-package entry is regenerated from `config.xml` |
+| In-place pfSense upgrade (e.g. 2.8.x to 2.9.x) | Cron entry survives (in `config.xml`); files may or may not | Files under `/usr/local/bin` and `/usr/local/etc/rc.d` can be removed, and the Python version can change; the rc.d script falls back to the newest `python3.N` |
+| Reinstall or restore from backup | Cron entry restored; files lost | The files are not part of `config.xml`; run `./setup.sh --forwarder-only` |
 
 After any pfSense upgrade, reinstall or restore:
 
 ```bash
-./setup.sh          # redeploys forwarder, rc.d, watchdog; re-detects Python
-./scripts/status.sh # confirms everything is back
+./setup.sh --forwarder-only          # redeploys forwarder, rc.d, watchdog; re-detects Python
+./scripts/check-siem-freshness.sh --via-pfsense   # newest event should be minutes old
+./scripts/status.sh                  # full health check
 ```
 
 The full procedure, including what to check before upgrading, is in
@@ -245,11 +263,12 @@ The full procedure, including what to check before upgrading, is in
 
 Two notes on cron:
 
-- Do not put the watchdog in `/etc/crontab`; pfSense regenerates that file from config.xml
-  and the line vanishes. setup.sh uses root's own crontab (`crontab -`) for this reason.
-- For a cron entry that is itself durable across reinstall, use the pfSense **Cron**
-  package (Services > Cron): those jobs are stored in config.xml and restored with
-  backups. Optional, since setup.sh already covers the common cases.
+- Do not hand-edit `/etc/crontab`; pfSense regenerates that file from `config.xml` and the
+  line vanishes. Add jobs through the Cron package (Services > Cron), which is what
+  setup.sh does for you.
+- A forwarder can be dead for months with nothing noticing it, so also schedule
+  `scripts/check-siem-freshness.sh` somewhere that can alert (for example a cron job on the
+  SIEM host that logs or mails when it exits non-zero).
 
 ---
 
@@ -260,13 +279,13 @@ On pfSense:
 ```bash
 service suricata_forwarder.sh stop
 rm -f /usr/local/etc/rc.d/suricata_forwarder.sh
-crontab -l | grep -v suricata-forwarder-watchdog | crontab -
 rm -f /usr/local/bin/suricata-forwarder-watchdog.sh /usr/local/bin/forward-suricata-eve.py
 rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid /var/log/suricata-forwarder.log /var/log/suricata_forwarder_debug.log
 ```
 
-If a legacy install (`setup_forwarder_monitoring.sh`) was ever used on this box, also
-remove its lines: `crontab -l | grep -v forward-suricata-eve.py | crontab -`.
+Then delete the watchdog job in Services > Cron. If a legacy install
+(`setup_forwarder_monitoring.sh`) was ever used on this box, also remove its lines:
+`crontab -l | grep -v forward-suricata-eve.py | crontab -`.
 
 ---
 
@@ -276,7 +295,9 @@ remove its lines: `crontab -l | grep -v forward-suricata-eve.py | crontab -`.
 |---------|-------------|
 | Watchdog restarts it every minute | It starts and dies. Run it in the foreground (`service suricata_forwarder.sh stop; /usr/local/bin/forward-suricata-eve.py`) and read the error: no `eve.json` files (Suricata not running), shebang pointing at a Python removed by an upgrade (re-run `./setup.sh`), or `maxminddb` missing (`python3 -c 'import maxminddb'`). |
 | More than one forwarder process | Leftover from a manual start or the legacy cron scheme. `pkill -f forward-suricata-eve.py`, remove any `forward-suricata-eve.py` lines from `crontab -l`, then `service suricata_forwarder.sh start`. |
-| Nothing restarts it after a crash | `crontab -l \| grep watchdog` must show the line; if not, re-run `./setup.sh`. Also `service cron status`. |
+| Nothing restarts it after a crash | `grep suricata-forwarder-watchdog /etc/crontab` must show the line; if not, install the Cron package and run `./setup.sh --forwarder-only`. Also `service cron status`. |
+| `status` says not running but events still arrive | An unmanaged forwarder from a lost pidfile. Current rc.d `stop` removes it; on an older install run `pgrep -fl forward-suricata-eve` and kill the `daemon:` supervisor by PID first, then the forwarder, then `service suricata_forwarder.sh start`. |
+| Silence in the SIEM and nobody noticed | Run `./scripts/check-siem-freshness.sh --via-pfsense`; schedule it so it alerts. |
 | Not running after reboot | the file must be `/usr/local/etc/rc.d/suricata_forwarder.sh` (with `.sh` — older deployments installed it without the suffix and were never started at boot). Re-run `./setup.sh` if not. The watchdog starts it within a minute anyway, so this shows up as a 60 s gap. |
 | Events stop after a Suricata restart, process alive | `procstat -f $(cat /var/run/suricata_forwarder.child.pid) \| grep eve.json` listing rotated files (`eve.json.2026_...`) instead of the live `eve.json`: restart the service; see [LOG_ROTATION_FIX.md](../troubleshooting/LOG_ROTATION_FIX.md). |
 

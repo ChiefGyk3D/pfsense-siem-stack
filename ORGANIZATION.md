@@ -84,7 +84,8 @@ pfsense-siem-stack/
 |-----------------|---------|---------------------------|
 | `/usr/local/bin/forward-suricata-eve.py` | Forwarder (shebang set to the detected Python) | Usually; re-run `setup.sh` if the Python version changed |
 | `/usr/local/etc/rc.d/suricata_forwarder.sh` | rc.d service, started at boot by pfSense (`*.sh` only) | Usually |
-| `/usr/local/bin/suricata-forwarder-watchdog.sh` + root crontab line (every minute) | Restarts the service if the process dies | Usually (not in config.xml backups) |
+| `/usr/local/bin/suricata-forwarder-watchdog.sh` | Restarts the service if the process dies | Usually; re-run `./setup.sh --forwarder-only` if missing |
+| Cron-package entry for the watchdog (every minute) | Runs the watchdog | Yes (stored in `config.xml`) |
 
 Details and the full persistence table:
 [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md).
