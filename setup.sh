@@ -290,9 +290,10 @@ if ssh -o ConnectTimeout=5 -o BatchMode=yes "${SIEM_SSH_USER}@${SIEM_HOST}" 'ech
         # Backup existing config, deploy new one
         ssh "${SIEM_SSH_USER}@${SIEM_HOST}" \
             "sudo cp /etc/logstash/conf.d/suricata.conf /etc/logstash/conf.d/suricata.conf.bak 2>/dev/null || true"
-        scp -q "$TEMP_CONF" "${SIEM_SSH_USER}@${SIEM_HOST}:/tmp/suricata-logstash.conf"
+        REMOTE_CONF=$(ssh "${SIEM_SSH_USER}@${SIEM_HOST}" 'umask 077; mktemp /tmp/suricata-logstash.XXXXXX')
+        scp -q "$TEMP_CONF" "${SIEM_SSH_USER}@${SIEM_HOST}:${REMOTE_CONF}"
         ssh "${SIEM_SSH_USER}@${SIEM_HOST}" \
-            "sudo mv /tmp/suricata-logstash.conf /etc/logstash/conf.d/suricata.conf && sudo systemctl restart logstash" 2>/dev/null
+            "sudo install -m 0644 -o root -g root '${REMOTE_CONF}' /etc/logstash/conf.d/suricata.conf && rm -f '${REMOTE_CONF}' && sudo systemctl restart logstash" 2>/dev/null
         rm -f "$TEMP_CONF"
         info "Logstash config deployed and restarted on ${SIEM_HOST}"
         LOGSTASH_DEPLOYED=true
@@ -360,12 +361,12 @@ RCD="/usr/local/etc/rc.d/suricata_forwarder.sh"
 TAG="suricata-watchdog"
 
 PAT='^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
-if ! pgrep -f "$PAT" > /dev/null 2>&1; then
+if ! pgrep -u root -f "$PAT" > /dev/null 2>&1; then
     logger -t "$TAG" "Forwarder not running — starting via rc.d"
     "$RCD" stop > /dev/null 2>&1
     "$RCD" start > /dev/null 2>&1
     sleep 2
-    PID=$(pgrep -f "$PAT" | head -1)
+    PID=$(pgrep -u root -f "$PAT" | head -1)
     if [ -n "$PID" ]; then
         logger -t "$TAG" "Started (PID: $PID)"
     else
@@ -380,8 +381,8 @@ ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'chmod +x /usr/local/bin/suricata-forwarde
 info "Scheduling watchdog via the pfSense Cron package..."
 ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'crontab -l 2>/dev/null | grep -q suricata-forwarder-watchdog && { crontab -l | grep -v suricata-forwarder-watchdog | crontab - 2>/dev/null || crontab -r; }; true'
 if ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'test -f /usr/local/pkg/cron.inc'; then
-    scp -q "${SCRIPT_DIR}/scripts/pfsense-add-watchdog-cron.php" "${PFSENSE_USER}@${PFSENSE_HOST}:/tmp/pfsense-add-watchdog-cron.php"
-    ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'php /tmp/pfsense-add-watchdog-cron.php; rm -f /tmp/pfsense-add-watchdog-cron.php'
+    # Script goes over stdin: no file in a world-writable directory that root then executes
+    ssh "${PFSENSE_USER}@${PFSENSE_HOST}" 'php' < "${SCRIPT_DIR}/scripts/pfsense-add-watchdog-cron.php"
 else
     warn "pfSense Cron package not installed — watchdog NOT scheduled."
     echo "  Install it (System > Package Manager > pfSense-pkg-Cron) and re-run with --forwarder-only."
@@ -444,7 +445,7 @@ suricata_forwarder_start() {
 # Anchored so it matches only the forwarder itself, never a shell whose command
 # line merely mentions the file name.
 fwd_pids() {
-    pgrep -f '^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
+    pgrep -u root -f '^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py'
 }
 
 suricata_forwarder_stop() {
@@ -487,7 +488,7 @@ info "Starting forwarder via rc.d service..."
 ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "pkill -f forward-suricata-eve 2>/dev/null; sleep 1; rm -f /var/run/suricata_forwarder.pid /var/run/suricata_forwarder.child.pid; ${RCD_SCRIPT} start"
 sleep 3
 
-FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.child.pid 2>/dev/null || pgrep -f 'forward-suricata-eve' | head -1" || echo "")
+FORWARDER_PID=$(ssh "${PFSENSE_USER}@${PFSENSE_HOST}" "cat /var/run/suricata_forwarder.child.pid 2>/dev/null || pgrep -u root -f '^/usr/local/bin/python3[.0-9]* /usr/local/bin/forward-suricata-eve.py' | head -1" || echo "")
 if [[ -n "$FORWARDER_PID" ]]; then
     info "Forwarder running (PID: ${FORWARDER_PID}, ${EVE_COUNT} interfaces)"
 else
