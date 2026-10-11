@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2.9.0 upgrade results (2026-10)
+
+- **New in [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)**: a real 2.8.1 to 2.9.0 run on a tuned box: selecting the update branch, the dry run, what survived (limiters, flow control, Suricata instances, forwarder), and the fixes for what did not (DNSBL data store reset, Telegraf `ssl_ca`, removed `lsof`, CrowdSec reinstall with checksum), plus Suricata 8 numbers (about 840 Mbit/s inline, 0 drops) and a warning about misleading laptop Wi-Fi tests.
+
 ### Forwarder hardening (2026-10)
 
 - **Fixed: the forwarder could stay dead for months.** After a pfSense upgrade the Python path baked into the rc.d unit can vanish, and the watchdog lived in root's crontab, which does not survive. The rc.d unit now falls back to the newest installed `python3.N` and warns if `maxminddb` is not importable.
