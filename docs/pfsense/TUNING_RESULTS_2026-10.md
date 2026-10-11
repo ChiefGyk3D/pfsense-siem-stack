@@ -27,6 +27,7 @@ Each section links to the guide with the method and commands.
 | DNSBL (blocklist DNS) | not enforcing for about 5 months, and once re-enabled still running on source lists last downloaded 2026-01-24 (about 45 feeds, 8.5 months stale) | enforcing, all 61 feeds downloaded in one run with 0 failures, every source cache dated 2026-10-04 or later, 3.52 million unique blocked domains (2.53 million before). Root cause of the staleness: a failed TOP1M zip download forced the whole DNSBL into reuse-the-cache mode every night. | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) |
 | pfBlockerNG feeds known dead or broken | unknown | 6 found dead or broken, 2 fixed, 1 removed; see below | [pfBlockerNG guide](PFBLOCKERNG_OPTIMIZATION.md#6-are-the-feeds-themselves-alive) |
 | EVE forwarder to the SIEM | dead since 2026-07-30 (72 days, nobody noticed) | running, 16 interfaces; watchdog restart verified within one minute | [Forwarder monitoring](../operations/SURICATA_FORWARDER_MONITORING.md) |
+| Inline IPS on Suricata 8.0.5 (after the 2.9.0 upgrade) | not applicable | sustained about 840 Mbit/s through the WAN instance, worker threads 10 to 25% CPU, 0 capture drops, 0 loss at startup | [Upgrade guide](PFSENSE_UPGRADE_GUIDE.md#a-real-run-281-to-290-on-a-tuned-box-2026-10-10) |
 | DNS repeat lookups | cold lookup about 179 ms (DoT + DNSSEC) | repeat lookups 0 ms with prefetch and a 32 MB cache; cold path unchanged | [Shaping notes](SHAPING_OPTIMIZATION_NOTES.md) |
 
 ## What was measured and found, in the order it mattered
@@ -74,7 +75,8 @@ These were changed in the same window as others, so no separate effect is claime
 ## What was not measured
 
 - Throughput or latency effect of flow control on its own.
-- Behaviour across the pfSense 2.8.1 to 2.9.0 upgrade. Pre- and post-upgrade checks are in the
-  [Upgrading pfSense](PFSENSE_UPGRADE_GUIDE.md) guide.
+- Shaping behaviour under load after the 2.9.0 upgrade: limiters, flow control and rules were verified unchanged, but a wired
+  loaded-latency test has not been repeated. The upgrade itself is written up in the
+  [Upgrading pfSense](PFSENSE_UPGRADE_GUIDE.md#a-real-run-281-to-290-on-a-tuned-box-2026-10-10) guide.
 - Anything above 1 Gbit/s on the WAN. The capacity table in the Suricata guide is a projection from a UDP sweep up to
   950 Mbit/s, not a measurement at 2 or 2.5 Gbit/s.

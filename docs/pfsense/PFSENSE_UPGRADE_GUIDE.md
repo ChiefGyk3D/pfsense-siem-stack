@@ -185,6 +185,59 @@ the old interpreter again.
 
 ---
 
+## A real run: 2.8.1 to 2.9.0 on a tuned box (2026-10-10)
+
+What actually happened on the reference firewall (4-core Xeon D, 2.5G WAN, 16 Suricata instances, pfBlockerNG with
+3.5 million DNSBL domains, Telegraf, CrowdSec, the forwarder from this repo). Use it to set expectations; the numbers are
+from one box.
+
+**Timeline.** Started 20:35, first reboot 20:38, back on 2.9.0 at 20:43 (about 5 minutes down), package reinstall pass done
+by 20:50 with no second reboot. Download was 571 MB; the dry run (`pfSense-upgrade -n -y`) predicted 50 packages removed,
+50 installed and 51 reinstalled, which is the normal mass ABI change from FreeBSD 15 to 16.
+
+**Getting offered the upgrade.** `pfSense-upgrade -c` said "up to date" until the update branch was switched in
+System > Update > Update Settings to *Current Stable Version (2.9.0)* and saved. The dynamic repository list
+(`pfSense-repoc -p`) already showed 2.9.0 as current stable and 2.8.1 as the default; nothing upgrades until the branch is
+selected. Run the dry run before you start: it lists every package and any removals.
+
+**What survived untouched** (diffed against a baseline captured before the upgrade): the ruleset hash, all limiter pipes
+and queue sizes, flow control (`dev.igc.N.fc` 0, so the loader tunables persist), the 16 Suricata instance configs, the
+pfBlockerNG feed list, whitelist and TOP1M file, Kea, NTP, gateways, the Cron-package watchdog entry, and the EVE
+forwarder (it started by itself at boot on the same Python 3.11 with `maxminddb` 2.8.2).
+
+**What did not, and the fix:**
+
+| Symptom after the upgrade | Cause | Fix |
+|---|---|---|
+| DNS blocking silently off (a listed ad domain resolved normally) | the package reinstall reset pfBlockerNG's DNSBL data store (`pfb_py_dnsbl.sqlite` 8 KB, `pfb_py_data.txt` gone) while the resolver, VIP and config were intact | `php /usr/local/www/pfblockerng/pfblockerng.php updatednsbl` and wait (about 15 minutes with 3.5 million domains); the data file came back at 194 MB |
+| Telegraf restarted every minute by Service Watchdog | Telegraf 1.39 rejects the `ssl_ca` option the package still writes (Redmine #16674); `telegraf --test` printed the exact line | back up `/usr/local/pkg/telegraf.inc`, `sed` `ssl_ca` to `tls_ca` and `fielddrop` to `fieldexclude`, then run `telegraf_resync_config()` from PHP (the same as the GUI's Save); it was stable afterwards and records reached OpenSearch |
+| Telegraf netstat input errors | `lsof` was removed by the base upgrade | `pkg install lsof` (it is still in the repository) |
+| CrowdSec gone (service, firewall tables) | `pfSense-pkg-crowdsec` is not in the pfSense repository, so the upgrade removes it | reinstall from the vendor's release archive for FreeBSD 16: download `freebsd-16-amd64.tar` from the `pfSense-pkg-crowdsec` releases, **verify the SHA-256 that GitHub publishes for the asset**, then `pkg add -f` the three packages in order (`crowdsec-firewall-bouncer`, `crowdsec`, `pfSense-pkg-crowdsec`), as the vendor's install script does. Old configuration is kept. Re-check in the GUI that it is pulling decisions |
+
+**Suricata 7.0.11 to 8.0.5.** Plan for it: it is a major version. On this box:
+- Rules loaded: 59,719 on the WAN instance, 50 failed (JA3 rules because JA3 is off in the config, and a few regular
+  expressions the new parser rejects), 0 skipped; the cell instance was the same (59,720 loaded, 50 failed).
+- Startup is slow: the instance sat at roughly one core for about two minutes before "Engine started"; traffic through an
+  inline instance is slow until then, so do not benchmark during it.
+- The DNS EVE record stayed at version 2 (the package configures it), so SIEM dashboards were unaffected, but Suricata now
+  logs that version 2 is deprecated and will be removed in 9.0.
+- Inline IPS throughput on Suricata 8: sustained about 840 Mbit/s through the WAN instance (8 parallel flows, three
+  rounds), worker threads at 10 to 25% CPU, 0 capture drops, 0 packet loss while an inline instance started.
+- Disabling the two inline instances (WAN, cell) for the upgrade window and re-enabling them one at a time after
+  verifying, with a timed switch-off as a safety net, worked well.
+
+**Smaller notes.** PHP went 8.3 to 8.5 and the Telegraf PHP interface plugin still ran. A new built-in `_nat64reserved_`
+firewall table appeared (the ruleset grew by a few lines for that and for CrowdSec). `pfSsh.php playback svc status`
+threw a PHP 8.5 type error while the real service list worked, so use `get_services()` or the GUI. Several per-VLAN
+limiter child queues were still running at the 50-slot default before the pre-upgrade reboot and only picked up their
+configured size after it, which is the incremental-loading effect described in the shaping notes.
+
+**Testing from a laptop can mislead.** The first throughput checks after the upgrade looked terrible (about 35 Mbit/s).
+The firewall itself measured about 380 Mbit/s, and the laptop turned out to be on a weak Wi-Fi link (-76 dBm) with its
+Ethernet port down. Check the client link before blaming the firewall, and test from a wired host.
+
+---
+
 ## Known gaps this repo still has for upgrades (tracked in [ROADMAP.md](../../ROADMAP.md))
 
 - Several legacy scripts under `scripts/` (`setup_forwarder_monitoring.sh`,
