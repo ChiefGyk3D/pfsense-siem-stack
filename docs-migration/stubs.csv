@@ -1,11 +1,10 @@
 repo_path,section,page,action,order,notes
-README.md,,Project-Overview,stub,1,old wiki name for one release; points to README sections; REVIEW old name is also the new mirror page
 QUICK_START.md,,Quick-Start,stub,1,old wiki name for one release; points to Install-Quick-Start
 ORGANIZATION.md,,Repository-Layout,stub,1,old wiki name for one release; points to Reference-Repository-Layout
 ROADMAP.md,,Roadmap,stub,1,old wiki name for one release; points to Project-Roadmap
 CHANGELOG.md,,Changelog,stub,1,old wiki name for one release; points to Project-Changelog
 CONTRIBUTING.md,,Contributing,stub,1,old wiki name for one release; points to Project-Contributing
-SECURITY.md,,Security-Policy,stub,1,old wiki name for one release; points to SECURITY.md in repo root
+SECURITY.md,,Security-Policy,stub,1,old wiki name for one release; points to repo file SECURITY.md
 docs/DOCUMENTATION_INDEX.md,,Documentation-Index,stub,1,old wiki name for one release; points to Home
 docs/ARCHIVE.md,,Archived-Material,stub,1,old wiki name for one release; points to Archive-Git-History
 docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,,Suricata-Optimization-Guide,stub,1,old wiki name for one release; points to Suricata-Setup-and-Rules

@@ -9,8 +9,10 @@ Exit 0 = clean. Exit 2 = offenders, one per line on stdout as
 needs one, a page on a keep row, bad order, wrong field count).
 
 CSV header: repo_path,section,page,action,order[,notes]. Actions: move,
-merge-into, split-into, archive-into, keep, stub. section is empty or
-L<start>-L<end> (1-indexed, inclusive). order is blank or an integer.
+merge-into, split-into, archive-into, copy-into, keep, stub. section is empty
+or L<start>-L<end> (1-indexed, inclusive). order is blank or an integer.
+copy-into: the section (whole file when empty) is copied to the page and the
+source stays in place, so it may coexist with a whole-file keep row.
 
 Offender classes:
   unregistered    tracked *.md that is in no row's repo_path
@@ -21,14 +23,19 @@ Offender classes:
   case-collision  two distinct page names equal ignoring case
   page-collision  RULE: group rows by page. A page is fine if it has rows from
                   exactly one distinct source (any action), or if every row for
-                  it has action merge-into or archive-into (any number of
-                  sources). Otherwise, i.e. two or more distinct sources and at
+                  it has action merge-into, archive-into or copy-into (any
+                  number of sources). Otherwise, i.e. two or more distinct sources and at
                   least one row that is move, stub or split-into, it is an
                   offender.
   section-overlap per source: two ranges overlap, a malformed range (non-numeric,
                   start>end, start<1), or an empty section on a source that has
-                  more than one row (ranged rows or another whole-file row)
+                  more than one row (ranged rows or another whole-file row).
+                  Exemptions: a whole-file keep row may sit beside copy-into rows
+                  only; a whole-file copy-into row may sit beside keep rows and
+                  other whole-file copy-into rows only. Ranged copy-into rows
+                  may not overlap each other (or any other ranged row).
   split-single    source with a split-into row but fewer than 2 rows with sections
+                  (copy-into rows never trigger it)
 Sections need not cover the whole file; the move tool checks line loss later.
 """
 import argparse
@@ -37,7 +44,9 @@ import re
 import subprocess
 import sys
 
-ACTIONS = {"move", "merge-into", "split-into", "archive-into", "keep", "stub"}
+ACTIONS = {"move", "merge-into", "split-into", "archive-into", "copy-into", "keep",
+           "stub"}
+SHARED = ("merge-into", "archive-into", "copy-into")
 REQUIRED = ["repo_path", "section", "page", "action", "order"]
 PREFIXES = ["Suricata", "pfBlockerNG", "EVE-Forwarder", "Telegraf", "pfSense",
             "SIEM", "Docker-Stack", "SOAR", "CrowdSec", "Install", "Operate",
@@ -100,6 +109,18 @@ def tracked_md(repo):
     return md, every
 
 
+def whole_file_ok(r, srows):
+    """May row r (empty section) coexist with the other rows of its source?"""
+    others = [o for o in srows if o is not r]
+    if r["action"] == "keep":
+        return all(o["action"] == "copy-into" for o in others)
+    if r["action"] == "copy-into":
+        return all(o["action"] == "keep"
+                   or (o["action"] == "copy-into" and not o["section"])
+                   for o in others)
+    return False
+
+
 def check(rows, md, every):
     bad = []
     registered = {r["repo_path"] for r in rows}
@@ -123,7 +144,7 @@ def check(rows, md, every):
         prow = [r for r in rows if r["page"] == pg]
         if len({r["repo_path"] for r in prow}) < 2:
             continue
-        if not all(r["action"] in ("merge-into", "archive-into") for r in prow):
+        if not all(r["action"] in SHARED for r in prow):
             bad.append("page-collision: %s <- %s" % (
                 pg, ", ".join(sorted({r["repo_path"] for r in prow}))))
 
@@ -135,7 +156,7 @@ def check(rows, md, every):
         ranges = []
         for r in srows:
             if not r["section"]:
-                if len(srows) > 1:
+                if len(srows) > 1 and not whole_file_ok(r, srows):
                     bad.append("section-overlap: %s line %d: empty section with other rows"
                                % (src, r["line"]))
                 continue

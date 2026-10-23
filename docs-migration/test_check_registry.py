@@ -187,5 +187,67 @@ class Checks(Base):
         self.assertEqual(code, 0, out)
 
 
+class CopyInto(Base):
+    def test_keep_plus_ranged_copy_into_ok(self):
+        self.add("README.md")
+        code, out = self.run_check(
+            HDR + "README.md,,,keep,1\n"
+            "README.md,L1-L26,Project-Overview,copy-into,1\n"
+            "README.md,L27-L46,Project-Status,copy-into,1\n")
+        self.assertEqual(code, 0, out)
+
+    def test_ranged_copy_into_overlap_offends(self):
+        self.add("README.md")
+        self.assertOffender(
+            HDR + "README.md,,,keep,1\n"
+            "README.md,L1-L30,Project-Overview,copy-into,1\n"
+            "README.md,L27-L46,Project-Status,copy-into,1\n", "section-overlap")
+
+    def test_whole_file_copy_into_beside_keep(self):
+        self.add("CHANGELOG.md")
+        code, out = self.run_check(
+            HDR + "CHANGELOG.md,,,keep,1\nCHANGELOG.md,,Project-Changelog,copy-into,1\n")
+        self.assertEqual(code, 0, out)
+
+    def test_whole_file_copy_into_with_ranged_copy_offends(self):
+        self.add("a.md")
+        self.assertOffender(
+            HDR + "a.md,,,keep,1\na.md,,Project-A,copy-into,1\n"
+            "a.md,L1-L5,Project-B,copy-into,1\n", "section-overlap")
+
+    def test_whole_file_copy_into_with_move_offends(self):
+        self.add("a.md")
+        self.assertOffender(
+            HDR + "a.md,,Project-A,copy-into,1\na.md,L1-L5,Project-B,move,\n",
+            "section-overlap")
+
+    def test_empty_section_other_actions_still_offend(self):
+        self.add("a.md")
+        self.assertOffender(
+            HDR + "a.md,,,keep,1\na.md,L1-L5,Project-B,move,\n", "section-overlap")
+
+    def test_copy_into_never_split_single(self):
+        self.add("a.md")
+        code, out = self.run_check(
+            HDR + "a.md,,,keep,1\na.md,L1-L5,Project-B,copy-into,1\n")
+        self.assertEqual(code, 0, out)
+
+    def test_copy_into_shared_page_with_merge_into(self):
+        self.add("a.md", "b.md", "c.md")
+        code, out = self.run_check(
+            HDR + "a.md,,,keep,1\na.md,L1-L5,Project-X,copy-into,1\n"
+            "b.md,,Project-X,merge-into,2\nc.md,,Project-X,copy-into,3\n")
+        self.assertEqual(code, 0, out)
+
+    def test_copy_into_collides_with_move_on_other_source(self):
+        self.add("a.md", "b.md")
+        self.assertOffender(
+            HDR + "a.md,,,keep,1\na.md,L1-L5,Project-X,copy-into,1\n"
+            "b.md,,Project-X,move,\n", "page-collision")
+        self.assertOffender(
+            HDR + "a.md,,Project-X,copy-into,1\nb.md,,Project-X,split-into,1\n"
+            "b.md,L1-L2,Project-Y,split-into,1\n", "page-collision")
+
+
 if __name__ == "__main__":
     unittest.main()
