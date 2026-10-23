@@ -1,0 +1,47 @@
+repo_path,section,page,action,order,notes
+README.md,,Project-Overview,stub,1,old wiki name for one release; points to README sections; REVIEW old name is also the new mirror page
+QUICK_START.md,,Quick-Start,stub,1,old wiki name for one release; points to Install-Quick-Start
+ORGANIZATION.md,,Repository-Layout,stub,1,old wiki name for one release; points to Reference-Repository-Layout
+ROADMAP.md,,Roadmap,stub,1,old wiki name for one release; points to Project-Roadmap
+CHANGELOG.md,,Changelog,stub,1,old wiki name for one release; points to Project-Changelog
+CONTRIBUTING.md,,Contributing,stub,1,old wiki name for one release; points to Project-Contributing
+SECURITY.md,,Security-Policy,stub,1,old wiki name for one release; points to SECURITY.md in repo root
+docs/DOCUMENTATION_INDEX.md,,Documentation-Index,stub,1,old wiki name for one release; points to Home
+docs/ARCHIVE.md,,Archived-Material,stub,1,old wiki name for one release; points to Archive-Git-History
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,,Suricata-Optimization-Guide,stub,1,old wiki name for one release; points to Suricata-Setup-and-Rules
+docs/pfsense/SURICATA_CONFIGURATION.md,,Suricata-Configuration-and-Design,stub,1,old wiki name for one release; points to Suricata-Overview
+docs/pfsense/LAN_MONITORING.md,,LAN-and-East-West-Monitoring,stub,1,old wiki name for one release; points to Suricata-LAN-Monitoring
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,,pfBlockerNG-Optimization,stub,1,old wiki name for one release; points to pfBlockerNG-Overview-and-Strategy
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,,pfBlockerNG-Feed-Reference,stub,1,old wiki name for one release; points to pfBlockerNG-Feed-Catalog
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,,Telegraf-on-pfSense,stub,1,old wiki name for one release; points to Telegraf-Install-and-Configure
+docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md,,Telegraf-pfBlockerNG-Pipeline,stub,1,old wiki name for one release; points to Telegraf-pfBlockerNG-to-OpenSearch
+docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md,,MAC-Vendor-Lookup,stub,1,old wiki name for one release; points to Telegraf-MAC-Vendor-Lookup
+docs/pfsense/PFSENSE_UPGRADE_GUIDE.md,,Upgrading-pfSense,stub,1,old wiki name for one release; points to pfSense-Upgrade-Guide
+docs/pfsense/TRAFFIC_SHAPING_GUIDE.md,,Traffic-Shaping-Guide,stub,1,old wiki name for one release; points to pfSense-Traffic-Shaping-Guide
+docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md,,Shaping-Optimization-Notes,stub,1,old wiki name for one release; points to pfSense-Traffic-Shaping-Measured-Tuning
+docs/pfsense/TUNING_RESULTS_2026-10.md,,October-2026-Tuning-Results,stub,1,old wiki name for one release; points to pfSense-Tuning-Results-2026-10
+docs/pfsense/crowdsec-phase1.md,,CrowdSec-Exploratory-Notes,stub,1,old wiki name for one release; points to CrowdSec-Phase1-Plan
+docs/install/HARDWARE_REQUIREMENTS.md,,Hardware-Requirements,stub,1,old wiki name for one release; points to Install-Hardware-Requirements
+docs/install/NEW_USER_CHECKLIST.md,,New-User-Checklist,stub,1,old wiki name for one release; points to Install-New-User-Checklist
+docs/install/INSTALL_SIEM_STACK.md,,SIEM-Server-Installation,stub,1,old wiki name for one release; points to Install-SIEM-Server-Bare-Metal
+docs/install/INSTALL_PFSENSE_FORWARDER.md,,Forwarder-Installation,stub,1,old wiki name for one release; points to EVE-Forwarder-Install
+docs/install/GEOIP_SETUP.md,,GeoIP-Setup,stub,1,old wiki name for one release; points to EVE-Forwarder-GeoIP
+docs/install/INSTALL_DASHBOARD.md,,Dashboard-Installation,stub,1,old wiki name for one release; points to Install-Grafana-Dashboards
+docs/operations/MANAGEMENT_CONSOLE.md,,Management-Console,stub,1,old wiki name for one release; points to Operate-Management-Console
+docs/operations/SURICATA_FORWARDER_MONITORING.md,,Forwarder-Operations-and-Watchdog,stub,1,old wiki name for one release; points to EVE-Forwarder-Operations
+docs/operations/MULTI_INTERFACE_RETENTION.md,,Multi-Interface-and-Retention,stub,1,old wiki name for one release; points to EVE-Forwarder-Multi-Interface and SIEM-OpenSearch-Retention
+docs/troubleshooting/TROUBLESHOOTING.md,,Troubleshooting,stub,1,old wiki name for one release; points to Troubleshoot-Start-Here
+docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md,,Dashboard-Shows-No-Data,stub,1,old wiki name for one release; points to Troubleshoot-Dashboard-No-Data
+docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md,,Data-Stops-at-Midnight-UTC,stub,1,old wiki name for one release; points to Troubleshoot-Data-Stops-At-Midnight-UTC
+docs/troubleshooting/LOG_ROTATION_FIX.md,,Forwarder-and-Log-Rotation,stub,1,old wiki name for one release; points to EVE-Forwarder-Log-Rotation
+docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md,,Filterlog-Stops-After-Rotation,stub,1,old wiki name for one release; points to Troubleshoot-Filterlog-Stops-After-Rotation
+docs/reference/CONFIGURATION.md,,Configuration-Reference,stub,1,old wiki name for one release; points to Reference-Configuration
+docs/reference/FIELD_REFERENCE.md,,Field-Reference,stub,1,old wiki name for one release; points to Reference-Field-Reference
+config/README.md,,Configuration-Files,stub,1,old wiki name for one release; points to EVE-Forwarder-Logstash-Pipeline and SIEM-OpenSearch-Index-Templates
+dashboards/README.md,,Dashboards,stub,1,old wiki name for one release; points to SIEM-Grafana-Dashboards
+dashboards/wazuh/README.md,,Wazuh-Dashboards,stub,1,old wiki name for one release; points to SIEM-Wazuh-Dashboards
+scripts/README.md,,Scripts-Reference,stub,1,old wiki name for one release; points to Reference-Scripts
+tests/README.md,,Tests,stub,1,old wiki name for one release; points to Reference-Tests
+docs/siem/wazuh/README.md,,Wazuh-Integration,stub,1,old wiki name for one release; points to SIEM-Wazuh-Integration
+docs/siem/graylog/README.md,,Graylog,stub,1,old wiki name for one release; points to Archive-Graylog
+wiki/New-to-pfSense-Start-Here.md,,New-to-pfSense-Start-Here,stub,1,old wiki name for one release; points to Start-Here

@@ -1,0 +1,175 @@
+repo_path,section,page,action,order,notes
+docs/ARCHIVE.md,,Archive-Git-History,archive-into,1,root of the Archive family; primary of the page; ORGANIZATION archive policy and index archive pointer merged in
+wiki/Home.md,,Home,merge-into,1,"landing page: hand-written, best content; links rewritten; ledger: pfSense 2.9.0 B2-7"
+docs/DOCUMENTATION_INDEX.md,L1-L26,Home,merge-into,2,index retired; L1-L26 and L41-L200 feed Home path table and intros; L27-L40 directory tree is archive only; ledger: pfSense 2.9.0 B2-7; old wiki name: Documentation-Index
+docs/DOCUMENTATION_INDEX.md,L27-L40,Archive-Documentation-Index,archive-into,1,
+docs/DOCUMENTATION_INDEX.md,L41-L200,Home,merge-into,3,ledger: pfSense 2.9.0 B2-7
+docs/DOCUMENTATION_INDEX.md,L201-L205,Archive-Git-History,archive-into,2,
+wiki/New-to-pfSense-Start-Here.md,,Start-Here,move,1,renamed to landing name Start-Here; fix watchdog sentence per ledger; ledger: Watchdog B1-1/B2-1; old wiki name: New-to-pfSense-Start-Here
+wiki/Glossary.md,,Glossary,move,1,fix British spelling; add EVE-Forwarder and pidfile entries; ledger: Watchdog B1-1/B2-1
+wiki/FAQ.md,,FAQ,move,1,fix 'Can I edit this wiki' answer and SSL Blacklist mention; ledger: SSL Blacklist A2; test alert Q2 owed
+wiki/_Sidebar.md,,_Sidebar,move,1,rewrite for new prefixes; add EVE-Forwarder group
+wiki/_Footer.md,,_Footer,move,1,reword edit-by-PR notice
+wiki/README.md,,Archive-Generated-Wiki-Build,archive-into,1,"build description archived; Project-Docs-Workflow is a new page seeded from it (writer task, no registry source)"
+docs/pfsense/SURICATA_CONFIGURATION.md,L1-L59,Suricata-Overview,merge-into,1,Issue 5 (No Alerts in Dashboard) L255-L266 goes to forwarder troubleshooting per report A; ledger: Reference hardware Q5 owed; SSL Blacklist A2; old wiki name: Suricata-Configuration-and-Design
+docs/pfsense/SURICATA_CONFIGURATION.md,L60-L73,Suricata-Setup-and-Rules,merge-into,1,ledger: IP-reputation categories A3; SSL Blacklist A2
+docs/pfsense/SURICATA_CONFIGURATION.md,L74-L97,Suricata-Performance-Tuning,merge-into,1,ledger: DNS EVE A4
+docs/pfsense/SURICATA_CONFIGURATION.md,L98-L132,Suricata-Overview,merge-into,2,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/SURICATA_CONFIGURATION.md,L133-L172,Suricata-Performance-Tuning,merge-into,2,ledger: DNS EVE A4
+docs/pfsense/SURICATA_CONFIGURATION.md,L173-L189,Suricata-SID-Management,merge-into,1,ledger: SID arithmetic A8
+docs/pfsense/SURICATA_CONFIGURATION.md,L190-L195,Suricata-Overview,merge-into,3,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/SURICATA_CONFIGURATION.md,L196-L254,Suricata-Operations-and-Troubleshooting,merge-into,1,ledger: DNS EVE A4; Scan threshold A10
+docs/pfsense/SURICATA_CONFIGURATION.md,L255-L266,Troubleshoot-Forwarder,merge-into,1,ledger: Pidfiles B1-2; lsof B1-8
+docs/pfsense/SURICATA_CONFIGURATION.md,L267-L278,Suricata-Operations-and-Troubleshooting,merge-into,2,ledger: DNS EVE A4; Scan threshold A10
+docs/pfsense/SURICATA_CONFIGURATION.md,L279-L300,Suricata-Performance-Tuning,merge-into,3,ledger: DNS EVE A4
+docs/pfsense/SURICATA_CONFIGURATION.md,L301-L328,Suricata-Overview,merge-into,4,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L1-L20,Suricata-Overview,merge-into,5,L413-L450 IPS mode and dropsid rollout sent to SID page; REVIEW boundary between IDS/IPS pros-cons and rollout; ledger: Reference hardware Q5 owed; SSL Blacklist A2; old wiki name: Suricata-Optimization-Guide
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L21-L47,Suricata-Setup-and-Rules,merge-into,2,ledger: IP-reputation categories A3; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L48-L74,Suricata-Overview,merge-into,6,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L75-L111,Suricata-Performance-Tuning,merge-into,4,ledger: DNS EVE A4
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L112-L254,Suricata-Setup-and-Rules,merge-into,3,ledger: IP-reputation categories A3; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L255-L260,Suricata-SID-Management,merge-into,2,ledger: SID arithmetic A8
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L261-L363,Suricata-Performance-Tuning,merge-into,5,ledger: DNS EVE A4
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L364-L392,Suricata-Setup-and-Rules,merge-into,4,ledger: IP-reputation categories A3; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L393-L398,EVE-Forwarder-Overview,merge-into,1,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L399-L412,Suricata-Overview,merge-into,7,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L413-L450,Suricata-SID-Management,merge-into,3,ledger: SID arithmetic A8
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L451-L485,Suricata-Setup-and-Rules,merge-into,5,ledger: IP-reputation categories A3; SSL Blacklist A2
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L486-L501,Suricata-Performance-Tuning,merge-into,6,ledger: DNS EVE A4
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L502-L540,Suricata-Operations-and-Troubleshooting,merge-into,3,ledger: DNS EVE A4; Scan threshold A10
+docs/pfsense/SURICATA_OPTIMIZATION_GUIDE.md,L541-L590,Suricata-Overview,merge-into,8,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/pfsense/LAN_MONITORING.md,L1-L168,Suricata-LAN-Monitoring,split-into,1,example topology only (Q2 answered): use documentation ranges and generic VLAN numbers; forwarder discovery L169-L193 to EVE-Forwarder-Overview; old wiki name: LAN-and-East-West-Monitoring
+docs/pfsense/LAN_MONITORING.md,L169-L193,EVE-Forwarder-Overview,merge-into,2,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2
+docs/pfsense/LAN_MONITORING.md,L194-L318,Suricata-LAN-Monitoring,split-into,2,
+config/sid/README.md,,Suricata-SID-Management,merge-into,4,list files stay in repo; this README becomes pointer plus file tree; ledger: SID arithmetic A8
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L1-L126,pfBlockerNG-Overview-and-Strategy,merge-into,1,L183-L193 Dashboard Panels merges with Telegraf pipeline page; fix anchor 3-dashboard-panels to 5; ledger: SSL Blacklist A2; old wiki name: pfBlockerNG-Optimization
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L127-L182,pfBlockerNG-Feed-Health-and-Validation,merge-into,1,ledger: SSL Blacklist A2; Two 97% figures A12
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L183-L193,Telegraf-pfBlockerNG-to-OpenSearch,merge-into,1,ledger: Anchors A11
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L194-L245,pfBlockerNG-Feed-Health-and-Validation,merge-into,2,ledger: SSL Blacklist A2; Two 97% figures A12
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L246-L299,pfBlockerNG-Whitelist-and-False-Positives,merge-into,1,ledger: Whitelist sections A5; whitelist form Q6 owed
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L300-L343,pfBlockerNG-Feed-Health-and-Validation,merge-into,3,ledger: SSL Blacklist A2; Two 97% figures A12
+docs/pfsense/PFBLOCKERNG_OPTIMIZATION.md,L344-L379,pfBlockerNG-Overview-and-Strategy,merge-into,2,ledger: SSL Blacklist A2
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L1-L24,pfBlockerNG-Feed-Catalog,split-into,1,data file config/dnsbl_whitelist.txt stays in repo (not .md); ledger: SSL Blacklist A2; Hagezi URLs Q7 owed; old wiki name: pfBlockerNG-Feed-Reference
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L25-L43,pfBlockerNG-Overview-and-Strategy,merge-into,3,ledger: SSL Blacklist A2
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L44-L355,pfBlockerNG-Feed-Catalog,split-into,2,ledger: SSL Blacklist A2; Hagezi URLs Q7 owed
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L356-L552,pfBlockerNG-Whitelist-and-False-Positives,merge-into,2,ledger: Whitelist sections A5; whitelist form Q6 owed
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L553-L679,pfBlockerNG-Whitelist-Privacy-Notes,split-into,1,
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L680-L732,pfBlockerNG-Feed-Health-and-Validation,merge-into,4,ledger: SSL Blacklist A2; Two 97% figures A12
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L733-L761,pfBlockerNG-Overview-and-Strategy,merge-into,4,ledger: SSL Blacklist A2
+docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md,L762-L842,pfBlockerNG-Feed-Catalog,split-into,3,ledger: SSL Blacklist A2; Hagezi URLs Q7 owed
+docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md,,Telegraf-pfBlockerNG-to-OpenSearch,merge-into,2,whole file is primary of the page; ledger: Anchors A11; old wiki name: Telegraf-pfBlockerNG-Pipeline
+plugins/README.md,,Telegraf-Plugins,merge-into,1,short index stays beside the code; union of columns with TELEGRAF_ON_PFSENSE 4.3
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L1-L65,Telegraf-Install-and-Configure,split-into,1,ledger: Telegraf timeline A9/Q9; old wiki name: Telegraf-on-pfSense
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L66-L105,Telegraf-Plugins,merge-into,2,
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L106-L146,Telegraf-pfBlockerNG-to-OpenSearch,merge-into,3,ledger: Anchors A11
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L147-L183,Telegraf-Plugins,merge-into,3,
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L184-L267,Telegraf-Install-and-Configure,split-into,2,ledger: Telegraf timeline A9/Q9
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L268-L273,Telegraf-pfBlockerNG-to-OpenSearch,merge-into,4,ledger: Anchors A11
+docs/pfsense/TELEGRAF_ON_PFSENSE.md,L274-L292,Telegraf-Install-and-Configure,split-into,3,ledger: Telegraf timeline A9/Q9
+docs/pfsense/MAC_VENDOR_LOOKUP_SETUP.md,,Telegraf-MAC-Vendor-Lookup,move,1,old wiki name: MAC-Vendor-Lookup
+docs/pfsense/PFSENSE_UPGRADE_GUIDE.md,L1-L187,pfSense-Upgrade-Guide,split-into,1,REVIEW: Part 2 (L128-L187) kept whole on the guide; writers may spread its rows to topic pages later; ledger: Telegraf A9; pfSense 2.9.0 B2-7; old wiki name: Upgrading-pfSense
+docs/pfsense/PFSENSE_UPGRADE_GUIDE.md,L188-L240,pfSense-Upgrade-2-9-0-Real-Run-2026-10,split-into,1,
+docs/pfsense/PFSENSE_UPGRADE_GUIDE.md,L241-L312,pfSense-Upgrade-Guide,split-into,2,ledger: Telegraf A9; pfSense 2.9.0 B2-7
+docs/pfsense/TRAFFIC_SHAPING_GUIDE.md,,pfSense-Traffic-Shaping-Guide,move,1,"REVIEW: partly real network per Q2; replace real names and VLAN ids with generic ones, real values under Our settings as placeholders; old wiki name: Traffic-Shaping-Guide"
+docs/pfsense/SHAPING_OPTIMIZATION_NOTES.md,,pfSense-Traffic-Shaping-Measured-Tuning,move,1,old wiki name: Shaping-Optimization-Notes
+docs/pfsense/TUNING_RESULTS_2026-10.md,,pfSense-Tuning-Results-2026-10,move,1,dated results page; REVIEW: stays live or moves to Archive once superseded (report A Q5); old wiki name: October-2026-Tuning-Results
+docs/pfsense/crowdsec-phase1.md,,CrowdSec-Phase1-Plan,move,1,REVIEW: design puts CrowdSec in the docker-stack wiki with a pointer here; name chosen over Project-CrowdSec-Phase1-Plan to match design prefix; old wiki name: CrowdSec-Exploratory-Notes
+docs/install/GEOIP_SETUP.md,,EVE-Forwarder-GeoIP,merge-into,1,primary of GeoIP page; ledger: GEOIP_DB_PATH B1-12; maxminddb Q1 owed; old wiki name: GeoIP-Setup
+docs/install/HARDWARE_REQUIREMENTS.md,L1-L175,Install-Hardware-Requirements,split-into,1,REVIEW: report B1 split firewall requirements to Suricata-Hardware-and-Stream-Memory; kept on Install-Hardware-Requirements (fewer pages); named hardware models need maintainer ruling; ledger: Installer requirements B1-9/G3; RETENTION_DAYS B1-4/G1; old wiki name: Hardware-Requirements
+docs/install/HARDWARE_REQUIREMENTS.md,L176-L204,Suricata-Performance-Tuning,merge-into,7,ledger: DNS EVE A4
+docs/install/HARDWARE_REQUIREMENTS.md,L205-L245,Suricata-Overview,merge-into,9,ledger: Reference hardware Q5 owed; SSL Blacklist A2
+docs/install/HARDWARE_REQUIREMENTS.md,L246-L278,EVE-Forwarder-GeoIP,merge-into,2,ledger: GEOIP_DB_PATH B1-12; maxminddb Q1 owed
+docs/install/HARDWARE_REQUIREMENTS.md,L279-L311,Install-Hardware-Requirements,split-into,2,ledger: Installer requirements B1-9/G3; RETENTION_DAYS B1-4/G1
+docs/install/HARDWARE_REQUIREMENTS.md,L312-L348,SIEM-InfluxDB-vs-OpenSearch,split-into,1,
+docs/install/HARDWARE_REQUIREMENTS.md,L349-L429,Install-Hardware-Requirements,split-into,3,ledger: Installer requirements B1-9/G3; RETENTION_DAYS B1-4/G1
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L1-L25,EVE-Forwarder-Install,merge-into,1,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; sysrc B1-3; Interpreter B1-5; old wiki name: Forwarder-Installation
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L26-L49,EVE-Forwarder-Overview,merge-into,3,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L50-L116,EVE-Forwarder-Install,merge-into,2,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; sysrc B1-3; Interpreter B1-5
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L117-L137,EVE-Forwarder-GeoIP,merge-into,3,ledger: GEOIP_DB_PATH B1-12; maxminddb Q1 owed
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L138-L201,EVE-Forwarder-Install,merge-into,3,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; sysrc B1-3; Interpreter B1-5
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L202-L280,EVE-Forwarder-Operations,merge-into,1,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; lsof B1-8
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L281-L356,Troubleshoot-Forwarder,merge-into,2,ledger: Pidfiles B1-2; lsof B1-8
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L357-L393,EVE-Forwarder-Operations,merge-into,2,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; lsof B1-8
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L394-L407,EVE-Forwarder-Reference,merge-into,1,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; GEOIP_DB_PATH B1-12; Interpreter B1-5; Scripts B2-4
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L408-L414,EVE-Forwarder-Install,merge-into,4,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; sysrc B1-3; Interpreter B1-5
+docs/install/INSTALL_PFSENSE_FORWARDER.md,L415-L429,EVE-Forwarder-Overview,merge-into,4,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2
+docs/install/INSTALL_SIEM_STACK.md,,Install-SIEM-Server-Bare-Metal,move,1,Ubuntu 22.04+ only per ledger; ledger: Installer requirements B1-9/G3; old wiki name: SIEM-Server-Installation
+docs/install/INSTALL_DASHBOARD.md,,Install-Grafana-Dashboards,move,1,B1 name SIEM-Grafana-Dashboards-Install changed to Install- prefix to avoid near-duplicate of SIEM-Grafana-Dashboards (B2); .keyword recipes need ledger fix; ledger: in_iface etc. B1-11; Datasource names B1-13; old wiki name: Dashboard-Installation
+docs/install/NEW_USER_CHECKLIST.md,,Install-New-User-Checklist,move,1,ledger: RETENTION_DAYS B1-4/G1; old wiki name: New-User-Checklist
+docs/operations/MANAGEMENT_CONSOLE.md,,Operate-Management-Console,move,1,config.env table overlaps Reference-Configuration; writer dedups; ledger: lsof B1-8; Installer requirements B1-9/G3; GEOIP_DB_PATH B1-12; old wiki name: Management-Console
+docs/operations/SURICATA_FORWARDER_MONITORING.md,L1-L116,EVE-Forwarder-Operations,merge-into,3,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; lsof B1-8; old wiki name: Forwarder-Operations-and-Watchdog
+docs/operations/SURICATA_FORWARDER_MONITORING.md,L117-L142,EVE-Forwarder-Install,merge-into,5,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; sysrc B1-3; Interpreter B1-5
+docs/operations/SURICATA_FORWARDER_MONITORING.md,L143-L291,EVE-Forwarder-Operations,merge-into,4,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; lsof B1-8
+docs/operations/SURICATA_FORWARDER_MONITORING.md,L292-L305,Troubleshoot-Forwarder,merge-into,3,ledger: Pidfiles B1-2; lsof B1-8
+docs/operations/SURICATA_FORWARDER_MONITORING.md,L306-L312,EVE-Forwarder-Operations,merge-into,5,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; lsof B1-8
+docs/operations/MULTI_INTERFACE_RETENTION.md,L1-L100,EVE-Forwarder-Multi-Interface,split-into,1,REVIEW: L247-L280 Related and Quick Reference may mix both topics; old wiki name: Multi-Interface-and-Retention
+docs/operations/MULTI_INTERFACE_RETENTION.md,L101-L208,SIEM-OpenSearch-Retention,merge-into,1,ledger: RETENTION_DAYS B1-4/G1; Retention default B2-2/G2
+docs/operations/MULTI_INTERFACE_RETENTION.md,L209-L229,Troubleshoot-Forwarder,merge-into,4,ledger: Pidfiles B1-2; lsof B1-8
+docs/operations/MULTI_INTERFACE_RETENTION.md,L230-L246,SIEM-OpenSearch-Retention,merge-into,2,ledger: RETENTION_DAYS B1-4/G1; Retention default B2-2/G2
+docs/operations/MULTI_INTERFACE_RETENTION.md,L247-L280,EVE-Forwarder-Multi-Interface,split-into,2,
+docs/reference/CONFIGURATION.md,L1-L54,Reference-Configuration,split-into,1,Logstash maintenance L320 tagged to pipeline by llm-local and checked; Security L350 to OpenSearch-Operations per B1 (REVIEW); ledger: Datasource names B1-13; SIEM_HOST B1-14; Watchdog B1-1/B2-1; old wiki name: Configuration-Reference
+docs/reference/CONFIGURATION.md,L55-L102,EVE-Forwarder-Reference,merge-into,2,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; GEOIP_DB_PATH B1-12; Interpreter B1-5; Scripts B2-4
+docs/reference/CONFIGURATION.md,L103-L140,EVE-Forwarder-Overview,merge-into,5,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2
+docs/reference/CONFIGURATION.md,L141-L181,EVE-Forwarder-Logstash-Pipeline,merge-into,1,ledger: in_iface etc. B1-11
+docs/reference/CONFIGURATION.md,L182-L211,SIEM-OpenSearch-Operations,split-into,1,ledger: OpenSearch log path B2-6; Installer requirements B1-9/G3
+docs/reference/CONFIGURATION.md,L212-L243,SIEM-OpenSearch-Index-Templates,merge-into,1,ledger: in_iface etc. B1-11
+docs/reference/CONFIGURATION.md,L244-L254,SIEM-OpenSearch-Retention,merge-into,3,ledger: RETENTION_DAYS B1-4/G1; Retention default B2-2/G2
+docs/reference/CONFIGURATION.md,L255-L280,Reference-Configuration,split-into,2,ledger: Datasource names B1-13; SIEM_HOST B1-14; Watchdog B1-1/B2-1
+docs/reference/CONFIGURATION.md,L281-L319,SIEM-OpenSearch-Operations,split-into,2,ledger: OpenSearch log path B2-6; Installer requirements B1-9/G3
+docs/reference/CONFIGURATION.md,L320-L349,EVE-Forwarder-Logstash-Pipeline,merge-into,2,ledger: in_iface etc. B1-11
+docs/reference/CONFIGURATION.md,L350-L386,SIEM-OpenSearch-Operations,split-into,3,ledger: OpenSearch log path B2-6; Installer requirements B1-9/G3
+docs/reference/CONFIGURATION.md,L387-L393,Reference-Configuration,split-into,3,ledger: Datasource names B1-13; SIEM_HOST B1-14; Watchdog B1-1/B2-1
+docs/reference/FIELD_REFERENCE.md,,Reference-Field-Reference,move,1,ledger: in_iface etc. B1-11; old wiki name: Field-Reference
+config/README.md,L1-L30,EVE-Forwarder-Logstash-Pipeline,merge-into,3,short inventory README stays in config/; L85-L105 whitelist import steps; ledger: in_iface etc. B1-11; old wiki name: Configuration-Files
+config/README.md,L31-L82,SIEM-OpenSearch-Index-Templates,merge-into,2,ledger: in_iface etc. B1-11
+config/README.md,L83-L105,pfBlockerNG-Whitelist-and-False-Positives,merge-into,3,ledger: Whitelist sections A5; whitelist form Q6 owed
+config/README.md,L106-L124,Suricata-SID-Management,merge-into,5,ledger: SID arithmetic A8
+config/README.md,L125-L158,SIEM-OpenSearch-Index-Templates,merge-into,3,ledger: in_iface etc. B1-11
+config/README.md,L159-L327,EVE-Forwarder-Logstash-Pipeline,merge-into,4,ledger: in_iface etc. B1-11
+config/README.md,L328-L347,SIEM-OpenSearch-Index-Templates,merge-into,4,ledger: in_iface etc. B1-11
+config/README.md,L348-L362,EVE-Forwarder-Logstash-Pipeline,merge-into,5,ledger: in_iface etc. B1-11
+docs/siem/COMPARISON.md,,SIEM-Backend-Comparison,move,1,
+docs/siem/wazuh/README.md,,SIEM-Wazuh-Integration,move,1,README.md L142-L152 pfSense syslog for Wazuh paragraph also belongs here (README is keep; writer copies); old wiki name: Wazuh-Integration
+docs/siem/graylog/README.md,,Archive-Graylog,archive-into,1,old wiki name: Graylog
+dashboards/README.md,,SIEM-Grafana-Dashboards,move,1,~15-line pointer README with inventory table stays beside JSON; ledger: Dashboards B2-3; old wiki name: Dashboards
+dashboards/wazuh/README.md,,SIEM-Wazuh-Dashboards,move,1,Q8: replace instance UIDs and password-shaped example with placeholders; 4-line pointer stays; old wiki name: Wazuh-Dashboards
+docs/troubleshooting/TROUBLESHOOTING.md,L1-L56,Troubleshoot-Start-Here,split-into,1,split follows report B2 map A2 on verified heading lines; symptom index table on Start-Here is new writing; old wiki name: Troubleshooting
+docs/troubleshooting/TROUBLESHOOTING.md,L57-L82,Troubleshoot-Dashboard-No-Data,merge-into,1,merged triage (TROUBLESHOOTING L57-L82) with fix page; report B2 name Troubleshoot-No-Data-Triage dropped
+docs/troubleshooting/TROUBLESHOOTING.md,L83-L176,Troubleshoot-Forwarder,merge-into,5,ledger: Pidfiles B1-2; lsof B1-8
+docs/troubleshooting/TROUBLESHOOTING.md,L177-L189,Troubleshoot-Logstash,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L190-L240,Troubleshoot-OpenSearch,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L241-L303,Troubleshoot-Logstash,split-into,2,
+docs/troubleshooting/TROUBLESHOOTING.md,L304-L344,Troubleshoot-Grafana,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L345-L382,Troubleshoot-Performance-And-Disk,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L383-L403,Troubleshoot-Network,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L404-L440,Troubleshoot-Error-Messages,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L441-L455,Troubleshoot-After-pfSense-Upgrade,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L456-L473,Troubleshoot-Getting-Help,split-into,1,
+docs/troubleshooting/TROUBLESHOOTING.md,L474-L496,Operate-Preventive-Maintenance,split-into,1,
+docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md,L1-L162,Troubleshoot-Dashboard-No-Data,merge-into,2,merged triage (TROUBLESHOOTING L57-L82) with fix page; report B2 name Troubleshoot-No-Data-Triage dropped; old wiki name: Dashboard-Shows-No-Data
+docs/troubleshooting/DASHBOARD_NO_DATA_FIX.md,L163-L200,Archive-Nested-Layout-Migration,archive-into,1,
+docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md,L1-L107,Troubleshoot-Data-Stops-At-Midnight-UTC,split-into,1,old wiki name: Data-Stops-at-Midnight-UTC
+docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md,L108-L128,SIEM-OpenSearch-Index-Templates,merge-into,5,ledger: in_iface etc. B1-11
+docs/troubleshooting/OPENSEARCH_AUTO_CREATE.md,L129-L139,Troubleshoot-Data-Stops-At-Midnight-UTC,split-into,2,
+docs/troubleshooting/LOG_ROTATION_FIX.md,,EVE-Forwarder-Log-Rotation,move,1,primary home; symptom entry added on Troubleshoot-Forwarder by writer; old wiki name: Forwarder-and-Log-Rotation
+docs/troubleshooting/PFSENSE_FILTERLOG_ROTATION_FIX.md,,Troubleshoot-Filterlog-Stops-After-Rotation,move,1,drop duplicate Telegraf link in Related; ledger: B2-9 duplicate link; old wiki name: Filterlog-Stops-After-Rotation
+QUICK_START.md,,Install-Quick-Start,move,1,root file leaves; README keeps 7-command version; ledger: Retention default B2-2/G2; old wiki name: Quick-Start
+ORGANIZATION.md,L1-L80,Reference-Repository-Layout,split-into,1,regenerate tree for the new layout; old wiki name: Repository-Layout
+ORGANIZATION.md,L81-L92,EVE-Forwarder-Reference,merge-into,3,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; GEOIP_DB_PATH B1-12; Interpreter B1-5; Scripts B2-4
+ORGANIZATION.md,L93-L97,Archive-Git-History,archive-into,3,
+ROADMAP.md,L1-L132,Project-Roadmap,split-into,1,open items also become board cards; ledger: ROADMAP footer B2-8; pfSense 2.9.0 B2-7; old wiki name: Roadmap
+ROADMAP.md,L133-L141,Archive-Repo-Hygiene-Decisions-2026-08,archive-into,1,
+ROADMAP.md,L142-L151,Project-Roadmap,split-into,2,ledger: ROADMAP footer B2-8; pfSense 2.9.0 B2-7
+CONTRIBUTING.md,L1-L285,Project-Contributing,split-into,1,short .github/CONTRIBUTING.md pointer is a new file; issue templates move to .github/ISSUE_TEMPLATE; ledger: OpenSearch log path B2-6; CI file B2-5; old wiki name: Contributing
+CONTRIBUTING.md,L286-L305,Project-Release-Process,split-into,1,
+CONTRIBUTING.md,L306-L401,Project-Contributing,split-into,2,ledger: OpenSearch log path B2-6; CI file B2-5
+scripts/README.md,L1-L292,Reference-Scripts,split-into,1,pointer README stays; L293-L401 pfSense forwarder and watchdog sections go to the single forwarder reference page (B2 name EVE-Forwarder-Script-Reference dropped); REVIEW L293-L294 heading boundary; ledger: Scripts B2-4; CI file B2-5; Watchdog B1-1/B2-1; old wiki name: Scripts-Reference
+scripts/README.md,L293-L401,EVE-Forwarder-Reference,merge-into,4,ledger: Watchdog B1-1/B2-1; Pidfiles B1-2; GEOIP_DB_PATH B1-12; Interpreter B1-5; Scripts B2-4
+scripts/README.md,L402-L441,Reference-Scripts,split-into,2,ledger: Scripts B2-4; CI file B2-5; Watchdog B1-1/B2-1
+scripts/README.md,L442-L489,Archive-Legacy-Forwarder-Scripts,archive-into,1,
+scripts/README.md,L490-L505,Reference-Scripts,split-into,3,ledger: Scripts B2-4; CI file B2-5; Watchdog B1-1/B2-1
+tests/README.md,,Reference-Tests,move,1,pointer README stays in tests/; CI file name is ci.yml per ledger; ledger: CI file B2-5; old wiki name: Tests
+README.md,,,keep,1,"front door stays trimmed in repo; REVIEW: wiki pages Project-Overview, Project-Status, Install-Recommended-pfSense-Packages, Reference-Security-Considerations, Reference-Architecture and Project-Acknowledgments are written from README sections by copy (not git mv); Wazuh syslog paragraph L142-L152 goes to SIEM-Wazuh-Integration; old wiki name: Project-Overview"
+CHANGELOG.md,,,keep,1,root file is the release-tool source (release.sh); wiki Project-Changelog is a generated mirror; REVIEW: boilerplate tail L237-L307 duplicates README and CONTRIBUTING; old wiki name: Changelog
+SECURITY.md,,,keep,1,GitHub surfaces it from root; one copy only; old wiki name: Security-Policy
+docs-migration/README.md,,,keep,1,REVIEW: migration working note from the registry-tool agent; removed in Task 11 with docs-migration/
