@@ -19,6 +19,12 @@ LOGSTASH_VERSION="8.19.7"
 GRAFANA_VERSION="12.3.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Safe-default helpers (loopback OpenSearch, source-limited firewall, Grafana password check)
+# shellcheck source=scripts/lib-install-safety.sh
+source "$SCRIPT_DIR/scripts/lib-install-safety.sh"
+# Pick up the safety settings from config.env if present (read, never executed)
+load_safety_config "$SCRIPT_DIR/config.env"
+
 # Functions
 print_header() {
     echo ""
@@ -42,6 +48,10 @@ print_error() {
 
 print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
 }
 
 check_root() {
@@ -122,10 +132,37 @@ interactive_config() {
     read -p "Data retention in days [90]: " RETENTION_DAYS
     RETENTION_DAYS=${RETENTION_DAYS:-90}
     
-    # Get Grafana password
-    read -sp "Set Grafana admin password [leave empty for 'admin']: " GRAFANA_PASSWORD
+    # Who may reach the services. Nothing is opened to "anyone" unless
+    # INSECURE_OPEN_ACCESS=true is set on purpose (see config.env.example).
+    if _lis_true "${INSECURE_OPEN_ACCESS:-}"; then
+        print_warning "INSECURE_OPEN_ACCESS=true: OpenSearch, Logstash and Grafana will be open to every source."
+    fi
+    LOGSTASH_ALLOWED_SOURCES="${LOGSTASH_ALLOWED_SOURCES:-$PFSENSE_IP}"
+    if [ -z "${GRAFANA_ALLOWED_SOURCES:-}" ]; then
+        read -r -p "IPs/CIDRs allowed to reach Grafana (comma separated, e.g. your workstation or LAN): " GRAFANA_ALLOWED_SOURCES
+    fi
+    export LOGSTASH_ALLOWED_SOURCES GRAFANA_ALLOWED_SOURCES MONITOR_MODE
+    # Fail now, before anything is installed, if the plan is not valid
+    if ! firewall_plan > /dev/null; then
+        print_error "Fix the source settings above and re-run (see config.env.example)."
+        exit 1
+    fi
+    if ! render_opensearch_yml > /dev/null; then
+        print_error "OpenSearch bind settings are not valid (see config.env.example)."
+        exit 1
+    fi
+
+    # Get Grafana password: set one or let the installer generate one
+    GRAFANA_PASSWORD_GENERATED=false
+    read -sp "Set Grafana admin password [leave empty to generate a random one]: " GRAFANA_PASSWORD
     echo ""
-    GRAFANA_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    if [ -z "$GRAFANA_PASSWORD" ]; then
+        GRAFANA_PASSWORD=$(generate_password)
+        GRAFANA_PASSWORD_GENERATED=true
+    fi
+    if ! grafana_password_ok "$GRAFANA_PASSWORD"; then
+        exit 1
+    fi
     
     # Summary
     echo ""
@@ -135,6 +172,9 @@ interactive_config() {
     echo "  pfSense IP:         $PFSENSE_IP"
     echo "  Data Retention:     $RETENTION_DAYS days"
     echo "  Grafana Password:   ${GRAFANA_PASSWORD//?/*}"
+    echo "  OpenSearch bind:    $(resolve_opensearch_bind)"
+    echo "  Logstash sources:   ${LOGSTASH_ALLOWED_SOURCES}"
+    echo "  Grafana sources:    ${GRAFANA_ALLOWED_SOURCES}"
     echo ""
     read -p "Proceed with installation? [Y/n]: " CONFIRM
     CONFIRM=${CONFIRM:-Y}
@@ -214,6 +254,10 @@ install_opensearch() {
     
     if systemctl is-active --quiet opensearch; then
         print_info "OpenSearch already installed and running"
+        if grep -q '^network.host: *0\.0\.0\.0' /opt/opensearch/config/opensearch.yml 2>/dev/null; then
+            print_warning "Existing opensearch.yml binds 0.0.0.0 with the security plugin disabled (the old default)."
+            print_warning "It was left as is. To bind loopback only: set 'network.host: 127.0.0.1' in /opt/opensearch/config/opensearch.yml and restart opensearch."
+        fi
         return
     fi
     
@@ -230,16 +274,8 @@ install_opensearch() {
     chown -R opensearch:opensearch /opt/opensearch
     
     print_step "Configuring OpenSearch..."
-    cat > /opt/opensearch/config/opensearch.yml <<EOF
-cluster.name: pfsense-monitoring
-node.name: siem-node-1
-path.data: /opt/opensearch/data
-path.logs: /opt/opensearch/logs
-network.host: 0.0.0.0
-http.port: 9200
-discovery.type: single-node
-plugins.security.disabled: true
-EOF
+    # Loopback by default; see render_opensearch_yml in scripts/lib-install-safety.sh
+    render_opensearch_yml > /opt/opensearch/config/opensearch.yml
     
     print_step "Setting heap size..."
     HEAP_SIZE=$((TOTAL_RAM / 2))
@@ -356,12 +392,6 @@ install_grafana() {
     print_step "Installing OpenSearch datasource plugin..."
     grafana-cli plugins install grafana-opensearch-datasource
     
-    print_step "Configuring Grafana..."
-    if [ "$GRAFANA_PASSWORD" != "admin" ]; then
-        # Set admin password
-        grafana-cli admin reset-admin-password "$GRAFANA_PASSWORD" > /dev/null 2>&1 || true
-    fi
-    
     systemctl enable grafana-server
     systemctl start grafana-server
     
@@ -373,24 +403,40 @@ install_grafana() {
         fi
         sleep 2
     done
+
+    # Set the admin password after first start (the database exists by then).
+    # A failure here must stop the install: the account would still be admin/admin.
+    print_step "Setting Grafana admin password..."
+    if ! grafana-cli admin reset-admin-password "$GRAFANA_PASSWORD" > /dev/null 2>&1; then
+        print_error "Could not set the Grafana admin password. Grafana may still use admin/admin."
+        print_error "Run: sudo grafana-cli admin reset-admin-password '<new password>'"
+        exit 1
+    fi
+    print_success "Grafana admin password set"
 }
 
 configure_firewall() {
     print_header "Configuring Firewall"
     
-    print_step "Opening required ports..."
-    
-    # OpenSearch
-    ufw allow 9200/tcp comment "OpenSearch HTTP"
-    
-    # Logstash
-    ufw allow 5140/udp comment "Logstash Suricata input"
-    if [[ "$MONITOR_MODE" == "telegraf" ]] || [[ "$MONITOR_MODE" == "both" ]]; then
-        ufw allow 8086/tcp comment "Logstash Telegraf input"
+    print_step "Opening required ports (only to the sources you named)..."
+
+    # firewall_plan prints SRC|PORT|PROTO|COMMENT; SRC is "any" only with INSECURE_OPEN_ACCESS=true
+    local plan rule_src rule_port rule_proto rule_comment
+    plan=$(firewall_plan) || { print_error "Firewall plan is not valid"; exit 1; }
+    while IFS='|' read -r rule_src rule_port rule_proto rule_comment; do
+        [ -z "$rule_src" ] && continue
+        if [ "$rule_src" = "any" ]; then
+            ufw allow "$rule_port/$rule_proto" comment "$rule_comment"
+        else
+            ufw allow from "$rule_src" to any port "$rule_port" proto "$rule_proto" comment "$rule_comment"
+        fi
+    done <<< "$plan"
+
+    # Older installs opened these ports to everyone; the installer does not delete rules, it tells you
+    if ufw status 2>/dev/null | grep -E '^(9200|5140|3000|8086)(/(tcp|udp))? +ALLOW +Anywhere' > /dev/null; then
+        print_warning "ufw still has rules that allow 9200/5140/3000/8086 from anywhere (from an older install)."
+        print_warning "Review with 'sudo ufw status numbered' and delete them, e.g. 'sudo ufw delete allow 9200/tcp'."
     fi
-    
-    # Grafana
-    ufw allow 3000/tcp comment "Grafana Web UI"
 
     # SSH — must be allowed BEFORE enabling ufw or we lock ourselves out
     ufw allow OpenSSH
@@ -417,7 +463,7 @@ configure_retention() {
 print_next_steps() {
     print_header "Installation Complete!"
     
-    echo -e "${GREEN}✓ OpenSearch${NC} is running on http://${SIEM_IP}:9200"
+    echo -e "${GREEN}✓ OpenSearch${NC} is running on http://$(resolve_opensearch_bind):9200 (loopback unless you set OPENSEARCH_BIND)"
     echo -e "${GREEN}✓ Logstash${NC} is running and listening on UDP 5140"
     echo -e "${GREEN}✓ Grafana${NC} is running on http://${SIEM_IP}:3000"
     echo ""
@@ -435,7 +481,11 @@ print_next_steps() {
     echo -e "${YELLOW}2. Access Grafana:${NC}"
     echo "   URL:      http://${SIEM_IP}:3000"
     echo "   Username: admin"
-    echo "   Password: ${GRAFANA_PASSWORD//?/*}"
+    if [ "$GRAFANA_PASSWORD_GENERATED" = "true" ]; then
+        echo "   Password: $GRAFANA_PASSWORD   (generated; shown once, also in /tmp/monitoring-config.env)"
+    else
+        echo "   Password: the one you entered"
+    fi
     echo ""
     
     echo -e "${YELLOW}3. Verify Data Flow:${NC}"

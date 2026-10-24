@@ -83,13 +83,13 @@ sudo mv opensearch-2.19.4 /opt/opensearch
 sudo useradd -r -s /bin/bash -d /opt/opensearch opensearch || true
 sudo chown -R opensearch:opensearch /opt/opensearch
 
-# Configure OpenSearch (single node, security plugin disabled)
+# Configure OpenSearch (single node, loopback only, security plugin disabled)
 sudo tee /opt/opensearch/config/opensearch.yml > /dev/null <<EOF
 cluster.name: pfsense-monitoring
 node.name: siem-node-1
 path.data: /opt/opensearch/data
 path.logs: /opt/opensearch/logs
-network.host: 0.0.0.0
+network.host: 127.0.0.1
 http.port: 9200
 discovery.type: single-node
 plugins.security.disabled: true
@@ -143,11 +143,9 @@ Expected output:
 }
 ```
 
-> **Security warning.** With `network.host: 0.0.0.0` and `plugins.security.disabled: true`
-> — the defaults `install.sh` uses — OpenSearch on port 9200 is reachable from the network
-> **without authentication**. Restrict it with ufw to trusted hosts (see step 6) or enable
-> the security plugin. Hardening this default is tracked in
-> [ROADMAP.md, Phase A](../../ROADMAP.md).
+> **Security warning.** `plugins.security.disabled: true` means no authentication, so keep
+> `network.host: 127.0.0.1` (what `install.sh` writes). Do not bind `0.0.0.0` without a ufw
+> source limit (see step 6).
 
 > **.deb install instead?** If you install OpenSearch from the `.deb` package rather than
 > the tarball, the config lives in `/etc/opensearch/opensearch.yml`, data in
@@ -219,22 +217,22 @@ sudo systemctl status grafana-server
 
 ### 6. Configure Firewall
 
-`install.sh` opens 9200/tcp, 5140/udp, 3000/tcp and SSH, then enables ufw. Because
-OpenSearch has no authentication by default, tighten 9200 to the hosts that need it
-(the SIEM server itself, and the workstation you run `setup.sh` from):
+`install.sh` allows SSH, UDP 5140 from `LOGSTASH_ALLOWED_SOURCES` (the pfSense address), and
+Grafana 3000 from `GRAFANA_ALLOWED_SOURCES`, then enables ufw. It does not open 9200. If you
+configure ufw by hand, do the same, with a source on every rule:
 
 ```bash
 # SSH first, or you lock yourself out when ufw is enabled
 sudo ufw allow OpenSSH
 
-# Grafana web UI
-sudo ufw allow 3000/tcp comment "Grafana Web UI"
+# Grafana web UI — only from your admin network
+sudo ufw allow from <ADMIN_NETWORK_CIDR> to any port 3000 proto tcp comment "Grafana Web UI"
 
 # Logstash input — only from pfSense
 sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp comment "Logstash Suricata input"
 
-# OpenSearch — only from trusted hosts (install.sh opens this to everyone; narrow it)
-sudo ufw allow from <WORKSTATION_IP> to any port 9200 proto tcp comment "OpenSearch HTTP"
+# OpenSearch — normally NOT opened (loopback only). If you bound another address on purpose:
+# sudo ufw allow from <WORKSTATION_IP> to any port 9200 proto tcp comment "OpenSearch HTTP"
 
 # Enable firewall if not already enabled
 sudo ufw --force enable

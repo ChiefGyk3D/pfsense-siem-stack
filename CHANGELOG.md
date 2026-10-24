@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Safe installer defaults (threat model findings, #49)
+
+- **Changed: OpenSearch binds `127.0.0.1`** and `install.sh` no longer opens 9200. `setup.sh` points Logstash and the Grafana datasource at `localhost`. `setup.sh`, `status.sh`, `preflight.sh` and `diagnose-and-repair.sh` run from a workstation now need an SSH tunnel (`ssh -N -L 9200:127.0.0.1:9200 user@siem-host`, then `OPENSEARCH_URL=http://127.0.0.1:9200` for `setup.sh`) or must run on the SIEM host.
+- **Changed: ufw rules carry a source.** UDP 5140 (and 8086 in Telegraf mode) only from `LOGSTASH_ALLOWED_SOURCES` (defaults to the pfSense IP), Grafana only from `GRAFANA_ALLOWED_SOURCES` (required).
+- **Changed: no more `admin` password.** `install.sh` generates one if you leave the prompt empty and stops if it cannot set it; `setup.sh` refuses `GRAFANA_ADMIN_PASS=admin` or empty.
+- **New: `INSECURE_OPEN_ACCESS=true`** in `config.env` restores the old wide-open install. Do not use it.
+- **Upgrading:** existing installs keep their `opensearch.yml` and old `ufw allow` rules. Re-running `install.sh` warns; fix by hand (see `docs/reference/CONFIGURATION.md`, Security).
+- **New: `scripts/lib-install-safety.sh`** and `tests/python/test_install_safety.py`.
+
 ### 2.9.0 upgrade results (2026-10)
 
 - **New in [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)**: a real 2.8.1 to 2.9.0 run on a tuned box: selecting the update branch, the dry run, what survived (limiters, flow control, Suricata instances, forwarder), and the fixes for what did not (DNSBL data store reset, Telegraf `ssl_ca`, removed `lsof`, CrowdSec reinstall with checksum), plus Suricata 8 numbers (about 840 Mbit/s inline, 0 drops) and a warning about misleading laptop Wi-Fi tests.

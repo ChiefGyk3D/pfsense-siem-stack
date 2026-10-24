@@ -128,13 +128,18 @@ history: [docs/ARCHIVE.md](docs/ARCHIVE.md).
 
 Be honest with yourself about what `install.sh` gives you today:
 
-- **OpenSearch listens on `0.0.0.0:9200` with the security plugin disabled.** Anyone who
-  can reach the port can read or delete your indices. Restrict 9200 to the Grafana host
-  and your workstation with `ufw`, or bind it to a management interface; enabling the
-  security plugin (auth + TLS) is the top item on the [roadmap](ROADMAP.md).
-- **Suricata events travel as plain UDP** to Logstash on 5140. Restrict the port to the
-  pfSense IP. A TLS/queued transport is planned.
-- **Grafana ships with `admin`/`admin`** — change it on first login.
+- **OpenSearch has no authentication (security plugin disabled), so `install.sh` binds it
+  to `127.0.0.1` and does not open 9200.** Binding it elsewhere takes explicit settings
+  (`OPENSEARCH_BIND`, `OPENSEARCH_ALLOWED_SOURCES`, `OPENSEARCH_DISABLE_SECURITY=true`);
+  `INSECURE_OPEN_ACCESS=true` restores the old wide-open install and should not be used.
+  Enabling the security plugin (auth + TLS) is the top item on the [roadmap](ROADMAP.md).
+  Upgrading from an older install? It keeps its old `opensearch.yml` and ufw rules; see
+  [Configuration, Security](docs/reference/CONFIGURATION.md#security).
+- **Suricata events travel as plain UDP** to Logstash on 5140. `install.sh` limits the port
+  to the pfSense IP (`LOGSTASH_ALLOWED_SOURCES`); the input is still unauthenticated, so a
+  host that can spoof that source can inject events. A TLS/queued transport is planned.
+- **Grafana** gets a password you choose or a generated one; `admin` is refused. It is
+  served over plain HTTP, limited to `GRAFANA_ALLOWED_SOURCES`.
 - **pfSense**: the scripts use key-based SSH as `admin`. Keep SSH restricted to your
   management network; pfSense 2.9.0 tightens sshd algorithms, so use an ed25519 key.
 - **GeoIP and alert data** include client IPs; treat the SIEM server as sensitive.

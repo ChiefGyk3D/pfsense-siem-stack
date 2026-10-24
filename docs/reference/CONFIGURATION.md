@@ -38,7 +38,11 @@ nano config.env      # at minimum: SIEM_HOST, PFSENSE_HOST
 | `LOGSTASH_UDP_PORT` | `5140` | setup, status, diagnose | UDP port Logstash listens on. Must match `port =>` in the pipeline. Baked into the forwarder. |
 | `GRAFANA_PORT` | `3000` | setup, diagnose, tests | Grafana HTTP port. |
 | `GRAFANA_ADMIN_USER` | `admin` | setup, diagnose, tests | Grafana user used for API calls (datasource creation, dashboard import). |
-| `GRAFANA_ADMIN_PASS` | `admin` | setup, diagnose, tests | Password for that user. Change it in Grafana on first login and update here. |
+| `GRAFANA_ADMIN_PASS` | none (**required**) | setup, diagnose, tests | Password for that user. `setup.sh` refuses `admin` and empty values. |
+| `LOGSTASH_ALLOWED_SOURCES` | pfSense IP typed into `install.sh` | install | IPs/CIDRs allowed to send UDP 5140 (and 8086 in Telegraf mode). Required. |
+| `GRAFANA_ALLOWED_SOURCES` | none (**required**) | install | IPs/CIDRs allowed to reach Grafana. |
+| `OPENSEARCH_BIND` | `127.0.0.1` | install | OpenSearch listen address. A non-loopback value also needs `OPENSEARCH_ALLOWED_SOURCES` and `OPENSEARCH_DISABLE_SECURITY=true`. |
+| `INSECURE_OPEN_ACCESS` | `false` | install, setup | `true` restores the old open install (0.0.0.0, no source limits, `admin` password accepted). Do not use. |
 | `SIEM_SSH_USER` | your local username | setup, preflight, diagnose | SSH user on the SIEM server. Used by setup step 3 to deploy the Logstash pipeline and by step 5 to install the Grafana plugin; without SSH those steps print manual instructions instead. |
 | `PFSENSE_HOST` | `192.168.1.1` (example) | setup, preflight, status, diagnose, tests | pfSense IP. **Required.** |
 | `PFSENSE_USER` | `admin` | setup, preflight, status, diagnose, tests | SSH user on pfSense (`admin` on pfSense CE 2.7+, `root` on older releases). Key-based auth is required (`ssh-copy-id`). |
@@ -192,22 +196,25 @@ sudo systemctl restart logstash
 | Logs | `/opt/opensearch/logs` |
 | Service | `opensearch.service` (systemd unit written by install.sh, runs as user `opensearch`) |
 
-`opensearch.yml` as written by `install.sh`:
+`opensearch.yml` as written by `install.sh` (default):
 
 ```yaml
 cluster.name: pfsense-monitoring
 node.name: siem-node-1
 path.data: /opt/opensearch/data
 path.logs: /opt/opensearch/logs
-network.host: 0.0.0.0
+network.host: 127.0.0.1
 http.port: 9200
 discovery.type: single-node
 plugins.security.disabled: true
 ```
 
-`network.host: 0.0.0.0` with the security plugin disabled means **anyone who can
-reach TCP 9200 can read, write and delete every index**. Read
-[Security](#security) before exposing the server beyond a trusted LAN.
+The API is unauthenticated, so it listens on loopback only; Logstash and Grafana run on the
+same host. If you bind it to another address (`OPENSEARCH_BIND`), **anyone who can reach TCP
+9200 can read, write and delete every index**, so the installer then requires
+`OPENSEARCH_ALLOWED_SOURCES` and `OPENSEARCH_DISABLE_SECURITY=true`. Read
+[Security](#security) first. To run `setup.sh` or `status.sh` from a workstation, use an SSH
+tunnel: `ssh -N -L 9200:127.0.0.1:9200 user@siem-host` and `OPENSEARCH_URL=http://127.0.0.1:9200`.
 
 ### Index templates
 
@@ -352,9 +359,15 @@ To pin the version and avoid surprises: `sudo apt-mark hold logstash`.
 The stack as installed is designed for a **trusted management LAN**. Three
 things to do before anything else can reach it:
 
-**Restrict ports with ufw.** `install.sh` opens 9200/tcp, 5140/udp and 3000/tcp
-to everyone. Tighten them to the hosts that need them (Grafana talks to
-OpenSearch over `localhost`, so 9200 rarely needs to be open at all):
+**Ports (ufw).** **Safe by default (since the fix for #49).** `install.sh` binds OpenSearch to `127.0.0.1`,
+opens UDP 5140 only to the pfSense address (`LOGSTASH_ALLOWED_SOURCES`) and Grafana only to
+`GRAFANA_ALLOWED_SOURCES`, and refuses the Grafana password `admin`. Nothing is opened to every
+source unless you set `INSECURE_OPEN_ACCESS=true` (see `config.env.example`). The helpers live in
+`scripts/lib-install-safety.sh`; `tests/python/test_install_safety.py` covers them.
+
+If you installed with an older version, `install.sh` opened 9200/tcp, 5140/udp and 3000/tcp
+to everyone and re-running it does not remove those rules (it warns). Tighten them by hand
+(Grafana talks to OpenSearch over `localhost`, so 9200 rarely needs to be open at all):
 
 ```bash
 sudo ufw delete allow 9200/tcp
@@ -369,10 +382,10 @@ sudo ufw status numbered
 Remember that `setup.sh`, `status.sh` and `diagnose-and-repair.sh` need 9200 from
 wherever you run them.
 
-**Change the Grafana admin password** on first login (Grafana prompts), or with
-`sudo grafana-cli admin reset-admin-password '<new>'`, then update
-`GRAFANA_ADMIN_PASS` in `config.env`. `install.sh` sets it for you if you gave it
-one.
+**Grafana admin password.** `install.sh` sets the one you type, or generates a random one
+(shown once at the end and saved in `/tmp/monitoring-config.env`, mode 600) and stops if it
+cannot set it. Put it in `GRAFANA_ADMIN_PASS` in `config.env`; `setup.sh` refuses `admin`.
+Grafana is still plain HTTP on 3000: keep it on a trusted network or put a TLS proxy in front.
 
 **OpenSearch security plugin.** It is disabled (`plugins.security.disabled: true`)
 because enabling it means TLS on 9200, users and roles, and matching changes in
