@@ -23,10 +23,17 @@ The model was read from code, not run; nothing was scanned or executed.
 
 ## Open High and Critical threats
 
-- High: Logstash UDP 5140 accepts unauthenticated, plaintext, spoofable events. The fix for #49
-  limits the port to `LOGSTASH_ALLOWED_SOURCES` (default: the pfSense IP) in `install.sh`, which stops
-  arbitrary hosts, but a host that can spoof that source, or sits on the same segment, can still inject
-  events, and the json filter still lets the sender set fields such as `event_type` and `@timestamp`.
+None.
+
+## Open, reduced to Medium: forged events on UDP 5140 (t_spoof)
+
+Was High. `config/logstash-suricata.conf` now parses the sender's JSON into `[@metadata][eve]`,
+validates it, and copies only allow-listed keys to the root, so the sender cannot overwrite
+`@timestamp`, `tags`, `host` or add fields; invalid events go to `eve-quarantine-*`. Residual: a host that can reach the port (or spoof the pfSense
+address on the same segment) can still send a well-formed fake alert, or flood noise to hide a real one.
+It is Medium because nothing in this repo acts on events (no alert rules or automation found). Fix for the
+residual is a network control: a dedicated VLAN or IPsec/WireGuard path to the SIEM
+(`docs/reference/CONFIGURATION.md`, Sender integrity). The filter was tested under plain ruby, not in Logstash.
 
 ## Mitigated in the fix for #49
 

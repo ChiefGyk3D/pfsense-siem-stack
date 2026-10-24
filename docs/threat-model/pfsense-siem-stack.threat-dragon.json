@@ -399,17 +399,17 @@
             "shape": "process",
             "data": {
               "name": "Logstash (config/logstash-suricata.conf)",
-              "description": "udp input 5140 -> json filter to event root -> date -> opensearch output http://localhost:9200. Installed by install.sh; config pushed by setup.sh.",
+              "description": "udp input 5140 -> json filter into [@metadata][eve] -> ruby validation and allow-listed copy to the root (quarantine to eve-quarantine-* on failure) -> date -> time-range check -> opensearch output http://localhost:9200. Installed by install.sh; config pushed by setup.sh.",
               "threats": [
                 {
                   "id": "t_spoof",
                   "number": 10,
                   "status": "Open",
-                  "severity": "High",
+                  "severity": "Medium",
                   "type": "Spoofing",
-                  "title": "Unauthenticated UDP input lets any host forge or poison SIEM events",
-                  "description": "The udp input on 5140 has no source filtering, authentication or integrity protection, and install.sh:configure_firewall runs ufw allow 5140/udp from anywhere. The json filter writes parsed keys to the event root, so a sender controls event_type, src_ip, alert.*, and @timestamp (via the timestamp field). An attacker who can reach the port can inject fake alerts, hide activity behind fake noise, or pollute daily indices and GeoIP/dashboards. UDP source addresses are also spoofable on-path.",
-                  "mitigation": "Partly addressed, still Open: install.sh configure_firewall opens UDP 5140 (and 8086) only to LOGSTASH_ALLOWED_SOURCES, which defaults to the pfSense IP (firewall_plan in scripts/lib-install-safety.sh), so arbitrary hosts cannot reach the input. The input itself still has no authentication or integrity, source addresses can be spoofed on the same segment, and the json filter in config/logstash-suricata.conf still writes sender-controlled keys to the event root. Remaining fix: authenticated or signed transport, or filtering and namespacing parsed keys."
+                  "title": "Unauthenticated UDP input: a reachable host can still send well-formed fake events",
+                  "description": "Residual after the t_spoof fix. The udp input on 5140 still has no authentication or integrity, and UDP source addresses can be spoofed by a host on the same segment as the pfSense address allowed by install.sh:configure_firewall (LOGSTASH_ALLOWED_SOURCES). config/logstash-suricata.conf now parses into [@metadata][eve], validates, and copies only allow-listed Suricata keys, so the sender can no longer set @timestamp, @version, tags, host, message or unlisted fields, or pick an arbitrary index date. What remains: a sender can still submit a valid-looking event under the allowed schema (event_type, src_ip, dest_ip, alert.signature, alert.severity, alert.action, in_iface), so it can add fake alerts to the dashboards or flood noise to bury a real one. Severity is Medium, not High: nothing in this repo acts on these events (no Grafana alert rules or automated response were found; scripts/check-telegram-alerts.sh only greps logs), so a forged event can mislead a human or hide a real one but not trigger an action. Also: a flood to the quarantine index costs disk until retention is configured for eve-quarantine-*.",
+                  "mitigation": "Reduced, not closed. Done: field allow-list, type/range/size/depth validation and timestamp range check in the ruby filters of config/logstash-suricata.conf; failing events go to eve-quarantine-* (output branch on [@metadata][quarantine_reason]); tests/python/test_logstash_eve_filter.py runs the ruby under plain ruby (Logstash itself was not run). Source allow-list in install.sh:configure_firewall / firewall_plan (scripts/lib-install-safety.sh). Needed for the residual: a network control that authenticates the path (dedicated VLAN or link between pfSense and the SIEM, or IPsec/WireGuard with Logstash listening only on the tunnel address); documented in docs/reference/CONFIGURATION.md, Sender integrity. UDP syslog cannot authenticate by itself."
                 },
                 {
                   "id": "t_jsonfail",
