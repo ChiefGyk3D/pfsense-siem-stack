@@ -26,12 +26,14 @@ Complete guide for setting up Grafana datasources and importing the pre-built da
 # Open browser to your Grafana instance
 http://<SIEM_IP>:3000
 
-# Default credentials
+# Log in as the Grafana admin user with the password you set
+# (install.sh asks for one or generates it; setup.sh reads GRAFANA_ADMIN_PASS from config.env)
 Username: admin
-Password: admin
+Password: <the Grafana admin password you set>
 ```
 
-Change the password when prompted on first login.
+If you did not use `install.sh`, set the password first with
+`sudo grafana-cli admin reset-admin-password '<new password>'`.
 
 ### 2. Add Datasources
 
