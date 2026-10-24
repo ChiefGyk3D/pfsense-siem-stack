@@ -1,0 +1,967 @@
+{
+  "version": "2.6.2",
+  "summary": {
+    "title": "pfsense-siem-stack",
+    "owner": "",
+    "description": "Threat model of the pfSense Suricata/pfBlockerNG to Logstash/OpenSearch/Grafana stack as built by setup.sh, install.sh and the forwarder. Public. No LLM component. Doc-only items are marked UNVERIFIED."
+  },
+  "detail": {
+    "diagrams": [
+      {
+        "id": 0,
+        "title": "Main",
+        "diagramType": "STRIDE",
+        "cells": [
+          {
+            "id": "tb_wan",
+            "shape": "trust-boundary-box",
+            "data": {
+              "name": "Untrusted network (WAN and monitored LAN hosts)",
+              "description": "Sources of the traffic Suricata inspects. Everything here is attacker-controllable."
+            },
+            "position": {
+              "x": 20,
+              "y": 20
+            },
+            "size": {
+              "width": 260,
+              "height": 640
+            }
+          },
+          {
+            "id": "tb_pf",
+            "shape": "trust-boundary-box",
+            "data": {
+              "name": "pfSense firewall host",
+              "description": "Runs Suricata, pfBlockerNG, Telegraf and the EVE forwarder (forward-suricata-eve.py) as root. Deployed by setup.sh over SSH."
+            },
+            "position": {
+              "x": 320,
+              "y": 20
+            },
+            "size": {
+              "width": 760,
+              "height": 640
+            }
+          },
+          {
+            "id": "tb_siem",
+            "shape": "trust-boundary-box",
+            "data": {
+              "name": "SIEM server (Ubuntu)",
+              "description": "Runs Logstash, OpenSearch and Grafana, installed by install.sh as systemd services."
+            },
+            "position": {
+              "x": 1120,
+              "y": 20
+            },
+            "size": {
+              "width": 760,
+              "height": 640
+            }
+          },
+          {
+            "id": "tb_admin",
+            "shape": "trust-boundary-box",
+            "data": {
+              "name": "Operator workstation",
+              "description": "Where setup.sh, pfsense-siem, config.env and the SSH keys live."
+            },
+            "position": {
+              "x": 1920,
+              "y": 20
+            },
+            "size": {
+              "width": 300,
+              "height": 640
+            }
+          },
+          {
+            "id": "tb_ext",
+            "shape": "trust-boundary-box",
+            "data": {
+              "name": "Upstream and CI",
+              "description": "Package repositories, rule/feed providers, GitHub Actions."
+            },
+            "position": {
+              "x": 320,
+              "y": 700
+            },
+            "size": {
+              "width": 1560,
+              "height": 260
+            }
+          },
+          {
+            "id": "a_net",
+            "shape": "actor",
+            "data": {
+              "name": "Internet and LAN hosts",
+              "description": "Source of all traffic and of any packet sent to the SIEM server ports.",
+              "threats": [
+                {
+                  "id": "t_dos",
+                  "number": 1,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Denial of service",
+                  "title": "Event flood hides real attacks",
+                  "description": "An attacker can generate enough alerts to saturate the single-socket UDP forwarder and the Logstash UDP buffer (config/logstash-suricata.conf sets a 32 MB receive buffer; forwarder sends datagrams with no ack, no retry and no queue: forward-suricata-eve.py:tail_log_file). Dropped datagrams are silent. On restart the forwarder seeks to end of file (f.seek(0,2)), so events during a restart are not forwarded.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 60,
+              "y": 80
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "a_op",
+            "shape": "actor",
+            "data": {
+              "name": "Operator (admin)",
+              "description": "Runs setup.sh, install.sh and the pfsense-siem console; browses Grafana.",
+              "threats": []
+            },
+            "position": {
+              "x": 1960,
+              "y": 80
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "a_feed",
+            "shape": "actor",
+            "data": {
+              "name": "Rule and feed providers",
+              "description": "Suricata rule sources and pfBlockerNG feeds. UNVERIFIED: only documented (docs/pfsense/PFBLOCKERNG_FEED_REFERENCE.md, config/sid/README.md); the rule update itself runs inside the pfSense packages, not in this repo.",
+              "threats": [
+                {
+                  "id": "t_feed",
+                  "number": 2,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Tampering",
+                  "title": "Malicious or mistaken feed or rule update changes blocking behavior",
+                  "description": "UNVERIFIED: depends on pfSense package behavior, not repo code. A compromised feed could block legitimate addresses or enable a rule set that drops legitimate traffic. The repo only ships SID lists (config/sid/drop/dropsid-comprehensive.conf) that convert alert rules to drop in inline IPS mode, which raises false-positive blast radius.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 360,
+              "y": 740
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "a_pkg",
+            "shape": "actor",
+            "data": {
+              "name": "Package and artifact sources",
+              "description": "artifacts.opensearch.org, artifacts.elastic.co, packages.grafana.com, GitHub (install.sh install_opensearch, install_logstash, install_grafana).",
+              "threats": [
+                {
+                  "id": "t_pkg",
+                  "number": 3,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Tampering",
+                  "title": "OpenSearch tarball installed without checksum or signature check",
+                  "description": "install.sh:install_opensearch downloads opensearch-VERSION-linux-x64.tar.gz over HTTPS with wget and extracts it to /opt/opensearch with no sha256 or signature verification (grep for sha256/gpg --verify finds nothing). Logstash and Grafana come from apt repos with signed-by keyrings, but the keys are fetched over HTTPS at install time (trust on first use). Versions are pinned (OPENSEARCH_VERSION=2.19.4).",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 760,
+              "y": 740
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "a_gh",
+            "shape": "actor",
+            "data": {
+              "name": "GitHub Actions",
+              "description": "CI and wiki publishing (.github/workflows/ci.yml, security.yml, wiki.yml, dependabot-auto-merge.yml).",
+              "threats": [
+                {
+                  "id": "t_ci",
+                  "number": 4,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Tampering",
+                  "title": "Workflow supply chain",
+                  "description": "Reusable workflows from ChiefGyk3D/git-your-ship-together are called by full commit SHA with a version comment (ci.yml, security.yml, dependabot-auto-merge.yml), permissions default to contents: read, and ci.yml and security.yml set egress-policy: block.",
+                  "mitigation": "Pinned by SHA with read-only default permissions and egress block: .github/workflows/ci.yml, security.yml. wiki.yml and dependabot-auto-merge.yml request contents: write; wiki.yml pin was not reviewed in depth (NOT VERIFIED)."
+                }
+              ]
+            },
+            "position": {
+              "x": 1160,
+              "y": 740
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_suri",
+            "shape": "process",
+            "data": {
+              "name": "Suricata (pfSense package)",
+              "description": "IDS/IPS on pfSense interfaces; writes /var/log/suricata/*/eve.json. The package is not in this repo; repo ships SID lists in config/sid and scripts/apply-suricata-drop-rules.sh.",
+              "threats": [
+                {
+                  "id": "t_ips",
+                  "number": 5,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Denial of service",
+                  "title": "Attacker-triggered false-positive drops",
+                  "description": "UNVERIFIED (inferred from config/sid/drop/dropsid-comprehensive.conf and scripts/apply-suricata-drop-rules.sh): in inline IPS mode, rules converted to drop will drop legitimate flows that match, and an attacker who can make a victim's traffic match a signature can cause an outage for it. apply-suricata-drop-rules.sh hardcodes instance names and copies generated rules without validating them (--no-test).",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 360,
+              "y": 80
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_fwd",
+            "shape": "process",
+            "data": {
+              "name": "EVE forwarder (forward-suricata-eve.py)",
+              "description": "Python daemon on pfSense, started by rc.d script written by setup.sh, daemon -r, watchdog every minute via cron. Tails eve.json, adds GeoIP, sends JSON over UDP.",
+              "threats": [
+                {
+                  "id": "t_fwd_root",
+                  "number": 6,
+                  "status": "Open",
+                  "severity": "Low",
+                  "type": "Elevation of privilege",
+                  "title": "Forwarder runs as root and parses untrusted-influenced JSON",
+                  "description": "The forwarder runs as root (setup.sh watchdog: pgrep -u root; rc.d script). eve.json contains attacker-controlled strings (HTTP host, DNS names, TLS SNI), parsed with json.loads and re-serialized; no eval or shell use was found in forward-suricata-eve.py, which limits this to a latent risk in json/maxminddb parsing. No privilege drop.",
+                  "mitigation": "None in the repository."
+                },
+                {
+                  "id": "t_fwd_rot",
+                  "number": 7,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Denial of service",
+                  "title": "Log rotation silently stops forwarding",
+                  "description": "tail_log_file detects inode change, truncation and disappearance, and a watchdog restarts the process if it dies.",
+                  "mitigation": "forward-suricata-eve.py:tail_log_file (inode/size checks every ~5 s); setup.sh watchdog + pfSense cron; tests/python/test_forwarder.py exists."
+                }
+              ]
+            },
+            "position": {
+              "x": 360,
+              "y": 260
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_pfb",
+            "shape": "process",
+            "data": {
+              "name": "pfBlockerNG",
+              "description": "pfSense package producing ip_block.log and dnsbl.log. UNVERIFIED: only documented (docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md); no repo code configures it.",
+              "threats": []
+            },
+            "position": {
+              "x": 360,
+              "y": 440
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_tele",
+            "shape": "process",
+            "data": {
+              "name": "Telegraf + repo plugins",
+              "description": "Telegraf on pfSense runs plugins/telegraf_*.php|sh and tails pfBlockerNG logs, outputs to OpenSearch. Runs as root (docs/pfsense/TELEGRAF_ON_PFSENSE.md). Output config lives in config.xml and is UNVERIFIED (documented only).",
+              "threats": [
+                {
+                  "id": "t_plug",
+                  "number": 8,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Tampering",
+                  "title": "Command injection in Telegraf plugins",
+                  "description": "plugins/telegraf_arp_mac_vendor.php calls shell_exec with a fixed string ('arp -an') and no variable input; output is only parsed.",
+                  "mitigation": "Fixed command string at plugins/telegraf_arp_mac_vendor.php:61. Other plugins (.sh) were skimmed, not audited line by line (NOT VERIFIED)."
+                }
+              ]
+            },
+            "position": {
+              "x": 620,
+              "y": 440
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_cron",
+            "shape": "process",
+            "data": {
+              "name": "Setup deployment on pfSense",
+              "description": "setup.sh pushes forward-suricata-eve.py, a watchdog, an rc.d script and a cron entry to pfSense over SSH as the admin user and starts them as root.",
+              "threats": [
+                {
+                  "id": "t_ssh",
+                  "number": 9,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Elevation of privilege",
+                  "title": "Operator workstation or SSH key compromise reaches root code execution on the firewall",
+                  "description": "setup.sh scp's an executable to /usr/local/bin, writes an rc.d script and cron entry through ssh, all run by root. The operator key is the only gate. scripts/preflight.sh uses StrictHostKeyChecking=accept-new (trust on first use); setup.sh uses the default host key policy.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 620,
+              "y": 260
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "s_eve",
+            "shape": "store",
+            "data": {
+              "name": "eve.json logs",
+              "description": "/var/log/suricata/*/eve.json on pfSense (read by forwarder). Contains DNS names, HTTP hosts, TLS SNI, flow metadata for monitored users.",
+              "threats": []
+            },
+            "position": {
+              "x": 360,
+              "y": 600
+            },
+            "size": {
+              "width": 140,
+              "height": 40
+            }
+          },
+          {
+            "id": "s_geo",
+            "shape": "store",
+            "data": {
+              "name": "GeoLite2 database",
+              "description": "MaxMind .mmdb files read by the forwarder (paths in forward-suricata-eve.py GEOIP_DB_PATHS). Provenance of the file is out of this repo (docs/install/GEOIP_SETUP.md, not verified).",
+              "threats": []
+            },
+            "position": {
+              "x": 620,
+              "y": 600
+            },
+            "size": {
+              "width": 140,
+              "height": 40
+            }
+          },
+          {
+            "id": "p_ls",
+            "shape": "process",
+            "data": {
+              "name": "Logstash (config/logstash-suricata.conf)",
+              "description": "udp input 5140 -> json filter to event root -> date -> opensearch output http://localhost:9200. Installed by install.sh; config pushed by setup.sh.",
+              "threats": [
+                {
+                  "id": "t_spoof",
+                  "number": 10,
+                  "status": "Open",
+                  "severity": "High",
+                  "type": "Spoofing",
+                  "title": "Unauthenticated UDP input lets any host forge or poison SIEM events",
+                  "description": "The udp input on 5140 has no source filtering, authentication or integrity protection, and install.sh:configure_firewall runs ufw allow 5140/udp from anywhere. The json filter writes parsed keys to the event root, so a sender controls event_type, src_ip, alert.*, and @timestamp (via the timestamp field). An attacker who can reach the port can inject fake alerts, hide activity behind fake noise, or pollute daily indices and GeoIP/dashboards. UDP source addresses are also spoofable on-path.",
+                  "mitigation": "None in the repository."
+                },
+                {
+                  "id": "t_jsonfail",
+                  "number": 11,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Tampering",
+                  "title": "Malformed input crashes the pipeline",
+                  "description": "Parse failures are tagged _jsonparsefailure and skipped by the date filter; the pipeline continues.",
+                  "mitigation": "config/logstash-suricata.conf filter section (json tag_on_failure, conditional date/mutate)."
+                },
+                {
+                  "id": "t_lscfg",
+                  "number": 12,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Tampering",
+                  "title": "Pipeline file replaced during deployment",
+                  "description": "setup.sh creates the remote temp file with umask 077 mktemp and installs it with sudo install -m 0644 -o root -g root before restarting Logstash.",
+                  "mitigation": "setup.sh step 3 (REMOTE_CONF, sudo install)."
+                }
+              ]
+            },
+            "position": {
+              "x": 1160,
+              "y": 80
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_os",
+            "shape": "process",
+            "data": {
+              "name": "OpenSearch 2.19.4",
+              "description": "Single node, HTTP 9200. install.sh writes network.host: 0.0.0.0 and plugins.security.disabled: true. Indexes suricata-* and pfblockerng-*.",
+              "threats": [
+                {
+                  "id": "t_os_open",
+                  "number": 13,
+                  "status": "Open",
+                  "severity": "Critical",
+                  "type": "Elevation of privilege",
+                  "title": "OpenSearch API has no authentication, TLS or role separation and is opened to all sources",
+                  "description": "install.sh writes opensearch.yml with network.host: 0.0.0.0 and plugins.security.disabled: true and then ufw allow 9200/tcp with no source restriction. Anyone who can route to TCP 9200 can read, modify or delete every index and change cluster settings. This is documented as a known gap in docs/reference/CONFIGURATION.md (Security) and ROADMAP.md, but the installer still applies it. Exploit requires only network reachability.",
+                  "mitigation": "None in the repository."
+                },
+                {
+                  "id": "t_os_audit",
+                  "number": 14,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Repudiation",
+                  "title": "No audit trail of who read or changed data",
+                  "description": "With the security plugin disabled there is no user identity and no audit log on OpenSearch; changes to indices or the retention policy cannot be attributed.",
+                  "mitigation": "None in the repository."
+                },
+                {
+                  "id": "t_ret",
+                  "number": 15,
+                  "status": "Mitigated",
+                  "severity": "Low",
+                  "type": "Information disclosure",
+                  "title": "Indefinite retention of network metadata",
+                  "description": "scripts/configure-retention-policy.sh creates an ISM delete policy and install.sh:configure_retention calls it with RETENTION_DAYS.",
+                  "mitigation": "scripts/configure-retention-policy.sh (ISM policy); install.sh configure_retention. Retention does not cover pfblockerng-* unless the pattern is applied (NOT VERIFIED)."
+                }
+              ]
+            },
+            "position": {
+              "x": 1160,
+              "y": 300
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_gf",
+            "shape": "process",
+            "data": {
+              "name": "Grafana 12.3.0",
+              "description": "Dashboards over OpenSearch datasources (dashboards/*.json, imported by setup.sh via HTTP API with basic auth). HTTP 3000, ufw open.",
+              "threats": [
+                {
+                  "id": "t_gf_pw",
+                  "number": 16,
+                  "status": "Open",
+                  "severity": "High",
+                  "type": "Spoofing",
+                  "title": "Default Grafana admin credentials",
+                  "description": "install.sh interactive_config falls back to password 'admin' when left empty and skips reset-admin-password in that case; config.env.example sets GRAFANA_ADMIN_PASS=admin and setup.sh defaults the same. Grafana is served over plain HTTP on 3000 (ufw allow 3000/tcp). Anyone reaching the port can sign in and read everything, add datasources or install plugins.",
+                  "mitigation": "None in the repository."
+                },
+                {
+                  "id": "t_xss",
+                  "number": 17,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Tampering",
+                  "title": "Attacker-controlled event fields rendered in dashboards",
+                  "description": "UNVERIFIED: dashboards display fields such as alert.signature, http hostnames and DNS queries that originate in attacker traffic (and, via the open UDP port, arbitrary senders). Whether any panel renders unescaped HTML was not checked.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 1160,
+              "y": 500
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "s_idx",
+            "shape": "store",
+            "data": {
+              "name": "OpenSearch indices",
+              "description": "suricata-YYYY.MM.dd and pfblockerng-YYYY.MM.dd on the SIEM disk (/opt/opensearch/data). Index templates in config/opensearch-*.json.",
+              "threats": [
+                {
+                  "id": "t_idx_conf",
+                  "number": 18,
+                  "status": "Open",
+                  "severity": "High",
+                  "type": "Information disclosure",
+                  "title": "Sensitive network metadata exposed in cleartext",
+                  "description": "Indices hold DNS names, URLs, SNI, internal IP addresses and GeoIP of users. Because of the open API (t_os_open) and plaintext transport (UDP forwarder, HTTP Telegraf output), anyone on the path or the network can read it. No at-rest encryption configured in repo.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 1500,
+              "y": 300
+            },
+            "size": {
+              "width": 140,
+              "height": 60
+            }
+          },
+          {
+            "id": "s_env",
+            "shape": "store",
+            "data": {
+              "name": "config.env (secrets)",
+              "description": "Operator-local file holding SIEM/pfSense addresses and GRAFANA_ADMIN_PASS, sourced as shell by setup.sh (source \"$CONFIG_FILE\") and ignored by git (.gitignore: config.env).",
+              "threats": [
+                {
+                  "id": "t_env",
+                  "number": 19,
+                  "status": "Mitigated",
+                  "severity": "Medium",
+                  "type": "Information disclosure",
+                  "title": "Credentials committed to the repo",
+                  "description": "config.env is in .gitignore; only config.env.example (placeholders, plus default 'admin' password) is tracked; .gitleaksignore lists reviewed false positives.",
+                  "mitigation": "Mitigated against commit: .gitignore:45 config.env. The file is sourced as shell, so a tampered config.env on the operator machine would execute code (operator-local trust, accepted)."
+                },
+                {
+                  "id": "t_env_pw",
+                  "number": 20,
+                  "status": "Open",
+                  "severity": "Low",
+                  "type": "Information disclosure",
+                  "title": "Grafana credentials passed on curl command lines",
+                  "description": "setup.sh uses curl -u \"${GRAFANA_AUTH}\" for datasource and dashboard API calls, which exposes the password to other local users via process listings on the operator machine for the duration of the call.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            },
+            "position": {
+              "x": 1960,
+              "y": 300
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "p_setup",
+            "shape": "process",
+            "data": {
+              "name": "setup.sh / install.sh / pfsense-siem",
+              "description": "Operator tooling: installs the stack (root on SIEM host), applies index templates and ISM, deploys forwarder, imports dashboards.",
+              "threats": []
+            },
+            "position": {
+              "x": 1960,
+              "y": 440
+            },
+            "size": {
+              "width": 140,
+              "height": 70
+            }
+          },
+          {
+            "id": "f_traffic",
+            "shape": "flow",
+            "source": {
+              "cell": "a_net"
+            },
+            "target": {
+              "cell": "p_suri"
+            },
+            "data": {
+              "name": "Monitored traffic",
+              "description": "Packets on pfSense interfaces inspected by Suricata.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_eve",
+            "shape": "flow",
+            "source": {
+              "cell": "p_suri"
+            },
+            "target": {
+              "cell": "s_eve"
+            },
+            "data": {
+              "name": "Alert and flow events",
+              "description": "Suricata writes eve.json.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_read",
+            "shape": "flow",
+            "source": {
+              "cell": "s_eve"
+            },
+            "target": {
+              "cell": "p_fwd"
+            },
+            "data": {
+              "name": "Tail eve.json",
+              "description": "forward-suricata-eve.py:tail_log_file reads new lines.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_geo",
+            "shape": "flow",
+            "source": {
+              "cell": "s_geo"
+            },
+            "target": {
+              "cell": "p_fwd"
+            },
+            "data": {
+              "name": "GeoIP lookup",
+              "description": "maxminddb lookups for public src/dest IPs.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_udp",
+            "shape": "flow",
+            "source": {
+              "cell": "p_fwd"
+            },
+            "target": {
+              "cell": "p_ls"
+            },
+            "data": {
+              "name": "UDP 5140 JSON (plaintext, unauthenticated)",
+              "description": "sock.sendto(payload,(SIEM_HOST,LOGSTASH_PORT)) crosses the pfSense to SIEM boundary with no TLS, no auth.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_spoof",
+            "shape": "flow",
+            "source": {
+              "cell": "a_net"
+            },
+            "target": {
+              "cell": "p_ls"
+            },
+            "data": {
+              "name": "Any host to UDP 5140",
+              "description": "Port opened by install.sh ufw rule; there is no source allowlist in the Logstash input.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_lsos",
+            "shape": "flow",
+            "source": {
+              "cell": "p_ls"
+            },
+            "target": {
+              "cell": "p_os"
+            },
+            "data": {
+              "name": "Logstash to OpenSearch (HTTP localhost)",
+              "description": "opensearch output http://localhost:9200, ssl => false (config/logstash-suricata.conf); setup.sh rewrites the host when SIEM_HOST differs.",
+              "threats": [
+                {
+                  "id": "t_lsssl",
+                  "number": 21,
+                  "status": "Open",
+                  "severity": "Low",
+                  "type": "Tampering",
+                  "title": "TLS verification disabled in the sample output",
+                  "description": "The output sets ssl => false and ssl_certificate_verification => false with a comment to enable ssl for remote. If an operator follows the sed in setup.sh to a remote OpenSearch host, traffic is cleartext and unauthenticated.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            }
+          },
+          {
+            "id": "f_tel",
+            "shape": "flow",
+            "source": {
+              "cell": "p_tele"
+            },
+            "target": {
+              "cell": "p_os"
+            },
+            "data": {
+              "name": "Telegraf to OpenSearch (HTTP 9200)",
+              "description": "docs/pfsense/TELEGRAF_PFBLOCKER_SETUP.md: [[outputs.opensearch]] urls http://<SIEM_IP>:9200 (documented, not code).",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_pfb",
+            "shape": "flow",
+            "source": {
+              "cell": "p_pfb"
+            },
+            "target": {
+              "cell": "p_tele"
+            },
+            "data": {
+              "name": "pfBlockerNG logs",
+              "description": "UNVERIFIED: tail of ip_block.log and dnsbl.log, documented only.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_os_idx",
+            "shape": "flow",
+            "source": {
+              "cell": "p_os"
+            },
+            "target": {
+              "cell": "s_idx"
+            },
+            "data": {
+              "name": "Index write/read",
+              "description": "OpenSearch data path.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_gfos",
+            "shape": "flow",
+            "source": {
+              "cell": "p_gf"
+            },
+            "target": {
+              "cell": "p_os"
+            },
+            "data": {
+              "name": "Grafana datasource queries",
+              "description": "Datasource URL http://localhost:9200 created by setup.sh via Grafana API.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_web",
+            "shape": "flow",
+            "source": {
+              "cell": "a_op"
+            },
+            "target": {
+              "cell": "p_gf"
+            },
+            "data": {
+              "name": "Browser to Grafana (HTTP 3000)",
+              "description": "Plain HTTP, basic login; no TLS configured in repo.",
+              "threats": [
+                {
+                  "id": "t_gf_tls",
+                  "number": 22,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Information disclosure",
+                  "title": "Grafana login and sessions in cleartext",
+                  "description": "install.sh prints and configures http://<SIEM_IP>:3000; no reverse proxy or TLS in repo, so credentials cross the LAN unencrypted.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            }
+          },
+          {
+            "id": "f_sshpf",
+            "shape": "flow",
+            "source": {
+              "cell": "p_setup"
+            },
+            "target": {
+              "cell": "p_cron"
+            },
+            "data": {
+              "name": "SSH/scp to pfSense",
+              "description": "setup.sh and pfsense-siem run ssh/scp as PFSENSE_USER (default admin).",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_sshsiem",
+            "shape": "flow",
+            "source": {
+              "cell": "p_setup"
+            },
+            "target": {
+              "cell": "p_ls"
+            },
+            "data": {
+              "name": "SSH/scp to SIEM server",
+              "description": "setup.sh step 3 scp's logstash conf and runs sudo; install.sh runs locally as root.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_osapi",
+            "shape": "flow",
+            "source": {
+              "cell": "p_setup"
+            },
+            "target": {
+              "cell": "p_os"
+            },
+            "data": {
+              "name": "Admin curl to OpenSearch API",
+              "description": "setup.sh, configure-retention-policy.sh, check-siem-freshness.sh use unauthenticated curl http://host:9200 (templates, cluster settings, ISM).",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_cfg",
+            "shape": "flow",
+            "source": {
+              "cell": "s_env"
+            },
+            "target": {
+              "cell": "p_setup"
+            },
+            "data": {
+              "name": "Read config.env",
+              "description": "source \"$CONFIG_FILE\" in setup.sh.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_op",
+            "shape": "flow",
+            "source": {
+              "cell": "a_op"
+            },
+            "target": {
+              "cell": "p_setup"
+            },
+            "data": {
+              "name": "Operator runs tools",
+              "description": "Local execution.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_inst",
+            "shape": "flow",
+            "source": {
+              "cell": "a_pkg"
+            },
+            "target": {
+              "cell": "p_setup"
+            },
+            "data": {
+              "name": "Package download",
+              "description": "wget tarball, apt repos and grafana-cli plugin install in install.sh.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_rules",
+            "shape": "flow",
+            "source": {
+              "cell": "a_feed"
+            },
+            "target": {
+              "cell": "p_suri"
+            },
+            "data": {
+              "name": "Rule and feed updates",
+              "description": "UNVERIFIED: pfSense package behavior.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_wiki",
+            "shape": "flow",
+            "source": {
+              "cell": "a_gh"
+            },
+            "target": {
+              "cell": "a_op"
+            },
+            "data": {
+              "name": "Wiki/CI results",
+              "description": "wiki.yml publishes docs; CI status reaches the maintainer.",
+              "threats": []
+            }
+          },
+          {
+            "id": "f_crowd",
+            "shape": "flow",
+            "source": {
+              "cell": "a_pkg"
+            },
+            "target": {
+              "cell": "p_cron"
+            },
+            "data": {
+              "name": "fetch | sh style install (doc only)",
+              "description": "UNVERIFIED: docs/pfsense/crowdsec-phase1.md describes running a downloaded install script on pfSense; it states the plan is exploratory and not integrated.",
+              "threats": [
+                {
+                  "id": "t_crowd",
+                  "number": 23,
+                  "status": "Open",
+                  "severity": "Medium",
+                  "type": "Tampering",
+                  "title": "Unsigned remote install script on the firewall (documented plan)",
+                  "description": "UNVERIFIED: docs/pfsense/crowdsec-phase1.md instructs 'fetch ... | sh' from a branch URL; the doc itself warns packages are outside config.xml. Nothing in the repo's code runs it.",
+                  "mitigation": "None in the repository."
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "threatTop": 23
+  }
+}
