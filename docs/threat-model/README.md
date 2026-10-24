@@ -23,11 +23,22 @@ The model was read from code, not run; nothing was scanned or executed.
 
 ## Open High and Critical threats
 
-- Critical: OpenSearch has no authentication or TLS, listens on `0.0.0.0` and the installer opens
-  9200 to all sources (`install.sh`). Documented as a known gap in `docs/reference/CONFIGURATION.md`.
-- High: Logstash UDP 5140 accepts unauthenticated, plaintext, spoofable events from any source.
-- High: default Grafana admin password (`admin`) in the installer and example config.
-- High: sensitive network metadata in indices readable through the open API.
+- High: Logstash UDP 5140 accepts unauthenticated, plaintext, spoofable events. The fix for #49
+  limits the port to `LOGSTASH_ALLOWED_SOURCES` (default: the pfSense IP) in `install.sh`, which stops
+  arbitrary hosts, but a host that can spoof that source, or sits on the same segment, can still inject
+  events, and the json filter still lets the sender set fields such as `event_type` and `@timestamp`.
+
+## Mitigated in the fix for #49
+
+- Critical: OpenSearch bound to `0.0.0.0` with no authentication and 9200 open to all. Now loopback by
+  default, no 9200 rule, remote exposure only by explicit settings (`render_opensearch_yml`,
+  `firewall_plan` in `scripts/lib-install-safety.sh`). `INSECURE_OPEN_ACCESS=true` restores the old install.
+- High: default Grafana `admin` password. Now set or generated, `admin` refused (`install.sh`, `setup.sh`);
+  port 3000 limited to `GRAFANA_ALLOWED_SOURCES`.
+- High: network metadata readable through the open API. Follows from the first item.
+
+Residual: the OpenSearch security plugin is still disabled (no authentication or TLS), and existing installs
+keep their old `opensearch.yml` and ufw rules until the operator changes them (the installer warns).
 
 ## UNVERIFIED items
 

@@ -180,7 +180,7 @@
                   "type": "Tampering",
                   "title": "OpenSearch tarball installed without checksum or signature check",
                   "description": "install.sh:install_opensearch downloads opensearch-VERSION-linux-x64.tar.gz over HTTPS with wget and extracts it to /opt/opensearch with no sha256 or signature verification (grep for sha256/gpg --verify finds nothing). Logstash and Grafana come from apt repos with signed-by keyrings, but the keys are fetched over HTTPS at install time (trust on first use). Versions are pinned (OPENSEARCH_VERSION=2.19.4).",
-                  "mitigation": "None in the repository."
+                  "mitigation": "None in the repository. The tarball download in install.sh install_opensearch is still not verified; not changed in the fix for #49."
                 }
               ]
             },
@@ -409,7 +409,7 @@
                   "type": "Spoofing",
                   "title": "Unauthenticated UDP input lets any host forge or poison SIEM events",
                   "description": "The udp input on 5140 has no source filtering, authentication or integrity protection, and install.sh:configure_firewall runs ufw allow 5140/udp from anywhere. The json filter writes parsed keys to the event root, so a sender controls event_type, src_ip, alert.*, and @timestamp (via the timestamp field). An attacker who can reach the port can inject fake alerts, hide activity behind fake noise, or pollute daily indices and GeoIP/dashboards. UDP source addresses are also spoofable on-path.",
-                  "mitigation": "None in the repository."
+                  "mitigation": "Partly addressed, still Open: install.sh configure_firewall opens UDP 5140 (and 8086) only to LOGSTASH_ALLOWED_SOURCES, which defaults to the pfSense IP (firewall_plan in scripts/lib-install-safety.sh), so arbitrary hosts cannot reach the input. The input itself still has no authentication or integrity, source addresses can be spoofed on the same segment, and the json filter in config/logstash-suricata.conf still writes sender-controlled keys to the event root. Remaining fix: authenticated or signed transport, or filtering and namespacing parsed keys."
                 },
                 {
                   "id": "t_jsonfail",
@@ -452,12 +452,12 @@
                 {
                   "id": "t_os_open",
                   "number": 13,
-                  "status": "Open",
+                  "status": "Mitigated",
                   "severity": "Critical",
                   "type": "Elevation of privilege",
                   "title": "OpenSearch API has no authentication, TLS or role separation and is opened to all sources",
                   "description": "install.sh writes opensearch.yml with network.host: 0.0.0.0 and plugins.security.disabled: true and then ufw allow 9200/tcp with no source restriction. Anyone who can route to TCP 9200 can read, modify or delete every index and change cluster settings. This is documented as a known gap in docs/reference/CONFIGURATION.md (Security) and ROADMAP.md, but the installer still applies it. Exploit requires only network reachability.",
-                  "mitigation": "None in the repository."
+                  "mitigation": "install.sh install_opensearch writes opensearch.yml through render_opensearch_yml (scripts/lib-install-safety.sh): network.host defaults to 127.0.0.1 and a non-loopback OPENSEARCH_BIND is refused unless OPENSEARCH_ALLOWED_SOURCES and OPENSEARCH_DISABLE_SECURITY=true are set. install.sh configure_firewall uses firewall_plan, which adds no 9200 rule for a loopback bind and a source-limited rule otherwise. The old open install needs INSECURE_OPEN_ACCESS=true (documented in config.env.example). Residual: the security plugin is still disabled (no authentication or TLS) and existing installs keep their old opensearch.yml and ufw rules; install.sh warns. Checked by tests/python/test_install_safety.py."
                 },
                 {
                   "id": "t_os_audit",
@@ -500,12 +500,12 @@
                 {
                   "id": "t_gf_pw",
                   "number": 16,
-                  "status": "Open",
+                  "status": "Mitigated",
                   "severity": "High",
                   "type": "Spoofing",
                   "title": "Default Grafana admin credentials",
                   "description": "install.sh interactive_config falls back to password 'admin' when left empty and skips reset-admin-password in that case; config.env.example sets GRAFANA_ADMIN_PASS=admin and setup.sh defaults the same. Grafana is served over plain HTTP on 3000 (ufw allow 3000/tcp). Anyone reaching the port can sign in and read everything, add datasources or install plugins.",
-                  "mitigation": "None in the repository."
+                  "mitigation": "install.sh interactive_config generates a random password when the prompt is empty and rejects 'admin' via grafana_password_ok (scripts/lib-install-safety.sh); install_grafana sets it after first start and exits if grafana-cli fails. setup.sh refuses an empty or 'admin' GRAFANA_ADMIN_PASS; config.env.example no longer ships admin. Grafana 3000 is opened only to GRAFANA_ALLOWED_SOURCES (required) by firewall_plan. Plain HTTP remains (t_gf_tls). Existing installs with an admin password are not changed."
                 },
                 {
                   "id": "t_xss",
@@ -538,12 +538,12 @@
                 {
                   "id": "t_idx_conf",
                   "number": 18,
-                  "status": "Open",
+                  "status": "Mitigated",
                   "severity": "High",
                   "type": "Information disclosure",
                   "title": "Sensitive network metadata exposed in cleartext",
                   "description": "Indices hold DNS names, URLs, SNI, internal IP addresses and GeoIP of users. Because of the open API (t_os_open) and plaintext transport (UDP forwarder, HTTP Telegraf output), anyone on the path or the network can read it. No at-rest encryption configured in repo.",
-                  "mitigation": "None in the repository."
+                  "mitigation": "Consequence of t_os_open: with OpenSearch on 127.0.0.1 and no ufw rule for 9200 (install.sh configure_firewall / firewall_plan), the indices are not readable from the network on a fresh install. Residual: a user with shell access on the SIEM host, anyone allowed through OPENSEARCH_BIND/OPENSEARCH_ALLOWED_SOURCES, and unauthenticated Grafana users via its datasource can still read them; transport is still cleartext."
                 }
               ]
             },
