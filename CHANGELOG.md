@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Upgrading:** existing installs keep their `opensearch.yml` and old `ufw allow` rules. Re-running `install.sh` warns; fix by hand (see `docs/reference/CONFIGURATION.md`, Security).
 - **New: `scripts/lib-install-safety.sh`** and `tests/python/test_install_safety.py`.
 
+### Logstash Eve input hardening (threat model finding t_spoof, #49)
+
+- **Changed: the Eve JSON is no longer parsed into the event root.** It goes to `[@metadata][eve]`, is validated, and only allow-listed Suricata keys are copied to the root, so a UDP sender cannot set `@timestamp`, `tags`, `host` or other pipeline fields. Dashboards are unchanged (same flat field names).
+- **New: `eve-quarantine-*` index.** Events that fail validation (bad JSON, wrong types, out-of-range ports, severity or time, oversized or too-deep values) are written there with `eve_quarantine_reason`, not to `suricata-*`. Add retention with `scripts/configure-retention-policy.sh <days> 'eve-quarantine-*'`.
+- **Not fixed: sender authentication.** A host that can reach UDP 5140 can still send well-formed fake events. Run the forwarder path over a dedicated VLAN or an IPsec/WireGuard tunnel (see `docs/reference/CONFIGURATION.md`, Sender integrity).
+- **Upgrading:** redeploy the pipeline (`setup.sh` step 3, or copy `config/logstash-suricata.conf` and restart Logstash) and run `logstash --config.test_and_exit`. Events with a timestamp older than 7 days (a long forwarder backlog) are quarantined.
+- **New: `tests/python/test_logstash_eve_filter.py`** (needs `ruby`; does not need Logstash).
+
 ### 2.9.0 upgrade results (2026-10)
 
 - **New in [Upgrading pfSense](docs/pfsense/PFSENSE_UPGRADE_GUIDE.md)**: a real 2.8.1 to 2.9.0 run on a tuned box: selecting the update branch, the dry run, what survived (limiters, flow control, Suricata instances, forwarder), and the fixes for what did not (DNSBL data store reset, Telegraf `ssl_ca`, removed `lsof`, CrowdSec reinstall with checksum), plus Suricata 8 numbers (about 840 Mbit/s inline, 0 drops) and a warning about misleading laptop Wi-Fi tests.

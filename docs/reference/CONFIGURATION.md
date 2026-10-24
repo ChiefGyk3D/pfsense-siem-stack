@@ -152,7 +152,9 @@ read it rather than a copy here. `config/README.md` covers deploying and editing
 it by hand.
 
 The important design point: **events are indexed flat**. The `json` filter
-parses the datagram straight into the event root, so documents look like
+parses the datagram into `[@metadata][eve]`, a ruby filter validates it, and only an
+allow-listed set of Suricata keys is copied to the event root (see
+[Sender integrity](#sender-integrity-udp-5140) below), so documents look like
 `{"@timestamp": ..., "event_type": "alert", "src_ip": ..., "alert": {"signature": ...}, "geoip_src": {...}}`.
 Nothing is nested under `suricata.eve.*`. The reasons:
 
@@ -169,7 +171,8 @@ upgrading from it, see the appendix in
 [DASHBOARD_NO_DATA_FIX.md](../troubleshooting/DASHBOARD_NO_DATA_FIX.md).
 
 Other pipeline facts worth knowing: `@timestamp` is taken from Suricata's own
-`timestamp` field (not Logstash receive time); the raw `message` is removed
+`timestamp` field (not Logstash receive time) and must fall between 7 days ago and 1 hour
+ahead, otherwise the event is quarantined; the raw `message` is removed
 after parsing; the output index is `suricata-%{+YYYY.MM.dd}` in UTC, which is why
 indices roll at midnight UTC.
 
@@ -381,6 +384,28 @@ sudo ufw status numbered
 
 Remember that `setup.sh`, `status.sh` and `diagnose-and-repair.sh` need 9200 from
 wherever you run them.
+
+### Sender integrity (UDP 5140)
+
+UDP syslog cannot authenticate its sender, and the source allow-list only narrows who may
+send: a host on the same segment can spoof the pfSense address. Two layers cover this.
+
+- **In the pipeline** (`config/logstash-suricata.conf`, tested by
+  `tests/python/test_logstash_eve_filter.py`). The datagram is parsed into `[@metadata][eve]`,
+  checked (types, ranges, sizes, depth), and only allow-listed Suricata keys are copied to the root.
+  A sender can no longer set `@timestamp`, `@version`, `tags`, `host`, `message` or `event`, add
+  unlisted fields, or send values that break the index mapping. Events that fail go to
+  `eve-quarantine-YYYY.MM.dd` (reason in `eve_quarantine_reason`, raw text cut to 2 KB), not to
+  `suricata-*`, so the dashboards never read them. Look there if events seem to be missing:
+  `curl -s 'localhost:9200/eve-quarantine-*/_search?size=5&sort=@timestamp:desc'`.
+  Quarantine is not covered by the default retention policy; run
+  `scripts/configure-retention-policy.sh <days> 'eve-quarantine-*'` for it.
+- **Residual: a well-formed fake event is still accepted.** A host that can reach 5140 can send
+  a valid-looking alert (or a flood of noise) under the allowed schema, and the pipeline cannot tell
+  it from a real one. **Recommended setup: put the forwarder-to-SIEM path on a network you control**,
+  such as a dedicated VLAN or point-to-point link between pfSense and the SIEM, or an IPsec or
+  WireGuard tunnel with Logstash listening only on the tunnel address and ufw allowing only the
+  tunnel peer. This is the only real fix for sender integrity.
 
 **Grafana admin password.** `install.sh` sets the one you type, or generates a random one
 (shown once at the end and saved in `/tmp/monitoring-config.env`, mode 600) and stops if it
