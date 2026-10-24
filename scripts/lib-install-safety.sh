@@ -17,13 +17,14 @@ _lis_true() { [[ "${1:-}" == "true" ]]; }
 
 # Print each IP/CIDR in a comma/space separated list, one per line.
 # Fails on empty input, on anything that is not an IP or CIDR, and on a
-# match-everything network (/0), which is the same as no restriction.
+# match-everything network (/0 to /7 cover at least 1/128 of the address
+# space, which is the same as no restriction).
 normalize_sources() {
     local list="${1:-}" item out=0
     list="${list//,/ }"
     for item in $list; do
-        if ! [[ "$item" =~ ^[0-9A-Fa-f:.]+(/[0-9]{1,3})?$ ]] || [[ "$item" == */0 ]] ||
-            [[ "$item" == "0.0.0.0" || "$item" == "::" ]]; then
+        if ! [[ "$item" =~ ^[0-9A-Fa-f:.]+(/[0-9]{1,3})?$ ]] ||
+            [[ "$item" == */[0-7] ]] || [[ "$item" == "0.0.0.0" || "$item" == "::" ]]; then
             _lis_err "invalid or match-everything source '$item' (use an IP or CIDR such as 192.0.2.0/24)"
             return 1
         fi

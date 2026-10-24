@@ -82,9 +82,16 @@ def test_logstash_sources_are_required():
 
 
 def test_invalid_source_is_rejected():
-    for bad in ("any", "0.0.0.0/0", "::/0", "1.2.3.4; rm -rf /", "host name"):
+    # /1 to /7 cover at least 1/128 of the address space: as open as /0 in practice
+    for bad in ("any", "0.0.0.0/0", "::/0", "128.0.0.0/1", "0.0.0.0/4", "2000::/3", "1.2.3.4; rm -rf /", "host name"):
         env = dict(BASE, GRAFANA_ALLOWED_SOURCES=bad)
         assert _sh("firewall_plan", env).returncode != 0, bad
+
+
+def test_ordinary_lan_ranges_are_still_accepted():
+    for good in ("192.0.2.0/24", "10.0.0.0/8", "198.51.100.7", "2001:db8::/32"):
+        env = dict(BASE, GRAFANA_ALLOWED_SOURCES=good)
+        assert _sh("firewall_plan", env).returncode == 0, good
 
 
 def test_insecure_open_access_is_explicit_opt_in():
