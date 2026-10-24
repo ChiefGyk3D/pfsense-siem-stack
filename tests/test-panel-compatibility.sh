@@ -18,7 +18,13 @@ fi
 
 GRAFANA_URL="${GRAFANA_URL:-http://${SIEM_HOST}:${GRAFANA_PORT:-3000}}"
 GRAFANA_USER="${GRAFANA_USER:-${GRAFANA_ADMIN_USER:-admin}}"
-GRAFANA_PASS="${GRAFANA_PASS:-${GRAFANA_ADMIN_PASS:-admin}}"
+GRAFANA_PASS="${GRAFANA_PASS:-${GRAFANA_ADMIN_PASS:-}}"
+# shellcheck source=scripts/lib-install-safety.sh
+source "$(dirname "$SCRIPT_DIR")/scripts/lib-install-safety.sh"
+if ! grafana_password_ok "$GRAFANA_PASS" GRAFANA_ADMIN_PASS; then
+    echo "ERROR: set GRAFANA_ADMIN_PASS (or GRAFANA_PASS) to the real Grafana admin password." >&2
+    exit 1
+fi
 OPENSEARCH_URL="${OPENSEARCH_URL:-http://${SIEM_HOST}:${OPENSEARCH_PORT:-9200}}"
 
 FAILURES=0

@@ -116,16 +116,46 @@ firewall_plan() {
     while IFS= read -r src; do echo "$src|3000|tcp|Grafana Web UI"; done <<<"$gf_src"
 }
 
-# Succeeds if the password is acceptable for Grafana.
+# THE placeholder rule for every secret in this repo (issue #51). Succeeds (returns 0) when the
+# value is NOT a usable secret: empty or blank, a known default ('admin', 'password'), a word such
+# as 'example' or 'placeholder', or a value that starts like a template (changeme*, your_*,
+# your-*, xxx*, dp.st.your*) or is wrapped in <...>. Case-insensitive. Never prints the value.
+# scripts/deploy-wazuh-dashboards.py (is_placeholder_secret) implements the same list; the
+# tests in tests/python/test_required_secrets.py keep the two in step.
+is_placeholder_secret() {
+    local v="${1-}"
+    v="${v#"${v%%[![:space:]]*}"}"
+    v="${v%"${v##*[![:space:]]}"}"
+    v="${v,,}"
+    [[ -z "$v" ]] && return 0
+    case "$v" in
+        admin | password | example | placeholder) return 0 ;;
+        changeme* | your_* | your-* | xxx* | dp.st.your*) return 0 ;;
+        \<*\>) return 0 ;;
+    esac
+    return 1
+}
+
+# require_secret NAME VALUE: fail closed, naming the variable, never printing the value.
+require_secret() {
+    local name="${1:?require_secret needs a variable name}" val="${2-}"
+    if is_placeholder_secret "$val"; then
+        _lis_err "$name is required: it is empty, unset, or a default/placeholder value"
+        return 1
+    fi
+}
+
+# Succeeds if the password is acceptable for Grafana. Optional second argument: the variable the
+# user should set (named in the error). INSECURE_OPEN_ACCESS=true is the one explicit opt-out.
 grafana_password_ok() {
-    local pw="${1:-}"
-    if [[ "${pw,,}" == "admin" || -z "$pw" ]]; then
+    local pw="${1-}" name="${2:-the Grafana admin password}"
+    if is_placeholder_secret "$pw"; then
         _lis_true "${INSECURE_OPEN_ACCESS:-}" && return 0
-        _lis_err "the Grafana admin password must be set and must not be 'admin'"
+        _lis_err "$name must be set to a real password (not empty, 'admin' or a placeholder)"
         return 1
     fi
     if [[ ${#pw} -lt 8 ]]; then
-        _lis_err "the Grafana admin password must be at least 8 characters"
+        _lis_err "$name must be at least 8 characters"
         return 1
     fi
 }
