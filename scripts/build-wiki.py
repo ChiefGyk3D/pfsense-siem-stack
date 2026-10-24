@@ -60,6 +60,7 @@ PAGES = {
     "CHANGELOG.md": "Changelog",
     "CONTRIBUTING.md": "Contributing",
     "SECURITY.md": "Security-Policy",
+    "docs/threat-model/README.md": "Threat-Model",
     # docs/
     "docs/DOCUMENTATION_INDEX.md": "Documentation-Index",
     "docs/ARCHIVE.md": "Archived-Material",

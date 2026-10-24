@@ -100,12 +100,21 @@ OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
 LOGSTASH_UDP_PORT="${LOGSTASH_UDP_PORT:-5140}"
 GRAFANA_PORT="${GRAFANA_PORT:-3000}"
 GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
-GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-admin}"
+GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-}"
+# Refuse the default/empty Grafana password (INSECURE_OPEN_ACCESS=true is the explicit opt-out)
+# shellcheck source=scripts/lib-install-safety.sh
+source "${SCRIPT_DIR}/scripts/lib-install-safety.sh"
+if ! grafana_password_ok "${GRAFANA_ADMIN_PASS}"; then
+    echo "ERROR: set GRAFANA_ADMIN_PASS in ${CONFIG_FILE} to the real Grafana admin password (not 'admin')." >&2
+    exit 1
+fi
 INDEX_PREFIX="${INDEX_PREFIX:-suricata}"
 DEBUG_ENABLED="${DEBUG_ENABLED:-false}"
 
-OPENSEARCH_URL="http://${SIEM_HOST}:${OPENSEARCH_PORT}"
-GRAFANA_URL="http://${SIEM_HOST}:${GRAFANA_PORT}"
+# OpenSearch listens on loopback by default. From a workstation use an SSH tunnel and override:
+#   ssh -N -L 9200:127.0.0.1:9200 user@siem-host &   then   OPENSEARCH_URL=http://127.0.0.1:9200 ./setup.sh
+OPENSEARCH_URL="${OPENSEARCH_URL:-http://${SIEM_HOST}:${OPENSEARCH_PORT}}"
+GRAFANA_URL="${GRAFANA_URL:-http://${SIEM_HOST}:${GRAFANA_PORT}}"
 GRAFANA_AUTH="${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASS}"
 
 # ── Banner ────────────────────────────────────────────────────────────────────
@@ -284,7 +293,9 @@ if ssh -o ConnectTimeout=5 -o BatchMode=yes "${SIEM_SSH_USER}@${SIEM_HOST}" 'ech
     if ssh "${SIEM_SSH_USER}@${SIEM_HOST}" 'test -d /etc/logstash/conf.d' 2>/dev/null; then
         # Substitute OpenSearch host into config
         TEMP_CONF=$(mktemp)
-        sed "s|hosts => \[\"http://localhost:9200\"\]|hosts => [\"http://${SIEM_HOST}:${OPENSEARCH_PORT}\"]|" \
+        # Logstash runs on the SIEM host, so it reaches OpenSearch on loopback; only point it
+        # elsewhere if you set LOGSTASH_OPENSEARCH_URL (OpenSearch is not exposed by default).
+        sed "s|hosts => \[\"http://localhost:9200\"\]|hosts => [\"${LOGSTASH_OPENSEARCH_URL:-http://localhost:${OPENSEARCH_PORT}}\"]|" \
             "$LOGSTASH_CONF" > "$TEMP_CONF"
 
         # Backup existing config, deploy new one
@@ -572,7 +583,7 @@ import_dashboard() {
             \"name\": \"OpenSearch-Suricata\",
             \"type\": \"grafana-opensearch-datasource\",
             \"uid\": \"${DS_UID}\",
-            \"url\": \"${OPENSEARCH_URL}\",
+            \"url\": \"${GRAFANA_DS_OPENSEARCH_URL:-http://localhost:${OPENSEARCH_PORT}}\",
             \"access\": \"proxy\",
             \"jsonData\": {
                 \"database\": \"${INDEX_PREFIX}-*\",
