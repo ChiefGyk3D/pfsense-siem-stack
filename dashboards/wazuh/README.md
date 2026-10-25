@@ -50,7 +50,7 @@ Custom Grafana dashboards for Wazuh EDR/SIEM data stored in OpenSearch (Wazuh In
 | URL | `https://wazuh-indexer:9200` |
 | Index | `wazuh-alerts-4.x-*` |
 | Time field | `timestamp` |
-| Auth | Basic (admin/SecretPassword) |
+| Auth | Basic (user `admin`, your Wazuh Indexer password) |
 | TLS | Skip verify = true |
 | Version | 2.19.0 |
 | PPL | Enabled |
@@ -77,7 +77,7 @@ These dashboards show data from Wazuh agents. An example deployment might look l
 ### Via API
 ```bash
 curl -X POST http://localhost:3000/api/dashboards/db \
-  -H "Authorization: Basic $(echo -n admin:changeme | base64)" \
+  -H "Authorization: Basic $(echo -n admin:${GRAFANA_PASS} | base64)" \
   -H "Content-Type: application/json" \
   -d "{\"dashboard\": $(cat wazuh_security_overview.json), \"overwrite\": true, \"folderUid\": \"eff8gvnuqvbwgb\"}"
 ```

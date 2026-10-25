@@ -221,7 +221,6 @@ import_dashboards() {
     
     GRAFANA_URL="http://${SIEM_HOST}:${GRAFANA_PORT:-3000}"
     GRAFANA_USER="${GRAFANA_ADMIN_USER:-admin}"
-    GRAFANA_PASS="${GRAFANA_ADMIN_PASS:-admin}"
     
     echo ""
     echo "Manual import instructions:"

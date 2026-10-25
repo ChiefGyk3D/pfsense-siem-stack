@@ -305,9 +305,8 @@ about the data written before the switch.
 
 ### Can't Login to Grafana
 
-The default credentials are `admin` / `admin` and Grafana asks you to change the
-password on first login; do so, and put the new value in `GRAFANA_ADMIN_PASS` in
-`config.env` so the scripts keep working. Reset if lost:
+There is no default password: `install.sh` sets the one you typed or a generated one.
+Put that value in `GRAFANA_ADMIN_PASS` in `config.env` so the scripts keep working. Reset if lost:
 ```bash
 sudo grafana-cli admin reset-admin-password '<newpassword>'
 ```

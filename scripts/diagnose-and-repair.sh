@@ -40,7 +40,13 @@ OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
 LOGSTASH_UDP_PORT="${LOGSTASH_UDP_PORT:-5140}"
 GRAFANA_PORT="${GRAFANA_PORT:-3000}"
 GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
-GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-admin}"
+GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-}"
+# shellcheck source=scripts/lib-install-safety.sh
+source "${SCRIPT_DIR}/lib-install-safety.sh"
+if ! grafana_password_ok "${GRAFANA_ADMIN_PASS}" GRAFANA_ADMIN_PASS; then
+    echo -e "${RED}ERROR: set GRAFANA_ADMIN_PASS in config.env to the real Grafana admin password.${NC}" >&2
+    exit 1
+fi
 INDEX_PREFIX="${INDEX_PREFIX:-suricata}"
 
 OS_URL="http://${SIEM_HOST}:${OPENSEARCH_PORT}"

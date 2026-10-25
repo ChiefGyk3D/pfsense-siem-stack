@@ -104,8 +104,8 @@ GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-}"
 # Refuse the default/empty Grafana password (INSECURE_OPEN_ACCESS=true is the explicit opt-out)
 # shellcheck source=scripts/lib-install-safety.sh
 source "${SCRIPT_DIR}/scripts/lib-install-safety.sh"
-if ! grafana_password_ok "${GRAFANA_ADMIN_PASS}"; then
-    echo "ERROR: set GRAFANA_ADMIN_PASS in ${CONFIG_FILE} to the real Grafana admin password (not 'admin')." >&2
+if ! grafana_password_ok "${GRAFANA_ADMIN_PASS}" GRAFANA_ADMIN_PASS; then
+    echo "ERROR: set GRAFANA_ADMIN_PASS in ${CONFIG_FILE} to the real Grafana admin password." >&2
     exit 1
 fi
 INDEX_PREFIX="${INDEX_PREFIX:-suricata}"

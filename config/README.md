@@ -277,7 +277,7 @@ output {
   opensearch {
     hosts => ["http://localhost:9200"]
     user => "admin"           # Add username
-    password => "admin"       # Add password
+    password => "<opensearch-password>"   # Add password
     ssl => true               # Enable SSL
 ```
 
