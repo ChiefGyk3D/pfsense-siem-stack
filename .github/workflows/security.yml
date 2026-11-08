@@ -27,6 +27,7 @@ jobs:
       codeql-languages: python,actions   # four Python scripts and tests; no requirements file, so no pip-audit
       pip-audit-requirements: ""   # no requirements.txt to audit
       scorecard: true
+      gitleaks-scope: all-refs   # .gitleaksignore holds commit-bound entries a tree scan cannot match (GYST#336)
       egress-policy: block
       doppler-project: ci
       doppler-config: ci
