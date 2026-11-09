@@ -278,8 +278,8 @@ root level (flat), with `@timestamp` taken from the event's own `timestamp`.
 ## Access Grafana
 
 1. Open browser to `http://<SIEM_IP>:3000`
-2. Default credentials: `admin` / `admin`
-3. Change password when prompted
+2. Log in as `admin` with the password you set (or the generated one `install.sh` showed once)
+3. If you ever need to change it: `sudo grafana-cli admin reset-admin-password '<new password>'`, then update `GRAFANA_ADMIN_PASS` in `config.env`
 4. Proceed to [Dashboard Installation Guide](INSTALL_DASHBOARD.md)
 
 ## Resource Usage

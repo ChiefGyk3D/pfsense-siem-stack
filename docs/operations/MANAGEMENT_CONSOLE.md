@@ -358,7 +358,7 @@ Every variable in `config.env.example`:
 | `LOGSTASH_UDP_PORT` | `5140` | Logstash UDP input the forwarder sends to |
 | `GRAFANA_PORT` | `3000` | Grafana web UI |
 | `GRAFANA_ADMIN_USER` | `admin` | shown in dashboard-import instructions |
-| `GRAFANA_ADMIN_PASS` | `admin` | change it; do not run Grafana with the default |
+| `GRAFANA_ADMIN_PASS` | none (**required**) | the real Grafana admin password; empty, `admin` and placeholders are refused (see [Required secrets](../../README.md#required-secrets)) |
 | `SIEM_SSH_USER` | (commented; your current user) | SSH user setup.sh uses to deploy the Logstash pipeline on the SIEM server |
 | `PFSENSE_HOST` | `192.168.1.1` | pfSense IP. **Required.** |
 | `PFSENSE_USER` | `admin` | SSH user on pfSense (`admin` on pfSense CE 2.7+; `root` on older releases) |
@@ -369,7 +369,7 @@ Every variable in `config.env.example`:
 | `INFLUXDB_HOST` | `localhost` | InfluxDB for pfSense system metrics via Telegraf |
 | `INFLUXDB_PORT` | `8086` | InfluxDB port |
 | `INFLUXDB_DATABASE` | `pfsense` | InfluxDB database name |
-| `INFLUXDB_USER` / `INFLUXDB_PASS` | (commented) | InfluxDB credentials if authentication is enabled |
+| `INFLUXDB_USER` / `INFLUXDB_PASS` | (commented) | Optional, not read by any script. Reference for the InfluxDB datasource and the Telegraf form if InfluxDB authentication is on; use a real password, never a placeholder |
 | `GEOIP_DB_PATH` | (commented; auto-detected) | override only if your GeoLite2 `.mmdb` is in a non-standard location on pfSense |
 
 `pfblockerng-*` indices need no setting here; Telegraf's `[[outputs.opensearch]]` names

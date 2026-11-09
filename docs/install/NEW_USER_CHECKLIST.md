@@ -51,7 +51,7 @@ Follow [QUICK_START.md](../../QUICK_START.md) steps 1-3. Check off as you go:
 - [ ] Repository cloned: `git clone https://github.com/ChiefGyk3D/pfsense-siem-stack.git`
 - [ ] `config.env` created from `config.env.example`
 - [ ] **Required** variables set: `SIEM_HOST`, `PFSENSE_HOST`, `PFSENSE_USER` (default `admin`)
-- [ ] **Required:** `GRAFANA_ADMIN_PASS` set to the real Grafana password (`admin` is refused); `RETENTION_DAYS` reviewed (default 30)
+- [ ] **Required:** `GRAFANA_ADMIN_PASS` set to the real Grafana password (empty, `admin` and placeholders are refused; see [Required secrets](../../README.md#required-secrets)); `RETENTION_DAYS` reviewed (default 30)
 
 #### 2. SSH access to pfSense
 - [ ] `ssh-copy-id admin@<PFSENSE_IP>` done — the scripts never prompt for passwords
@@ -79,7 +79,7 @@ Detail: [Dashboard Installation](INSTALL_DASHBOARD.md).
 
 #### 6. Access Grafana
 - [ ] Login at `http://<SIEM_IP>:3000` works (`admin` / your `GRAFANA_ADMIN_PASS`)
-- [ ] Password changed if still `admin`
+- [ ] The Grafana password is not `admin` or a placeholder (the installer and scripts refuse those)
 
 #### 7. Data sources
 - [ ] `OpenSearch-Suricata` (index `suricata-*`, time field `@timestamp`) exists and tests green
@@ -137,7 +137,7 @@ Follow the [Suricata Optimization Guide](../pfsense/SURICATA_OPTIMIZATION_GUIDE.
 
 ### Security Hardening
 
-- [ ] Grafana admin password changed from default; additional users created if multi-user
+- [ ] Grafana admin password is a real one (never `admin`); additional users created if multi-user
 - [ ] OpenSearch listens on `127.0.0.1` only (`install.sh` default; the API has no authentication). Upgraded from an older install? Check `network.host` in `/opt/opensearch/config/opensearch.yml` and delete leftover `ufw allow 9200/tcp` rules (`sudo ufw status numbered`). UDP 5140 and Grafana are limited to `LOGSTASH_ALLOWED_SOURCES` / `GRAFANA_ALLOWED_SOURCES`.
 - [ ] Logstash UDP 5140 restricted to the pfSense IP (`sudo ufw allow from <PFSENSE_IP> to any port 5140 proto udp`)
 - [ ] Grafana 3000 restricted to your management network
