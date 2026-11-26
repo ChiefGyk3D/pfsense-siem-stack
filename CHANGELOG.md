@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Required secrets fail closed (#51)
+
+- **New: one placeholder rule** (`is_placeholder_secret` / `require_secret` in `scripts/lib-install-safety.sh`): empty, `admin`, `password`, `example`, `placeholder`, `changeme*`, `your_*`, `your-*`, `xxx*`, `dp.st.your*` and `<...>` are refused, case-insensitive; errors name the variable and never print the value.
+- **Changed: `diagnose-and-repair.sh`, `tests/test-panel-compatibility.sh` and `scripts/deploy-wazuh-dashboards.py` refuse a default or placeholder password** instead of logging in as `admin`/`admin` (the first two) or accepting any non-empty value (the last). Set `GRAFANA_ADMIN_PASS` in `config.env` (or `GRAFANA_PASS` / `WAZUH_INDEXER_PASS`). `install.sh` and `setup.sh` now also refuse `changeme`-style placeholders.
+- **Changed: docs no longer show `admin` / `admin`, `changeme` or `SecretPassword`.** README has a "Required secrets" table. `INFLUXDB_PASS` is documented as required to be real if InfluxDB auth is on (no script reads it).
+- **New: `tests/python/test_required_secrets.py`.**
+
 ### Safe installer defaults (threat model findings, #49)
 
 - **Changed: OpenSearch binds `127.0.0.1`** and `install.sh` no longer opens 9200. `setup.sh` points Logstash and the Grafana datasource at `localhost`. `setup.sh`, `status.sh`, `preflight.sh` and `diagnose-and-repair.sh` run from a workstation now need an SSH tunnel (`ssh -N -L 9200:127.0.0.1:9200 user@siem-host`, then `OPENSEARCH_URL=http://127.0.0.1:9200` for `setup.sh`) or must run on the SIEM host.

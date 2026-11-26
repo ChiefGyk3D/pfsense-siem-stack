@@ -124,6 +124,28 @@ history: [docs/ARCHIVE.md](docs/ARCHIVE.md).
 
 ---
 
+## Required secrets
+
+A secret that protects something must be set to a real value. The scripts refuse an empty value,
+`admin`, `password`, `example`, `placeholder`, anything starting `changeme`, `your_`, `your-`, `xxx`
+or `dp.st.your`, and anything wrapped in `<...>` (case-insensitive; one rule, in
+`scripts/lib-install-safety.sh`). The error names the variable and never prints the value.
+`INSECURE_OPEN_ACCESS=true` is the single explicit opt-out; do not use it.
+
+| Secret | Needed by | If unset, empty or a placeholder | Where to put it |
+|--------|-----------|-----------------------------------|-----------------|
+| Grafana admin password (`GRAFANA_ADMIN_PASS`; the `install.sh` prompt) | `install.sh`, `setup.sh`, `diagnose-and-repair.sh`, `tests/test-panel-compatibility.sh` | Refuses and exits. `install.sh` generates a random one if you leave its prompt empty and shows it once | `config.env` (not committed), or exported in the environment |
+| `GRAFANA_PASS`, `WAZUH_INDEXER_PASS` | `scripts/deploy-wazuh-dashboards.py` (optional Wazuh dashboards) | Refuses and exits (`WAZUH_INDEXER_PASS` is not needed with `--verify-only`) | Environment variables or the `--pass` / `--wazuh-pass` flags, never a file in the repo |
+| `INFLUXDB_USER`, `INFLUXDB_PASS` | Nothing in this repo reads them; reference for the optional InfluxDB Grafana datasource and the Telegraf form on pfSense | Nothing happens, and nothing validates them. If InfluxDB authentication is on, use a real password in Grafana and in the Telegraf form; leave `INFLUXDB_PASS` empty in `config.env` | Grafana datasource, pfSense Telegraf form |
+| OpenSearch credentials | Nothing: the installer does not enable the OpenSearch security plugin, so 9200 has no authentication | Not applicable. This is why `install.sh` binds 9200 to `127.0.0.1` and a non-loopback bind needs `OPENSEARCH_ALLOWED_SOURCES` and `OPENSEARCH_DISABLE_SECURITY=true` | Roadmap item (auth plus TLS) |
+| pfSense SSH | `setup.sh`, `preflight.sh`, `status.sh`, `diagnose-and-repair.sh` | No password is used or prompted for. Key-based login only (`ssh-copy-id`); without a key the checks fail | SSH key on the machine running the scripts |
+| Telegraf on pfSense | pfSense Telegraf package | No secret in this repo. Its InfluxDB output takes a user and password in the pfSense form; its OpenSearch output has no authentication | pfSense GUI |
+
+CI-only secrets (`DOPPLER_TOKEN`, an optional fallback; the workflow `GITHUB_TOKEN`) are not used at
+runtime.
+
+---
+
 ## Security considerations
 
 Be honest with yourself about what `install.sh` gives you today:

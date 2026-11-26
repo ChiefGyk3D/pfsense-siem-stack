@@ -14,6 +14,7 @@ This is a reference, not a tutorial; for the install order see
 - [Grafana datasources](#grafana-datasources)
 - [Tuning](#tuning)
 - [Logstash maintenance](#logstash-maintenance)
+- [Required secrets](#required-secrets)
 - [Security](#security)
 
 ---
@@ -38,7 +39,7 @@ nano config.env      # at minimum: SIEM_HOST, PFSENSE_HOST
 | `LOGSTASH_UDP_PORT` | `5140` | setup, status, diagnose | UDP port Logstash listens on. Must match `port =>` in the pipeline. Baked into the forwarder. |
 | `GRAFANA_PORT` | `3000` | setup, diagnose, tests | Grafana HTTP port. |
 | `GRAFANA_ADMIN_USER` | `admin` | setup, diagnose, tests | Grafana user used for API calls (datasource creation, dashboard import). |
-| `GRAFANA_ADMIN_PASS` | none (**required**) | setup, diagnose, tests | Password for that user. `setup.sh` refuses `admin` and empty values. |
+| `GRAFANA_ADMIN_PASS` | none (**required**) | setup, diagnose, tests | Password for that user. `setup.sh`, `diagnose-and-repair.sh` and `test-panel-compatibility.sh` refuse empty, `admin` and placeholder values. |
 | `LOGSTASH_ALLOWED_SOURCES` | pfSense IP typed into `install.sh` | install | IPs/CIDRs allowed to send UDP 5140 (and 8086 in Telegraf mode). Required. |
 | `GRAFANA_ALLOWED_SOURCES` | none (**required**) | install | IPs/CIDRs allowed to reach Grafana. |
 | `OPENSEARCH_BIND` | `127.0.0.1` | install | OpenSearch listen address. A non-loopback value also needs `OPENSEARCH_ALLOWED_SOURCES` and `OPENSEARCH_DISABLE_SECURITY=true`. |
@@ -51,7 +52,7 @@ nano config.env      # at minimum: SIEM_HOST, PFSENSE_HOST
 | `INDEX_PREFIX` | `suricata` | setup, status, diagnose | Prefix of the daily Suricata indices (`suricata-YYYY.MM.DD`). Changing it also requires editing `index =>` in the Logstash pipeline, the `index_patterns` in the template, `action.auto_create_index`, and the Grafana datasource pattern; the shipped files assume `suricata`. |
 | `RETENTION_DAYS` | `30` | setup (display only) | Shown in the setup banner. **Not applied automatically** by `setup.sh`; run `./scripts/configure-retention-policy.sh $RETENTION_DAYS` (default 90 if omitted). `install.sh` asks for its own value and applies it. |
 | `INFLUXDB_HOST` / `INFLUXDB_PORT` / `INFLUXDB_DATABASE` | `localhost` / `8086` / `pfsense` | none | Reference values for the InfluxDB datasource used by the pfSense system dashboard. No script reads them; see [Grafana datasources](#grafana-datasources). |
-| `INFLUXDB_USER` / `INFLUXDB_PASS` | commented out | none | Same, if your InfluxDB has auth. |
+| `INFLUXDB_USER` / `INFLUXDB_PASS` | commented out / empty | none | Same, if your InfluxDB has auth. **Required** to be a real password when InfluxDB authentication is on; no script reads them, so nothing validates them. See [Required secrets](../../README.md#required-secrets). |
 | `GEOIP_DB_PATH` | commented out | none (yet) | Reserved for pointing the forwarder at a non-standard GeoIP database. The shipped forwarder finds databases by searching a fixed list (below); leave this commented unless a future `setup.sh` documents otherwise. |
 
 ---
@@ -356,6 +357,12 @@ hunting for data-flow bugs:
 To pin the version and avoid surprises: `sudo apt-mark hold logstash`.
 
 ---
+
+## Required secrets
+
+See [Required secrets in the README](../../README.md#required-secrets) for the full table: which
+secret each script needs and what it does when the value is empty, `admin` or a placeholder.
+The one rule lives in `scripts/lib-install-safety.sh` (`is_placeholder_secret`, `require_secret`).
 
 ## Security
 

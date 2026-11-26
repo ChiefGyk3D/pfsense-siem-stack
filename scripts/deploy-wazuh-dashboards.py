@@ -29,6 +29,22 @@ import time
 # Configuration
 # ============================================================
 
+def is_placeholder_secret(value):
+    """Same rule as is_placeholder_secret in scripts/lib-install-safety.sh (keep them in step).
+
+    True when the value is not a usable secret: empty or blank, a known default, or template-like.
+    Case-insensitive. Callers must never print the value.
+    """
+    v = (value or "").strip().lower()
+    if not v:
+        return True
+    if v in ("admin", "password", "example", "placeholder"):
+        return True
+    if v.startswith(("changeme", "your_", "your-", "xxx", "dp.st.your")):
+        return True
+    return v.startswith("<") and v.endswith(">")
+
+
 def get_config():
     parser = argparse.ArgumentParser(description="Deploy Wazuh dashboards to Grafana")
     parser.add_argument("--grafana", default=os.environ.get("GRAFANA_URL", "http://localhost:3000"),
@@ -51,10 +67,12 @@ def get_config():
                         help="Directory containing dashboard JSON files (auto-detected)")
     args = parser.parse_args()
 
-    if not args.password:
-        parser.error("Grafana password not set — pass --pass or set the GRAFANA_PASS environment variable")
-    if not args.verify_only and not args.wazuh_pass:
-        parser.error("Wazuh Indexer password not set — pass --wazuh-pass or set the WAZUH_INDEXER_PASS environment variable")
+    if is_placeholder_secret(args.password):
+        parser.error("Grafana password is not set or is a default/placeholder value — pass --pass or set "
+                     "the GRAFANA_PASS environment variable")
+    if not args.verify_only and is_placeholder_secret(args.wazuh_pass):
+        parser.error("Wazuh Indexer password is not set or is a default/placeholder value — pass --wazuh-pass "
+                     "or set the WAZUH_INDEXER_PASS environment variable")
     return args
 
 
