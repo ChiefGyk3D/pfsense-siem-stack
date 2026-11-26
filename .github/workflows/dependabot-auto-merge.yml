@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   auto-merge:
-    uses: ChiefGyk3D/git-your-ship-together/.github/workflows/dependabot-auto-merge.yml@0db5ee880d1b4e37eb27443ffc1c37bd4ce8e8a2 # v1.35.0
+    uses: ChiefGyk3D/git-your-ship-together/.github/workflows/dependabot-auto-merge.yml@9e0d7b2e7e8530e2b1bb200ecb4fbf6de021881f # v1.38.0
     permissions:
       contents: write  # enable auto-merge on the pull request
       pull-requests: write  # read its Dependabot metadata
